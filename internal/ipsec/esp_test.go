@@ -169,7 +169,7 @@ func TestESPEncryptIPPacketMatchesDecryptedPayload(t *testing.T) {
 		t.Run(s.String(), func(t *testing.T) {
 			out, in := s.pair(t)
 			ipPayload := []byte("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
-			pkt, err := out.EncryptIPPacket(1234, 5678, ipPayload)
+			pkt, err := out.EncryptIPPacket(51234, 1701, 1234, 5678, ipPayload)
 			if err != nil {
 				t.Fatalf("EncryptIPPacket failed: %v", err)
 			}
@@ -186,7 +186,7 @@ func TestESPEncryptIPPacketMatchesDecryptedPayload(t *testing.T) {
 			// Verify inner UDP header (8 bytes)
 			srcPort := uint16(decrypted[0])<<8 | uint16(decrypted[1])
 			dstPort := uint16(decrypted[2])<<8 | uint16(decrypted[3])
-			if srcPort != 1701 || dstPort != 1701 {
+			if srcPort != 51234 || dstPort != 1701 {
 				t.Fatalf("UDP ports mismatch: %d -> %d", srcPort, dstPort)
 			}
 			// Verify L2TP header (6 bytes)
@@ -257,7 +257,7 @@ func BenchmarkESPEncryptIPPacket(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_, err := out.EncryptIPPacket(1, 1, payload)
+		_, err := out.EncryptIPPacket(1701, 1701, 1, 1, payload)
 		if err != nil {
 			b.Fatal(err)
 		}

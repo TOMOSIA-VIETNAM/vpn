@@ -183,7 +183,8 @@ func (sa *SA) Encrypt(payload []byte, nextHeader byte) ([]byte, error) {
 
 // EncryptIPPacket embeds the inner UDP (8B) + L2TP (6B) + PPP (2B) header directly into the
 // cipher buffer, encrypting in one single pass without heap allocations or slice churn.
-func (sa *SA) EncryptIPPacket(tunnelID, sessionID uint16, ipPkt []byte) ([]byte, error) {
+// srcPort/dstPort are the inner UDP ports: the caller's L2TP port and the server's.
+func (sa *SA) EncryptIPPacket(srcPort, dstPort, tunnelID, sessionID uint16, ipPkt []byte) ([]byte, error) {
 	sa.mu.Lock()
 	defer sa.mu.Unlock()
 	if sa.seq == math.MaxUint32 {
@@ -207,9 +208,9 @@ func (sa *SA) EncryptIPPacket(tunnelID, sessionID uint16, ipPkt []byte) ([]byte,
 	}
 	plain := sa.encPlainBuf[:plainLen]
 
-	// Inner UDP header (8 bytes): 1701 -> 1701
-	binary.BigEndian.PutUint16(plain[0:2], 1701)
-	binary.BigEndian.PutUint16(plain[2:4], 1701)
+	// Inner UDP header (8 bytes): srcPort -> dstPort
+	binary.BigEndian.PutUint16(plain[0:2], srcPort)
+	binary.BigEndian.PutUint16(plain[2:4], dstPort)
 	binary.BigEndian.PutUint16(plain[4:6], uint16(payloadLen))
 	binary.BigEndian.PutUint16(plain[6:8], 0) // checksum 0
 

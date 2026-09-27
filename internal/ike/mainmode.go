@@ -49,9 +49,14 @@ type Session struct {
 	Transform    Transform
 	NATDetected  bool
 	LocalIP      net.IP
-	nextMsgID    uint32
-	lastIV       []byte // Main Mode's running CBC chain: last ciphertext block sent/received
-	phase1IV     []byte // lastIV as Main Mode left it; seeds every later exchange's first IV
+	// L2TPPort is our L2TP UDP port in every Quick Mode on this IKE SA (0 =
+	// the standard 1701). Clients behind one NAT all look like the same
+	// address to the server; with the same port too, the server cannot keep
+	// their SAs apart and hands one client's L2TP traffic to another's SA.
+	L2TPPort  uint16
+	nextMsgID uint32
+	lastIV    []byte // Main Mode's running CBC chain: last ciphertext block sent/received
+	phase1IV  []byte // lastIV as Main Mode left it; seeds every later exchange's first IV
 
 	// EstablishedAt and Lifetime describe the IKE SA itself (the responder's
 	// chosen life duration). A Quick Mode rekey needs a live IKE SA.
@@ -94,6 +99,9 @@ type Config struct {
 	PSK        string
 	Proposals  []string // e.g. entrypoint.sh's ike= list, most-preferred first
 	LocalIP    net.IP   // our outbound address, used as our ID_IPV4_ADDR (matches left=%defaultroute)
+	// L2TPPort is our side's L2TP UDP port, the port in Quick Mode's IDci
+	// (0 = L2TPPort's standard 1701). See Session.L2TPPort.
+	L2TPPort uint16
 }
 
 // EstablishPhase1 runs IKEv1 Main Mode with PSK authentication end-to-end
@@ -150,7 +158,7 @@ func establishPhase1To(ctx context.Context, cfg Config, serverPort int) (*Sessio
 			}
 			return nil, lastErr
 		}
-		sess := &Session{conn: conn, serverIP: serverAddr.IP, destAddr: serverAddr, LocalIP: cfg.LocalIP, floatAnyPort: cfg.Reauth}
+		sess := &Session{conn: conn, serverIP: serverAddr.IP, destAddr: serverAddr, LocalIP: cfg.LocalIP, floatAnyPort: cfg.Reauth, L2TPPort: cfg.L2TPPort}
 		_ = conn.SetReadBuffer(8 * 1024 * 1024)
 		_ = conn.SetWriteBuffer(8 * 1024 * 1024)
 		if !last {
@@ -434,7 +442,9 @@ func (s *Session) exchangeQuickMode(msg []byte, msgID uint32) ([]byte, error) {
 				continue
 			}
 			if h.ExchangeType == ExchangeInformational {
-				s.logInformational(h, got[headerLen:])
+				if nt := s.logInformational(h, got[headerLen:]); nt != 0 && nt < notifyErrorLimit {
+					return nil, fmt.Errorf("%w: Notify %d", ErrQuickModeRejected, nt)
+				}
 				continue
 			}
 			if h.MessageID != msgID {
@@ -451,15 +461,18 @@ func (s *Session) exchangeQuickMode(msg []byte, msgID uint32) ([]byte, error) {
 // diagnostics — the server sends these for real protocol reasons (rejecting
 // a message, DPD, SA deletion) and silently dropping them without at least
 // logging the notify type makes failures much harder to diagnose.
-func (s *Session) logInformational(h Header, encBody []byte) {
+//
+// It returns the first Notify type it found (0 for none), so a caller can
+// stop waiting on an exchange the server has refused.
+func (s *Session) logInformational(h Header, encBody []byte) (notifyType uint16) {
 	if s.Keys == nil || len(encBody) == 0 {
 		vpnlog.Info(stage, "received Informational exchange (no keys yet to decrypt)", nil)
-		return
+		return 0
 	}
 	bs := blockSize(s.Transform)
 	if len(encBody)%bs != 0 || s.phase1IV == nil {
 		vpnlog.Info(stage, "received Informational exchange (undecryptable)", nil)
-		return
+		return 0
 	}
 	// RFC 2409 §5.5: a new exchange (Informational or Quick Mode) does not
 	// reuse the last Phase 1 ciphertext block as its IV directly — it seeds
@@ -467,26 +480,30 @@ func (s *Session) logInformational(h Header, encBody []byte) {
 	iv, err := informationalIV(s.Transform.Hash, s.phase1IV, h.MessageID, bs)
 	if err != nil {
 		vpnlog.Info(stage, "received Informational exchange (IV derivation failed)", vpnlog.Fields{"err": err})
-		return
+		return 0
 	}
 	plain, err := cbcDecrypt(s.Transform, s.Keys.EncKey, iv, encBody)
 	if err != nil {
 		vpnlog.Info(stage, "received Informational exchange (decrypt failed)", vpnlog.Fields{"err": err})
-		return
+		return 0
 	}
 	payloads, err := SplitPayloads(h.NextPayload, plain)
 	if err != nil {
 		vpnlog.Info(stage, "received Informational exchange (undecodable after decrypt)", vpnlog.Fields{
 			"next_payload": h.NextPayload, "plain_len": len(plain), "parse_err": err,
 		})
-		return
+		return 0
 	}
 	for _, p := range payloads {
 		if p.Type == PayloadNotify && len(p.Body) >= 8 {
-			notifyType := uint16(p.Body[6])<<8 | uint16(p.Body[7])
-			vpnlog.Info(stage, "server sent Notify", vpnlog.Fields{"notify_type": notifyType})
+			nt := uint16(p.Body[6])<<8 | uint16(p.Body[7])
+			vpnlog.Info(stage, "server sent Notify", vpnlog.Fields{"notify_type": nt})
+			if notifyType == 0 {
+				notifyType = nt
+			}
 		}
 	}
+	return notifyType
 }
 
 // buildMM1 is Main Mode's first message, HDR, SA, VID(DPD), VID(NAT-T) — shared by

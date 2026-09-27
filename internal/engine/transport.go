@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"vpn/internal/ike"
 	"vpn/internal/l2tp"
 	"vpn/internal/ppp"
 	"vpn/internal/vpnlog"
@@ -25,6 +27,7 @@ type espTransport struct {
 	sas         *saSet       // current pair for sending; every live pair for receiving (see rekey.go)
 	repairRoute func() error
 	live        *liveness // nil in tests; otherwise fed by every valid inbound packet
+	l2tpPort    uint16    // our L2TP UDP port, as negotiated in Quick Mode (ike.Session.L2TPPort); 0 = 1701
 	drops       atomic.Uint64
 }
 
@@ -47,20 +50,10 @@ func (t *espTransport) noteDrop(msg string, err error) {
 	}
 }
 
-const (
-	l2tpPort = 1701
-	protoUDP = 17
-)
+const protoUDP = 17
 
 func (t *espTransport) Send(l2tpMsg []byte) error {
-	udpHdr := make([]byte, 8)
-	binary.BigEndian.PutUint16(udpHdr[0:2], l2tpPort) // src port
-	binary.BigEndian.PutUint16(udpHdr[2:4], l2tpPort) // dst port
-	binary.BigEndian.PutUint16(udpHdr[4:6], uint16(8+len(l2tpMsg)))
-	// Checksum remains zero. RFC 3948 §3.1.2 permits this for integrity-
-	// protected UDP transported by ESP: NAT changes the IP addresses used by
-	// a non-zero checksum's pseudo-header and cannot adjust encrypted ESP.
-	payload := append(udpHdr, l2tpMsg...)
+	payload := append(l2tpUDPHeader(t.l2tpPort, len(l2tpMsg)), l2tpMsg...)
 
 	pkt, err := t.sas.current().out.Encrypt(payload, protoUDP)
 	if err != nil {
@@ -73,7 +66,7 @@ func (t *espTransport) Send(l2tpMsg []byte) error {
 }
 
 func (t *espTransport) SendIPFast(tunnelID, sessionID uint16, ipPkt []byte) error {
-	pkt, err := t.sas.current().out.EncryptIPPacket(tunnelID, sessionID, ipPkt)
+	pkt, err := t.sas.current().out.EncryptIPPacket(ourL2TPPort(t.l2tpPort), ike.L2TPPort, tunnelID, sessionID, ipPkt)
 	if err != nil {
 		return fmt.Errorf("ESP encrypt: %w", err)
 	}
@@ -182,4 +175,51 @@ func (p *pppOverL2TP) RecvFrame(ctx context.Context) (uint16, []byte, error) {
 		}
 		return f.Protocol, f.Payload, nil
 	}
+}
+
+// randomL2TPPort picks this connection's own L2TP port from the dynamic range
+// (RFC 6335 §6). Every machine behind an office NAT reaches the server from
+// the same public address, and with 1701 on all of them the server's SA
+// lookup for "that address, port 1701" matches whichever of their SAs is
+// newest: it then encrypts one client's SCCRP, CHAP Challenge or data with
+// another's keys (reproduced live as logins that time out or are refused
+// until the other machine reconnects). A port of our own gives our SA a
+// selector no other client, nor an earlier session of ours, shares.
+func randomL2TPPort() uint16 {
+	const lo, n = 49152, 65536 - 49152
+	var b [2]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return ike.L2TPPort
+	}
+	return uint16(lo + int(binary.BigEndian.Uint16(b[:]))%n)
+}
+
+// l2tpPortFor is the L2TP port for the next attempt: a fresh one, unless a
+// session of ours is still to be ended on the server (see staleSession).
+func l2tpPortFor(stale *staleSession) uint16 {
+	if stale != nil && !stale.done && stale.l2tpPort != 0 {
+		return stale.l2tpPort
+	}
+	return randomL2TPPort()
+}
+
+// l2tpUDPHeader is the inner UDP header of an L2TP message: from our L2TP port
+// (0 = 1701) to the server's 1701. The checksum stays zero: RFC 3948 §3.1.2
+// permits it for integrity-protected UDP carried by ESP, since NAT changes the
+// addresses a non-zero checksum's pseudo-header covers and cannot adjust it.
+func l2tpUDPHeader(srcPort uint16, msgLen int) []byte {
+	h := make([]byte, 8)
+	binary.BigEndian.PutUint16(h[0:2], ourL2TPPort(srcPort))
+	binary.BigEndian.PutUint16(h[2:4], ike.L2TPPort)
+	binary.BigEndian.PutUint16(h[4:6], uint16(8+msgLen))
+	return h
+}
+
+// ourL2TPPort is the inner UDP source port for every message we send, on the
+// control path (l2tpUDPHeader) and the data fast path (SendIPFast) alike.
+func ourL2TPPort(p uint16) uint16 {
+	if p == 0 {
+		return ike.L2TPPort
+	}
+	return p
 }

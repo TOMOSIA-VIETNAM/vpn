@@ -12,7 +12,7 @@ func TestLastSessionSurvivesAndIsScopedToServerAndAge(t *testing.T) {
 	if loadLastSession("vpn.example", time.Now()) != nil {
 		t.Fatal("found a session before anything was saved")
 	}
-	saveLastSession("vpn.example", 1694, 58187)
+	saveLastSession("vpn.example", 1694, 58187, 50000)
 
 	got := loadLastSession("vpn.example", time.Now())
 	if got == nil || got.tunnel != 1694 || got.session != 58187 {
@@ -38,7 +38,7 @@ func TestLastSessionSurvivesAndIsScopedToServerAndAge(t *testing.T) {
 
 func TestLastSessionIgnoresGarbageAndZeroIDs(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	saveLastSession("s", 0, 5)
+	saveLastSession("s", 0, 5, 50000)
 	if loadLastSession("s", time.Now()) != nil {
 		t.Fatal("zero IDs mean 'never established' and must not be evicted")
 	}
