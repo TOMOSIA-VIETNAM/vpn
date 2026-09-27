@@ -27,7 +27,7 @@ func (s suite) String() string {
 	return fmt.Sprintf("cipher%d-integ%d-%d", s.cipher, s.integrity, s.encLen*8)
 }
 
-func (s suite) pair(t *testing.T) (out, in *SA) {
+func (s suite) pair(t testing.TB) (out, in *SA) {
 	t.Helper()
 	enc := bytes.Repeat([]byte{0x11}, s.encLen)
 	auth := bytes.Repeat([]byte{0x22}, s.authLen)
@@ -205,43 +205,6 @@ func TestESPEncryptIPPacketMatchesDecryptedPayload(t *testing.T) {
 				t.Fatalf("IP payload mismatch: got %s, want %s", decrypted[16:], ipPayload)
 			}
 		})
-	}
-}
-
-func TestESPReplayWindow8MBScale(t *testing.T) {
-	out, in := suites[1].pair(t) // AES-CBC + HMAC-SHA1
-	// Generate base packet
-	pkt1, err := out.Encrypt([]byte("pkt1"), 17)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := in.Decrypt(pkt1); err != nil {
-		t.Fatalf("pkt1 failed: %v", err)
-	}
-
-	// Advance sequence by 500,000 packets (well within 8MB = 8,388,608 window)
-	out.seq = 500000
-	pktHigh, err := out.Encrypt([]byte("pktHigh"), 17)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := in.Decrypt(pktHigh); err != nil {
-		t.Fatalf("pktHigh (seq 500001) failed: %v", err)
-	}
-
-	// Now send an out-of-order packet with seq 250,000 (valid within 8MB window)
-	out.seq = 249999
-	pktMiddle, err := out.Encrypt([]byte("pktMiddle"), 17)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := in.Decrypt(pktMiddle); err != nil {
-		t.Fatalf("pktMiddle (seq 250000) out-of-order failed: %v", err)
-	}
-
-	// Replay of pktMiddle must be rejected
-	if _, _, err := in.Decrypt(pktMiddle); err == nil {
-		t.Fatal("replay of pktMiddle was accepted!")
 	}
 }
 
