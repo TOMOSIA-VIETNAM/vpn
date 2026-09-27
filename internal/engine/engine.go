@@ -334,8 +334,12 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 	}
 
 	// The IKE/ESP socket reader (ike.StartDataPhase) runs from Quick Mode
-	// until Connect returns, on every path.
-	ikeCtx, stopIKE := context.WithCancel(sigCtx)
+	// until Connect returns, on every path. Deliberately not a child of
+	// sigCtx: a disconnect's teardown (PPP Terminate, CDN/StopCCN, IKE
+	// Delete) runs after the signal, and must still hear the server's
+	// answers — with the reader already gone, every Terminate-Ack was lost
+	// and each disconnect waited out Terminate's full timeout.
+	ikeCtx, stopIKE := context.WithCancel(context.Background())
 	defer stopIKE()
 
 	// Every IKE SA carrying ESP (one, or two during a re-authentication).
@@ -690,7 +694,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 	// Everything that only makes sense while the tunnel is up stops together
 	// when it is lost, and *before* teardown: a route watcher or rekey still
 	// running while routes/SAs are being restored would undo the restore.
-	dpCtx, stopDP := context.WithCancel(ikeCtx)
+	dpCtx, stopDP := context.WithCancel(sigCtx) // a disconnect stops the data plane at once
 	dropCh := make(chan error, 2)
 
 	// macOS can silently reap the routes ProtectServer/ApplyFullTunnel just

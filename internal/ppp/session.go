@@ -283,17 +283,21 @@ func runIPCP(ctx context.Context, t Transport, requestedIP net.IP) (*NegotiatedI
 // exactly that: disconnect immediately followed by connect failed with
 // PPP_AUTH_FAILURE even though the credentials never changed.
 func Terminate(t Transport, id uint8) {
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	// Measured live against the LNS: the Ack arrives 170-210 ms after the
+	// Request, so 250 ms missed about a third of them. It returns as soon as
+	// the Ack is in, so the longer bound only costs time when none comes.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	req := ControlPacket{Code: CodeTerminateRequest, Identifier: id}
+	start := time.Now()
 	if err := t.SendFrame(ProtoLCP, req.Marshal()); err != nil {
+		vpnlog.Debug(stage, "could not send Terminate-Request", vpnlog.Fields{"err": err})
 		return
 	}
 	for {
-		frameCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
-		proto, payload, err := t.RecvFrame(frameCtx)
-		cancel()
+		proto, payload, err := t.RecvFrame(ctx)
 		if err != nil {
+			vpnlog.Debug(stage, "no Terminate-Ack", vpnlog.Fields{"err": err, "waited_ms": time.Since(start).Milliseconds()})
 			return
 		}
 		if proto != ProtoLCP {
@@ -304,6 +308,7 @@ func Terminate(t Transport, id uint8) {
 			continue
 		}
 		if pkt.Code == CodeTerminateAck {
+			vpnlog.Debug(stage, "Terminate-Ack received", vpnlog.Fields{"waited_ms": time.Since(start).Milliseconds()})
 			return
 		}
 	}
