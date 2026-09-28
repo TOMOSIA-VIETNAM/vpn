@@ -78,8 +78,8 @@ func TestRecvDataReturnsServerClose(t *testing.T) {
 		msg  []byte
 		want string
 	}{
-		{"CDN", controlTo(0x1234, 1, 2, 3, MessageTypeAVP(MsgCDN), resultCodeAVP(2, 6, "missing AVP"), AssignedSessionIDAVP(77)), `CDN, result 2, error 6: "missing AVP"`},
-		{"StopCCN", controlTo(0x1234, 0, 2, 3, MessageTypeAVP(MsgStopCCN), resultCodeAVP(1, 0, ""), AssignedTunnelIDAVP(0x4321)), "StopCCN, result 1, error 0"},
+		{"CDN", controlTo(0x1234, 1, 0, 0, MessageTypeAVP(MsgCDN), resultCodeAVP(2, 6, "missing AVP"), AssignedSessionIDAVP(77)), `CDN, result 2, error 6: "missing AVP"`},
+		{"StopCCN", controlTo(0x1234, 0, 0, 0, MessageTypeAVP(MsgStopCCN), resultCodeAVP(1, 0, ""), AssignedTunnelIDAVP(0x4321)), "StopCCN, result 1, error 0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := &scriptedTransport{in: make(chan []byte, 4)}
@@ -101,7 +101,7 @@ func TestRecvDataReturnsServerClose(t *testing.T) {
 func TestRecvDataIgnoresOtherSessionsCDN(t *testing.T) {
 	tr := &scriptedTransport{in: make(chan []byte, 4)}
 	tun := &Tunnel{t: tr, localTunnelID: 0x1234, localSessionID: 1}
-	tr.in <- controlTo(0x1234, 9, 2, 3, MessageTypeAVP(MsgCDN), resultCodeAVP(3, 0, ""))
+	tr.in <- controlTo(0x1234, 9, 0, 0, MessageTypeAVP(MsgCDN), resultCodeAVP(3, 0, ""))
 	tr.in <- MarshalData(0x1234, 1, []byte{0xff, 0x03, 0xc0, 0x21, 1})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()

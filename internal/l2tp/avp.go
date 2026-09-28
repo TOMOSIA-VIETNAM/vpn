@@ -42,6 +42,8 @@ const (
 	MsgICRP    = 11
 	MsgICCN    = 12
 	MsgCDN     = 14
+	MsgWEN     = 15 // WAN-Error-Notify
+	MsgSLI     = 16 // Set-Link-Info: an LNS may send it once PPP is up
 )
 
 // AVP is one decoded Attribute-Value Pair (RFC 2661 §4.3).
