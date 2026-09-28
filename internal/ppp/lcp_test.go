@@ -141,7 +141,7 @@ func TestRunLCPReturnsNegotiatedMagic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			got, _, err := runLCP(ctx, newFakeLCPPeer(tc.rejectMagic), LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
+			got, _, _, err := runLCP(ctx, newFakeLCPPeer(tc.rejectMagic), LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -166,7 +166,7 @@ func (b *brokenTransport) RecvFrame(context.Context) (uint16, []byte, error) {
 func TestRunLCPStopsOnFailedLink(t *testing.T) {
 	bt := &brokenTransport{}
 	start := time.Now()
-	_, _, err := runLCP(context.Background(), bt, LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
+	_, _, _, err := runLCP(context.Background(), bt, LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
 	if err == nil || !strings.Contains(err.Error(), "closed the L2TP session") {
 
 		t.Fatalf("err = %v, want the link's own error", err)

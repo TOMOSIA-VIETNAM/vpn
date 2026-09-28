@@ -109,6 +109,16 @@ func magicOf(opts []Option) uint32 {
 	return 0
 }
 
+// mruOf returns the negotiated MRU from opts, or 0 if not present.
+func mruOf(opts []Option) uint16 {
+	for _, o := range opts {
+		if o.Type == OptMRU && len(o.Data) == 2 {
+			return binary.BigEndian.Uint16(o.Data)
+		}
+	}
+	return 0
+}
+
 // EchoReply answers an LCP Echo-Request (RFC 1661 §5.8). The reply's
 // Magic-Number is the replier's own, never the requester's: pppd discards
 // a reply carrying its own magic as a looped-back packet ("appear to have

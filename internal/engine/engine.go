@@ -590,9 +590,16 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			restoreRoutes()
 			return fail(pppFailStage(err), "PPP negotiation", err)
 		}
+		if pppResult.MRU > 0 {
+			mru = pppResult.MRU
+		}
 		ipcp = pppResult.IPCP
 		lcpMagic = pppResult.Magic
-		vpnlog.Info("ENGINE", "PPP OPENED", vpnlog.Fields{"local_ip": ipcp.LocalIP.String(), "peer_ip": ipcp.PeerIP.String()})
+		peerIPStr := "<none>"
+		if ipcp.PeerIP != nil && !ipcp.PeerIP.IsUnspecified() {
+			peerIPStr = ipcp.PeerIP.String()
+		}
+		vpnlog.Info("ENGINE", "PPP OPENED", vpnlog.Fields{"local_ip": ipcp.LocalIP.String(), "peer_ip": peerIPStr, "mru": mru})
 
 		// Everything below is teardown-on-failure just like the stages
 		// above, but now there are more resources (utun device, interface
@@ -622,7 +629,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			teardownPartial()
 			return fail("TUN_FAILURE", "configure utun interface", err)
 		}
-		vpnlog.Info("ENGINE", "utun interface up", vpnlog.Fields{"device": dev.Name, "local_ip": ipcp.LocalIP.String(), "peer_ip": peer.String(), "peer_ip_from_server": peer.Equal(ipcp.PeerIP)})
+		vpnlog.Info("ENGINE", "utun interface up", vpnlog.Fields{"device": dev.Name, "local_ip": ipcp.LocalIP.String(), "peer_ip": peer.String(), "peer_ip_from_server": peer.Equal(ipcp.PeerIP), "mtu": mru})
 
 		if cfg.FullTunnel {
 			if err := rtSnapshot.ApplyFullTunnel(dev.Name); err != nil {
@@ -646,15 +653,10 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			}
 		}
 		if len(dnsServers) > 0 {
-			service, err := dnsmgr.ServiceForInterface(rtSnapshot.DefaultInterface)
-			if err != nil {
-				teardownPartial()
-				return fail("DNS_FAILURE", "map default interface to a network service", err)
-			}
-			snap, err := dnsmgr.Capture(service)
-			if err != nil {
-				teardownPartial()
-				return fail("DNS_FAILURE", "capture current DNS configuration", err)
+			service, _ := dnsmgr.ServiceForInterface(rtSnapshot.DefaultInterface)
+			snap, _ := dnsmgr.Capture(service)
+			if snap == nil {
+				snap = &dnsmgr.Snapshot{Service: service}
 			}
 			snap.TunIface = dev.Name
 			if err := snap.Apply(dnsServers); err != nil {
