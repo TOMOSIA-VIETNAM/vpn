@@ -230,11 +230,11 @@ func parseChosenESPSA(saBody []byte) (chosenESP, error) {
 	for _, b := range spi {
 		spiVal = spiVal<<8 | uint32(b)
 	}
-	txPayloads, err := SplitPayloads(PayloadTransform, prop[4+spiSize:])
-	if err != nil || len(txPayloads) != 1 {
-		return chosenESP{}, fmt.Errorf("expected one ESP transform payload: %v", err)
+	tx, err := chosenTransform(prop[4+spiSize:])
+	if err != nil {
+		return chosenESP{}, fmt.Errorf("ESP proposal: %w", err)
 	}
-	t, _, err := parseESPTransformBody(txPayloads[0].Body)
+	t, _, err := parseESPTransformBody(tx)
 	if err != nil {
 		return chosenESP{}, err
 	}
