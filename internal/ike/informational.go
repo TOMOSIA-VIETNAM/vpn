@@ -101,6 +101,9 @@ func (s *Session) Close() {
 		if err := s.sendInformational(PayloadDelete, marshalPayload(PayloadNone, s.deleteISAKMPBody())); err == nil {
 			vpnlog.Info(stage, "IKE SA delete sent", nil)
 		}
+		if s.Keys != nil {
+			s.Keys.Zeroize()
+		}
 		_ = s.conn.Close()
 	})
 }

@@ -14,6 +14,7 @@ type testPeer struct {
 	t    *testing.T
 	conn *net.UDPConn
 	sess *Session // the client session under test
+	keys *Phase1Keys
 }
 
 func newTestPair(t *testing.T) (*testPeer, *Session) {
@@ -29,22 +30,28 @@ func newTestPair(t *testing.T) (*testPeer, *Session) {
 	}
 	t.Cleanup(func() { server.Close(); client.Close() })
 
+	peerKeys := &Phase1Keys{
+		SKEYIDa: bytes.Repeat([]byte{0xA1}, 20),
+		SKEYIDd: bytes.Repeat([]byte{0xD1}, 20),
+		EncKey:  bytes.Repeat([]byte{0xE1}, 24),
+	}
+	clientKeys := &Phase1Keys{
+		SKEYIDa: bytes.Repeat([]byte{0xA1}, 20),
+		SKEYIDd: bytes.Repeat([]byte{0xD1}, 20),
+		EncKey:  bytes.Repeat([]byte{0xE1}, 24),
+	}
 	s := &Session{
 		conn:      client,
 		serverIP:  lo,
 		destAddr:  server.LocalAddr().(*net.UDPAddr),
 		floated:   true,
 		Transform: Transform{Encryption: Enc3DES, Hash: HashSHA1},
-		Keys: &Phase1Keys{
-			SKEYIDa: bytes.Repeat([]byte{0xA1}, 20),
-			SKEYIDd: bytes.Repeat([]byte{0xD1}, 20),
-			EncKey:  bytes.Repeat([]byte{0xE1}, 24),
-		},
-		phase1IV: bytes.Repeat([]byte{0x11}, 8),
+		Keys:      clientKeys,
+		phase1IV:  bytes.Repeat([]byte{0x11}, 8),
 	}
 	copy(s.InitiatorSPI[:], "initcook")
 	copy(s.ResponderSPI[:], "respcook")
-	return &testPeer{t: t, conn: server, sess: s}, s
+	return &testPeer{t: t, conn: server, sess: s, keys: peerKeys}, s
 }
 
 func (p *testPeer) clientAddr() *net.UDPAddr { return p.sess.conn.LocalAddr().(*net.UDPAddr) }
@@ -76,7 +83,7 @@ func (p *testPeer) recvIKE() []byte {
 func (p *testPeer) encryptFirst(exchange uint8, msgID uint32, rest []byte, forgeHash bool, firstType ...uint8) []byte {
 	p.t.Helper()
 	s := p.sess
-	hash, _ := prf(s.Transform.Hash, s.Keys.SKEYIDa, append(beUint32(msgID), rest...))
+	hash, _ := prf(s.Transform.Hash, p.keys.SKEYIDa, append(beUint32(msgID), rest...))
 	if forgeHash {
 		hash[0] ^= 0xFF
 	}
@@ -86,7 +93,7 @@ func (p *testPeer) encryptFirst(exchange uint8, msgID uint32, rest []byte, forge
 	}
 	plain := padToBlock(append(marshalPayload(ft, hash), rest...), 8)
 	iv, _ := informationalIV(s.Transform.Hash, s.phase1IV, msgID, 8)
-	ct, _ := cbcEncrypt(s.Transform, s.Keys.EncKey, iv, plain)
+	ct, _ := cbcEncrypt(s.Transform, p.keys.EncKey, iv, plain)
 	h := Header{InitiatorSPI: s.InitiatorSPI, ResponderSPI: s.ResponderSPI, NextPayload: PayloadHash, Version: 0x10, ExchangeType: exchange, Flags: FlagEncryption, MessageID: msgID}
 	h.Length = uint32(headerLen + len(ct))
 	return append(h.Marshal(), ct...)
@@ -257,11 +264,20 @@ func (p *testPeer) decryptFromClient(msg []byte) []RawPayload {
 	if err != nil || h.ExchangeType != ExchangeInformational {
 		p.t.Fatalf("not an Informational message: %v", err)
 	}
-	payloads, plain, err := s.decryptExchange(h, msg[headerLen:])
+	bs := blockSize(s.Transform)
+	iv, err := informationalIV(s.Transform.Hash, s.phase1IV, h.MessageID, bs)
+	if err != nil {
+		p.t.Fatalf("IV derivation: %v", err)
+	}
+	plain, err := cbcDecrypt(s.Transform, p.keys.EncKey, iv, msg[headerLen:])
 	if err != nil {
 		p.t.Fatalf("decrypt: %v", err)
 	}
-	if err := verifyHash1(s.Transform.Hash, s.Keys.SKEYIDa, h.MessageID, h.NextPayload, payloads, plain); err != nil {
+	payloads, err := SplitPayloads(h.NextPayload, plain)
+	if err != nil {
+		p.t.Fatalf("split payloads: %v", err)
+	}
+	if err := verifyHash1(s.Transform.Hash, p.keys.SKEYIDa, h.MessageID, h.NextPayload, payloads, plain); err != nil {
 		p.t.Fatalf("client HASH(1) does not verify: %v", err)
 	}
 	return payloads[1:]

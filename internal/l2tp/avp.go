@@ -158,12 +158,17 @@ func describeResult(avps []AVP) string {
 	return s
 }
 
+const maxAVPs = 64
+
 // ParseAVPs decodes a sequence of AVPs from a control message body,
 // following each AVP's own length field (RFC 2661 §4.3) rather than
 // assuming fixed sizes.
 func ParseAVPs(b []byte) ([]AVP, error) {
 	var out []AVP
 	for len(b) > 0 {
+		if len(out) >= maxAVPs {
+			return nil, fmt.Errorf("L2TP AVP count exceeds safety limit (%d)", maxAVPs)
+		}
 		if len(b) < 6 {
 			return nil, fmt.Errorf("truncated AVP header (%d bytes left)", len(b))
 		}

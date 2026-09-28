@@ -21,6 +21,8 @@ sudo install -o root -g wheel -m 4755 ./build/vpn /usr/local/bin/vpn
 echo "$OWNER_UID" | sudo tee /etc/vpn-owner-uid >/dev/null
 sudo chown root:wheel /etc/vpn-owner-uid
 sudo chmod 600 /etc/vpn-owner-uid
+sudo chmod 755 /var/run/vpn 2>/dev/null || true
+sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
 
 echo "🎨 [3/3] Cài đặt Menu Bar App (/Applications/TMS VPN.app)..."
 sudo rm -rf "/Applications/TMS VPN.app"

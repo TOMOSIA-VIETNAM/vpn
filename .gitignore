@@ -1,6 +1,7 @@
 node_modules/
 build/
 build_app/
+build_dist/
 dist/
 
 coverage/

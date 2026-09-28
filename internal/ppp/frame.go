@@ -122,9 +122,14 @@ func MarshalOptions(opts []Option) []byte {
 	return b
 }
 
+const maxOptions = 64
+
 func ParseOptions(b []byte) ([]Option, error) {
 	var out []Option
 	for len(b) > 0 {
+		if len(out) >= maxOptions {
+			return nil, fmt.Errorf("PPP option count exceeds safety limit (%d)", maxOptions)
+		}
 		if len(b) < 2 {
 			return nil, fmt.Errorf("truncated option header")
 		}

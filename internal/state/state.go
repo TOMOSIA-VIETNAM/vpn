@@ -97,6 +97,7 @@ func (s *State) Save() error {
 	if err := os.MkdirAll(Dir, 0o755); err != nil {
 		return err
 	}
+	_ = os.Chmod(Dir, 0o755)
 	p := path()
 	s.UpdatedAt = time.Now()
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -110,6 +111,7 @@ func (s *State) Save() error {
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}
+	_ = os.Chmod(tmp, 0o644)
 	return os.Rename(tmp, p)
 }
 

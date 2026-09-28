@@ -304,3 +304,33 @@ func (sa *SA) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
 	sa.replay.accept(seq)
 	return payload, nextHeader, nil
 }
+
+// Zeroize clears all cryptographic keys and temporary plaintext buffers from memory.
+func (sa *SA) Zeroize() {
+	if sa == nil {
+		return
+	}
+	sa.mu.Lock()
+	defer sa.mu.Unlock()
+	for i := range sa.EncKey {
+		sa.EncKey[i] = 0
+	}
+	for i := range sa.AuthKey {
+		sa.AuthKey[i] = 0
+	}
+	for i := range sa.encPlainBuf {
+		sa.encPlainBuf[i] = 0
+	}
+	for i := range sa.decPlainBuf {
+		sa.decPlainBuf[i] = 0
+	}
+	for i := range sa.ivPool {
+		sa.ivPool[i] = 0
+	}
+	for i := range sa.ivBuf {
+		sa.ivBuf[i] = 0
+	}
+	for i := range sa.macBuf {
+		sa.macBuf[i] = 0
+	}
+}

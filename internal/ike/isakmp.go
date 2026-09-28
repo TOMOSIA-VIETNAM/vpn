@@ -114,6 +114,8 @@ type RawPayload struct {
 	Body []byte
 }
 
+const maxISAKMPPayloads = 64
+
 // SplitPayloads walks the next-payload chain starting at firstType,
 // returning each payload's type and body. This mirrors how ISAKMP payloads
 // are actually framed: the body of message N tells you the type of the
@@ -122,6 +124,9 @@ func SplitPayloads(firstType uint8, data []byte) ([]RawPayload, error) {
 	var out []RawPayload
 	next := firstType
 	for next != PayloadNone {
+		if len(out) >= maxISAKMPPayloads {
+			return nil, fmt.Errorf("ISAKMP payload count exceeds safety limit (%d)", maxISAKMPPayloads)
+		}
 		if len(data) < 4 {
 			return nil, fmt.Errorf("payload chain truncated (next=%d, %d bytes left)", next, len(data))
 		}

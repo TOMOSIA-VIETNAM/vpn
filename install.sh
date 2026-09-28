@@ -86,6 +86,8 @@ sudo install -o root -g wheel -m 4755 "$STAGE/vpn" "$INSTALL_PATH"
 echo "$OWNER_UID" | sudo tee "$OWNER_FILE" >/dev/null
 sudo chown root:wheel "$OWNER_FILE"
 sudo chmod 600 "$OWNER_FILE"
+sudo chmod 755 /var/run/vpn 2>/dev/null || true
+sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
 echo "  -> CLI Installed: $INSTALL_PATH ($("$INSTALL_PATH" version))"
 
 # --- Step 2: Install Menu Bar UI (prebuilt universal app) ---

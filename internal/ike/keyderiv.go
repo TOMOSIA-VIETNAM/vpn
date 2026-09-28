@@ -82,3 +82,25 @@ func (k *Phase1Keys) computeHash(a, b []byte, cky1, cky2 [8]byte, saBody, idBody
 	data = append(data, idBody...)
 	return prf(k.HashAlg, k.SKEYID, data)
 }
+
+// Zeroize clears all sensitive keying material from memory.
+func (k *Phase1Keys) Zeroize() {
+	if k == nil {
+		return
+	}
+	for i := range k.SKEYID {
+		k.SKEYID[i] = 0
+	}
+	for i := range k.SKEYIDd {
+		k.SKEYIDd[i] = 0
+	}
+	for i := range k.SKEYIDa {
+		k.SKEYIDa[i] = 0
+	}
+	for i := range k.SKEYIDe {
+		k.SKEYIDe[i] = 0
+	}
+	for i := range k.EncKey {
+		k.EncKey[i] = 0
+	}
+}

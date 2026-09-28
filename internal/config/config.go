@@ -131,7 +131,6 @@ var DefaultIKEProposals = []string{
 	"aes256-md5-modp1024",
 	"aes128-md5-modp1024",
 	"3des-md5-modp1024",
-	"3des-sha1-modp768",
 }
 
 // DefaultESPProposals offers a comprehensive list of ESP (Phase 2) transforms
