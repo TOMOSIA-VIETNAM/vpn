@@ -199,15 +199,16 @@ func ParseChosenTransform(saBody []byte) (Transform, error) {
 	if numTx != 1 {
 		return Transform{}, fmt.Errorf("expected exactly one transform in responder proposal, got %d", numTx)
 	}
-	txData := prop[4+spiSize:]
-	txPayloads, err := SplitPayloads(PayloadTransform, txData)
+	// MM2 is neither encrypted nor authenticated: a size field must never be
+	// trusted to fit the payload it describes.
+	if len(prop) < 4+spiSize {
+		return Transform{}, fmt.Errorf("proposal claims a %d-byte SPI but is %d bytes long", spiSize, len(prop))
+	}
+	tx, err := chosenTransform(prop[4+spiSize:])
 	if err != nil {
-		return Transform{}, fmt.Errorf("parse transform chain: %w", err)
+		return Transform{}, err
 	}
-	if len(txPayloads) != 1 {
-		return Transform{}, fmt.Errorf("expected one transform payload, got %d", len(txPayloads))
-	}
-	return parseTransformBody(txPayloads[0].Body)
+	return parseTransformBody(tx)
 }
 
 func parseTransformBody(body []byte) (Transform, error) {
@@ -309,4 +310,23 @@ func (t Transform) String() string {
 	}
 
 	return fmt.Sprintf("%s-%s-%s", enc, h, g)
+}
+
+// chosenTransform returns the body of the one Transform payload in a
+// responder's proposal (txData: the proposal after its header and SPI). It is
+// read by its own length, not by following the next-payload chain: the chosen
+// transform should say "no more" (0, RFC 2408 §3.6), but some responders copy
+// the initiator's transform verbatim, its "another transform follows" (3)
+// included — seen live on a server that answered MM2 with our transform #1.
+// The proposal's transform count, already checked to be 1, is what says there
+// is exactly one.
+func chosenTransform(txData []byte) ([]byte, error) {
+	if len(txData) < 4 {
+		return nil, fmt.Errorf("proposal has no transform payload (%d bytes left)", len(txData))
+	}
+	n := int(binary.BigEndian.Uint16(txData[2:4]))
+	if n < 4 || n > len(txData) {
+		return nil, fmt.Errorf("transform payload has invalid length %d (%d bytes available)", n, len(txData))
+	}
+	return txData[4:n], nil
 }

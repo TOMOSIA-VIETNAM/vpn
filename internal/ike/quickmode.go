@@ -222,16 +222,19 @@ func parseChosenESPSA(saBody []byte) (chosenESP, error) {
 	if numTx != 1 {
 		return chosenESP{}, fmt.Errorf("expected one ESP transform, got %d", numTx)
 	}
+	if spiSize != 4 { // RFC 2407 §4.4.1: an ESP SPI is 4 bytes; len(prop) >= 8 then covers it
+		return chosenESP{}, fmt.Errorf("ESP proposal has a %d-byte SPI, want 4", spiSize)
+	}
 	spi := prop[4 : 4+spiSize]
 	var spiVal uint32
 	for _, b := range spi {
 		spiVal = spiVal<<8 | uint32(b)
 	}
-	txPayloads, err := SplitPayloads(PayloadTransform, prop[4+spiSize:])
-	if err != nil || len(txPayloads) != 1 {
-		return chosenESP{}, fmt.Errorf("expected one ESP transform payload: %v", err)
+	tx, err := chosenTransform(prop[4+spiSize:])
+	if err != nil {
+		return chosenESP{}, fmt.Errorf("ESP proposal: %w", err)
 	}
-	t, _, err := parseESPTransformBody(txPayloads[0].Body)
+	t, _, err := parseESPTransformBody(tx)
 	if err != nil {
 		return chosenESP{}, err
 	}
