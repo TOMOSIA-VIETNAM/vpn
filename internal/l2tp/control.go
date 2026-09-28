@@ -266,16 +266,31 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 	if msg.Header.TunnelID != tun.localTunnelID {
 		return // not addressed to our tunnel — ignore (e.g. another tunnel's Hello)
 	}
-	if msg.Header.HasSeq {
-		tun.nr = msg.Header.Ns + 1
+	if len(msg.AVPs) == 0 {
+		return // a ZLB: a pure acknowledgment of ours, taking no sequence number (RFC 2661 §5.8)
 	}
+	if msg.Header.HasSeq {
+		switch {
+		case msg.Header.Ns == tun.nr:
+			tun.nr++
+		case seqBefore(msg.Header.Ns, tun.nr):
+			tun.sendZLB() // a retransmit: our acknowledgment was lost — ack again, act only once
+			return
+		default:
+			return // ahead of the one we expect (window 1): the peer resends it in order
+		}
+	}
+	// Every control message is acknowledged (RFC 2661 §5.8). Only Hello used to
+	// be — by a Hello of our own — so an LNS sending anything else (Set-Link-
+	// Info once PPP is up, say) got no ack, retransmitted, and then closed the
+	// tunnel: seen live as StopCCN "result 7" (state machine error) ~40 s in.
+	tun.sendZLB()
 	msgType, err := MessageType(msg.AVPs)
 	if err != nil {
 		return
 	}
 	switch msgType {
-	case MsgHello:
-		_ = tun.sendReliableNoReply(context.Background(), concatAVPs(MessageTypeAVP(MsgHello)))
+	case MsgHello: // the ZLB above answers it
 	case MsgCDN:
 		if msg.Header.SessionID != tun.localSessionID {
 			return
@@ -285,8 +300,20 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 	case MsgStopCCN:
 		tun.closed = fmt.Errorf("%w (StopCCN, %s)", ErrPeerClosed, describeResult(msg.AVPs))
 		vpnlog.Error(stage, "server closed the L2TP tunnel", vpnlog.Fields{"message": "StopCCN", "reason": describeResult(msg.AVPs)})
+	default:
+		vpnlog.Info(stage, "server sent a control message — acknowledged", vpnlog.Fields{"type": msgType, "ns": msg.Header.Ns})
 	}
 }
+
+// sendZLB acknowledges everything received so far (Nr) without sending
+// anything else: a control header with no AVPs, which takes no sequence
+// number of its own (RFC 2661 §5.8).
+func (tun *Tunnel) sendZLB() {
+	_ = tun.t.Send(MarshalControl(tun.peerTunnelID, 0, tun.ns, tun.nr, nil))
+}
+
+// seqBefore reports whether sequence number a precedes b, modulo 2^16 (RFC 2661 §5.8).
+func seqBefore(a, b uint16) bool { return int16(a-b) < 0 }
 
 // sendReliable sends one control message and blocks for the matching reply
 // (ACKing it implicitly by having advanced Nr before the next send),
