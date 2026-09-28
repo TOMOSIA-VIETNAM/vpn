@@ -105,6 +105,8 @@ func (s *saSet) drop(spis []uint32) (droppedCurrent bool) {
 			if i == last {
 				droppedCurrent = true
 			} else {
+				p.in.Zeroize()
+				p.out.Zeroize()
 				continue
 			}
 		}
@@ -129,6 +131,9 @@ func (s *saSet) expireOld(now time.Time) {
 	for i, p := range s.pairs {
 		if i == last || now.Before(p.expires) {
 			kept = append(kept, p)
+		} else {
+			p.in.Zeroize()
+			p.out.Zeroize()
 		}
 	}
 	s.pairs = kept

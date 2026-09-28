@@ -152,6 +152,14 @@ func indexByte(s string, b byte) int {
 func ntPasswordHash(password string) ([]byte, error) {
 	u16 := utf16.Encode([]rune(password))
 	buf := make([]byte, len(u16)*2)
+	defer func() {
+		for i := range buf {
+			buf[i] = 0
+		}
+		for i := range u16 {
+			u16[i] = 0
+		}
+	}()
 	for i, v := range u16 {
 		buf[2*i] = byte(v)
 		buf[2*i+1] = byte(v >> 8)
@@ -168,12 +176,20 @@ func ntPasswordHash(password string) ([]byte, error) {
 func challengeResponse(challenge, passwordHash []byte) ([]byte, error) {
 	zHash := make([]byte, 21)
 	copy(zHash, passwordHash)
+	defer func() {
+		for i := range zHash {
+			zHash[i] = 0
+		}
+	}()
 
 	out := make([]byte, 24)
 	for i := 0; i < 3; i++ {
 		key56 := zHash[i*7 : i*7+7]
 		key64 := expandDESKey(key56)
 		block, err := des.NewCipher(key64)
+		for j := range key64 {
+			key64[j] = 0
+		}
 		if err != nil {
 			return nil, fmt.Errorf("DES key setup: %w", err)
 		}

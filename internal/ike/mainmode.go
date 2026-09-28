@@ -682,6 +682,17 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 	if err != nil {
 		return fmt.Errorf("MM4: %w", err)
 	}
+	defer func() {
+		for i := range gxy {
+			gxy[i] = 0
+		}
+		for i := range ni {
+			ni[i] = 0
+		}
+		if kp != nil && kp.Private != nil {
+			kp.Private.SetInt64(0)
+		}
+	}()
 	keys, err := DerivePhase1Keys(chosen, []byte(cfg.PSK), ni, peerNonce, gxy, s.InitiatorSPI, s.ResponderSPI)
 	if err != nil {
 		return fmt.Errorf("derive Phase 1 keys: %w", err)

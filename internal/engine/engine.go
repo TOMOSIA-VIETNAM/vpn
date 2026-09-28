@@ -1132,8 +1132,12 @@ func openLockFile() (*os.File, error) {
 		if err := os.MkdirAll(state.Dir, 0o755); err != nil {
 			return err
 		}
+		_ = os.Chmod(state.Dir, 0o755)
 		var err error
 		f, err = os.OpenFile(connectLockPath(), os.O_CREATE|os.O_RDWR, 0o644)
+		if err == nil {
+			_ = os.Chmod(connectLockPath(), 0o644)
+		}
 		return err
 	})
 	return f, err
