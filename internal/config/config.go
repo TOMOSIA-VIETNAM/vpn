@@ -110,6 +110,8 @@ func (c *Config) SetVerbose(on bool) { c.Verbose = &on }
 // and Windows VPN client behavior to ensure compatibility with diverse VPN servers
 // (Cisco, Fortinet, pfSense, Windows Server RRAS, MikroTik, strongSwan/Libreswan).
 var DefaultIKEProposals = []string{
+	"aes256-sha256-modp4096",
+	"aes256-sha256-modp3072",
 	"aes256-sha256-modp2048",
 	"aes256-sha256-modp1536",
 	"aes256-sha256-modp1024",

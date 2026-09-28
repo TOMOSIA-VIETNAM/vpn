@@ -105,6 +105,10 @@ func ParseProposal(s string) (Transform, error) {
 		t.Group = 5
 	case "2048":
 		t.Group = 14
+	case "3072":
+		t.Group = 15
+	case "4096":
+		t.Group = 16
 	default:
 		return Transform{}, fmt.Errorf("proposal %q: unsupported DH group %q", s, parts[2])
 	}

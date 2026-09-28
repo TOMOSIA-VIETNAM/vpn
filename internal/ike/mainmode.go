@@ -517,13 +517,14 @@ func (s *Session) logInformational(h Header, encBody []byte) (notifyType uint16)
 	return notifyType
 }
 
-// buildMM1 is Main Mode's first message, HDR, SA, VID(DPD), VID(NAT-T) — shared by
+// buildMM1 is Main Mode's first message, HDR, SA, VID(DPD), VID(NAT-T RFC3947), VID(NAT-T draft-02) — shared by
 // the real exchange and ProbeResponder (probe.go) so a probe is exactly what connect
 // would send.
 func buildMM1(initiatorSPI [8]byte, sa []byte) []byte {
 	dpd := marshalPayload(PayloadVendorID, dpdVendorID)
-	vid := marshalPayload(PayloadNone, RFC3947VendorID())
-	body := append(append(marshalPayload(PayloadVendorID, sa), dpd...), vid...)
+	vidRFC := marshalPayload(PayloadVendorID, RFC3947VendorID())
+	vidDraft := marshalPayload(PayloadNone, Draft02NVendorID())
+	body := append(append(append(marshalPayload(PayloadVendorID, sa), dpd...), vidRFC...), vidDraft...)
 	hdr := Header{InitiatorSPI: initiatorSPI, NextPayload: PayloadSA, Version: 0x10, ExchangeType: ExchangeIdentityProt}
 	hdr.Length = uint32(headerLen + len(body))
 	return append(hdr.Marshal(), body...)
@@ -562,13 +563,14 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 		case PayloadSA:
 			chosenSABody = p.Body
 		case PayloadVendorID:
-			if string(p.Body) == string(RFC3947VendorID()) {
+			if IsNATTVendorID(p.Body) {
 				peerSupportsNATT = true
 			}
 		case PayloadNotify:
 			return fmt.Errorf("IKE_PROPOSAL_MISMATCH: server sent Notify instead of SA in MM2 (likely NO_PROPOSAL_CHOSEN)")
 		}
 	}
+
 	if chosenSABody == nil {
 		return fmt.Errorf("IKE_PROPOSAL_MISMATCH: MM2 did not contain an SA payload")
 	}
@@ -659,11 +661,19 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 		return fmt.Errorf("IKE_AUTH_FAILED: MM4 missing KE or Nonce payload")
 	}
 
-	if peerSupportsNATT && len(peerNATDs) == 2 {
+	if peerSupportsNATT && len(peerNATDs) >= 2 {
 		expectMine, _ := computeNATD(chosen.Hash, s.InitiatorSPI, s.ResponderSPI, cfg.LocalIP, 500)
-		matchMine := bytes.Equal(expectMine, peerNATDs[1])
 		expectServer, _ := computeNATD(chosen.Hash, s.InitiatorSPI, s.ResponderSPI, s.serverIP, 500)
-		matchServer := bytes.Equal(expectServer, peerNATDs[0])
+		matchMine := false
+		matchServer := false
+		for _, natd := range peerNATDs {
+			if bytes.Equal(expectMine, natd) {
+				matchMine = true
+			}
+			if bytes.Equal(expectServer, natd) {
+				matchServer = true
+			}
+		}
 		s.NATDetected = !matchMine || !matchServer
 	}
 	vpnlog.Info(stage, "MM4 received", vpnlog.Fields{"nat_detected": s.NATDetected})
