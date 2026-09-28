@@ -746,6 +746,15 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 		if err := pppT.SendFrame(ppp.ProtoLCP, req.Marshal()); err != nil {
 			vpnlog.Error("ENGINE", "LCP echo send failed", vpnlog.Fields{"err": err})
 		}
+		// Also send an L2TP Hello keepalive (RFC 2661 §5.8). Servers that do not
+		// implement or answer PPP LCP Echo-Requests (common with firewalls/routers
+		// that omit Peer IP in IPCP) will still acknowledge L2TP control messages
+		// with a ZLB or Hello, keeping the ESP transport active and proving responsiveness.
+		if l2tpTun != nil {
+			if err := l2tpTun.SendHello(); err != nil {
+				vpnlog.Debug("ENGINE", "L2TP hello send failed", vpnlog.Fields{"err": err})
+			}
+		}
 	}
 	drop := func(err error) {
 		select {

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"vpn/internal/vpnlog"
@@ -43,6 +44,7 @@ type Tunnel struct {
 	localSessionID uint16
 	peerSessionID  uint16
 
+	ctrlMu sync.Mutex
 	ns, nr uint16 // our next-to-send / next-expected sequence numbers
 
 	strayData uint64 // data messages dropped for carrying another tunnel/session ID
@@ -169,18 +171,24 @@ func (tun *Tunnel) doIncomingCall(ctx context.Context) error {
 	// and Bearer Type has no place in it. xl2tpd lets either slide; a stricter
 	// LNS treats the message as malformed and never starts PPP for the
 	// session — seen live as LCP getting no answer at all.
+	// TxConnectSpeed & RxConnectSpeed: RFC 2661 §6.11/§6.12 SHOULD include these in ICCN.
+	// Cisco IOS, Juniper, and other enterprise LNS servers require them for accounting/logging.
+	// Reports 1Gbps (1,000,000,000 bps) virtual rate. (This is metadata and does not cap actual throughput).
 	avps = concatAVPs(
 		MessageTypeAVP(MsgICCN),
-		TxConnectSpeedAVP(txConnectSpeed),
 		FramingTypeAVP(1), // bit 0 = sync framing, matching PPP-over-L2TP norms
-		// TxConnectSpeed & RxConnectSpeed: RFC 2661 §6.11/§6.12 SHOULD include these in ICCN.
-		// Cisco IOS, Juniper, and other enterprise LNS servers require them for accounting/logging.
-		// Reports 1Gbps (1,000,000,000 bps) virtual rate. (This is metadata and does not cap actual throughput).
 		TxConnectSpeedAVP(1_000_000_000),
 		RxConnectSpeedAVP(1_000_000_000),
 	)
 	return tun.sendReliableNoReply(ctx, avps)
+}
 
+// SendHello sends an explicit L2TP Hello keepalive message (RFC 2661 §5.8).
+// When received by the LNS, it will answer with a ZLB (or Hello) acknowledging
+// our sequence number, keeping the ESP transport alive and resetting the
+// liveness watchdog even if the PPP layer has disabled/unsupported LCP echoes.
+func (tun *Tunnel) SendHello() error {
+	return tun.sendReliableNoReply(context.Background(), concatAVPs(MessageTypeAVP(MsgHello)))
 }
 
 // Close tears the session and tunnel down cleanly (CDN then StopCCN, RFC
@@ -266,7 +274,9 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 	if msg.Header.TunnelID != tun.localTunnelID {
 		return // not addressed to our tunnel — ignore (e.g. another tunnel's Hello)
 	}
+	tun.ctrlMu.Lock()
 	if len(msg.AVPs) == 0 {
+		tun.ctrlMu.Unlock()
 		return // a ZLB: a pure acknowledgment of ours, taking no sequence number (RFC 2661 §5.8)
 	}
 	if msg.Header.HasSeq {
@@ -275,8 +285,10 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 			tun.nr++
 		case seqBefore(msg.Header.Ns, tun.nr):
 			tun.sendZLB() // a retransmit: our acknowledgment was lost — ack again, act only once
+			tun.ctrlMu.Unlock()
 			return
 		default:
+			tun.ctrlMu.Unlock()
 			return // ahead of the one we expect (window 1): the peer resends it in order
 		}
 	}
@@ -285,6 +297,7 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 	// Info once PPP is up, say) got no ack, retransmitted, and then closed the
 	// tunnel: seen live as StopCCN "result 7" (state machine error) ~40 s in.
 	tun.sendZLB()
+	tun.ctrlMu.Unlock()
 	msgType, err := MessageType(msg.AVPs)
 	if err != nil {
 		return
@@ -322,6 +335,8 @@ func seqBefore(a, b uint16) bool { return int16(a-b) < 0 }
 // request/reply pattern every synchronous control exchange in §5 actually
 // uses.
 func (tun *Tunnel) sendReliable(ctx context.Context, avps []byte) (*ParsedMessage, error) {
+	tun.ctrlMu.Lock()
+	defer tun.ctrlMu.Unlock()
 	msg := MarshalControl(tun.peerTunnelID, tun.peerSessionID, tun.ns, tun.nr, avps)
 	ackedByZLB := false
 	var lastErr error
@@ -402,6 +417,8 @@ func (tun *Tunnel) sendReliable(ctx context.Context, avps []byte) (*ParsedMessag
 // since these are typically followed immediately by data traffic that
 // itself confirms the tunnel is usable.
 func (tun *Tunnel) sendReliableNoReply(ctx context.Context, avps []byte) error {
+	tun.ctrlMu.Lock()
+	defer tun.ctrlMu.Unlock()
 	msg := MarshalControl(tun.peerTunnelID, tun.peerSessionID, tun.ns, tun.nr, avps)
 	if err := tun.t.Send(msg); err != nil {
 		return err

@@ -102,15 +102,23 @@ func (s *Snapshot) ProtectServer(serverIP string) error {
 // rather than a subnet to know the link is reachable at all; this also
 // implicitly installs the host route to peer that ApplyFullTunnel's
 // "-interface" routes rely on being resolvable).
-func ConfigureP2PInterface(iface, local, peer string, mtu int) error {
-	if peer == "" || peer == "0.0.0.0" {
-		peer = local
+func p2pInterfaceArgs(iface, local, peer string, mtu int) []string {
+	if peer == "" || peer == "0.0.0.0" || peer == local {
+		if local == "10.64.64.64" {
+			peer = "10.64.64.65"
+		} else {
+			peer = "10.64.64.64"
+		}
 	}
 	args := []string{iface, "inet", local, peer, "netmask", "255.255.255.255"}
 	if mtu > 0 {
 		args = append(args, "mtu", fmt.Sprintf("%d", mtu))
 	}
-	args = append(args, "up")
+	return append(args, "up")
+}
+
+func ConfigureP2PInterface(iface, local, peer string, mtu int) error {
+	args := p2pInterfaceArgs(iface, local, peer, mtu)
 	if out, err := exec.Command(sysbin.Ifconfig, args...).CombinedOutput(); err != nil {
 		return fmt.Errorf("configure %s (%s -> %s): %w (%s)", iface, local, peer, err, strings.TrimSpace(string(out)))
 	}

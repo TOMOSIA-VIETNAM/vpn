@@ -86,7 +86,7 @@ func (n *NegotiatedIPCP) ApplyPeerOption(o Option) {
 	if o.Type != IPCPOptIPAddress {
 		return
 	}
-	if ip, ok := ParseIPv4Option(o); ok && !ip.IsUnspecified() {
+	if ip, ok := ParseIPv4Option(o); ok && !ip.IsUnspecified() && !ip.IsLoopback() && !ip.IsMulticast() && !ip.IsLinkLocalUnicast() && !ip.Equal(net.IPv4bcast) {
 		n.PeerIP = ip
 	}
 }
@@ -103,7 +103,7 @@ var defaultPeerIP = net.IPv4(10, 64, 64, 64).To4()
 // interface: the LNS's own, or defaultPeerIP when it has none (never our own
 // address, which the interface would then point at itself).
 func (n NegotiatedIPCP) PointToPointPeer() net.IP {
-	if n.PeerIP != nil && !n.PeerIP.IsUnspecified() && !n.PeerIP.Equal(n.LocalIP) {
+	if n.PeerIP != nil && !n.PeerIP.IsUnspecified() && !n.PeerIP.IsLoopback() && !n.PeerIP.IsMulticast() && !n.PeerIP.IsLinkLocalUnicast() && !n.PeerIP.Equal(net.IPv4bcast) && !n.PeerIP.Equal(n.LocalIP) {
 		return n.PeerIP
 	}
 	if n.LocalIP.Equal(defaultPeerIP) {
