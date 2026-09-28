@@ -5,8 +5,10 @@ import (
 	"crypto/cipher"
 	"crypto/des"
 	"crypto/hmac"
+	"crypto/md5" //nolint:gosec // required: legacy VPN servers (Windows RRAS, Cisco IOS, pfSense) use MD5 for IKE Phase 1. MD5 is weak but necessary for interoperability.
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
 	"hash"
 )
@@ -16,11 +18,18 @@ import (
 func newHash(alg int) (func() hash.Hash, int, error) {
 	switch alg {
 	case HashMD5:
-		return nil, 0, fmt.Errorf("MD5 is not supported (weak, and not needed by the reference config)")
+		// MD5 is cryptographically weak but required by many legacy VPN servers
+		// (Windows Server RRAS, Cisco IOS with older configs, pfSense defaults,
+		// MikroTik). Without MD5, IKE proposal mismatch occurs with these servers.
+		return md5.New, md5.Size, nil //nolint:gosec
 	case HashSHA1:
 		return sha1.New, sha1.Size, nil
 	case HashSHA256:
 		return sha256.New, sha256.Size, nil
+	case HashSHA384:
+		return sha512.New384, sha512.Size384, nil
+	case HashSHA512:
+		return sha512.New, sha512.Size, nil
 	default:
 		return nil, 0, fmt.Errorf("unsupported hash algorithm %d", alg)
 	}

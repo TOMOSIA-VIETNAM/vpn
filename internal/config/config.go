@@ -105,20 +105,48 @@ func (c *Config) EffectiveVerbose() bool {
 // SetVerbose sets the global verbose-logging switch.
 func (c *Config) SetVerbose(on bool) { c.Verbose = &on }
 
-// DefaultIKEProposals mirrors the IKE proposals accepted by the reference
-// strongSwan config at ~/l2tp-proxy/entrypoint.sh: aes256-sha256-modp2048,
-// aes128-sha1-modp1024, 3des-sha1-modp1024, most-preferred first.
+// DefaultIKEProposals offers a comprehensive list of IKE Phase 1 proposals
+// in preference order (strongest/most modern first). This matches macOS native
+// and Windows VPN client behavior to ensure compatibility with diverse VPN servers
+// (Cisco, Fortinet, pfSense, Windows Server RRAS, MikroTik, strongSwan/Libreswan).
 var DefaultIKEProposals = []string{
+	"aes256-sha512-modp4096",
+	"aes256-sha384-modp3072",
+	"aes256-sha256-modp4096",
+	"aes256-sha256-modp3072",
 	"aes256-sha256-modp2048",
+	"aes256-sha256-modp1536",
+	"aes256-sha256-modp1024",
+	"aes128-sha256-modp2048",
+	"aes128-sha256-modp1536",
+	"aes128-sha256-modp1024",
+	"aes256-sha1-modp2048",
+	"aes256-sha1-modp1536",
+	"aes256-sha1-modp1024",
+	"aes128-sha1-modp2048",
+	"aes128-sha1-modp1536",
 	"aes128-sha1-modp1024",
+	"3des-sha1-modp2048",
 	"3des-sha1-modp1024",
+	"aes256-md5-modp1024",
+	"aes128-md5-modp1024",
+	"3des-md5-modp1024",
+	"3des-sha1-modp768",
 }
 
-// DefaultESPProposals mirrors entrypoint.sh's esp= line.
+// DefaultESPProposals offers a comprehensive list of ESP (Phase 2) transforms
+// in preference order, ensuring compatibility with all L2TP/IPsec VPN servers.
 var DefaultESPProposals = []string{
+	"aes256-sha512",
+	"aes256-sha384",
 	"aes256-sha256",
+	"aes256-sha1",
+	"aes128-sha256",
 	"aes128-sha1",
 	"3des-sha1",
+	"aes256-md5",
+	"aes128-md5",
+	"3des-md5",
 }
 
 // Dir returns ~/.config/vpn, creating it with 0700 permissions if missing.

@@ -60,25 +60,31 @@ func TestSharedSecretLength(t *testing.T) {
 	}
 }
 
-// Both sides must still agree on the same secret for a normal exchange.
+// Both sides must still agree on the same secret for a normal exchange across all supported groups.
 func TestSharedSecretAgrees(t *testing.T) {
-	a, err := GenerateKeyPair(Groups[2])
-	if err != nil {
-		t.Fatalf("GenerateKeyPair: %v", err)
-	}
-	b, err := GenerateKeyPair(Groups[2])
-	if err != nil {
-		t.Fatalf("GenerateKeyPair: %v", err)
-	}
-	fromA, err := a.SharedSecret(b.PublicBytes())
-	if err != nil {
-		t.Fatalf("a.SharedSecret: %v", err)
-	}
-	fromB, err := b.SharedSecret(a.PublicBytes())
-	if err != nil {
-		t.Fatalf("b.SharedSecret: %v", err)
-	}
-	if string(fromA) != string(fromB) {
-		t.Fatal("peers derived different shared secrets")
+	for _, groupID := range []int{1, 2, 5, 14, 15, 16} {
+		group := Groups[groupID]
+		if group == nil {
+			t.Fatalf("group %d is nil", groupID)
+		}
+		a, err := GenerateKeyPair(group)
+		if err != nil {
+			t.Fatalf("group %d GenerateKeyPair A: %v", groupID, err)
+		}
+		b, err := GenerateKeyPair(group)
+		if err != nil {
+			t.Fatalf("group %d GenerateKeyPair B: %v", groupID, err)
+		}
+		fromA, err := a.SharedSecret(b.PublicBytes())
+		if err != nil {
+			t.Fatalf("group %d a.SharedSecret: %v", groupID, err)
+		}
+		fromB, err := b.SharedSecret(a.PublicBytes())
+		if err != nil {
+			t.Fatalf("group %d b.SharedSecret: %v", groupID, err)
+		}
+		if string(fromA) != string(fromB) {
+			t.Fatalf("group %d peers derived different shared secrets", groupID)
+		}
 	}
 }

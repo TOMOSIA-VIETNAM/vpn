@@ -28,6 +28,7 @@ const (
 	AVPCalledNumber        = 21
 	AVPCallingNumber       = 22
 	AVPTxConnectSpeed      = 24
+	AVPRxConnectSpeed      = 38
 )
 
 // Message Type AVP values, RFC 2661 §6.
@@ -127,13 +128,15 @@ func FramingTypeAVP(v uint32) []byte {
 	binary.BigEndian.PutUint32(b, v)
 	return MarshalAVP(true, AVPFramingType, b)
 }
-
-// TxConnectSpeedAVP is ICCN's mandatory (Tx) Connect Speed (RFC 2661 §4.4.5),
-// in bits per second.
 func TxConnectSpeedAVP(bps uint32) []byte {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, bps)
 	return MarshalAVP(true, AVPTxConnectSpeed, b)
+}
+func RxConnectSpeedAVP(bps uint32) []byte {
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, bps)
+	return MarshalAVP(true, AVPRxConnectSpeed, b)
 }
 
 // describeResult renders a CDN/StopCCN's Result Code AVP (RFC 2661 §4.4.2):

@@ -54,16 +54,16 @@ func Run(ctx context.Context, t Transport, cfg Config) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	magic, err := runLCP(ctx, t, lcp)
+	magic, peerAuth, err := runLCP(ctx, t, lcp)
 	if err != nil {
 		return nil, fmt.Errorf("LCP_FAILED: %w", err)
 	}
-	vpnlog.Info(stage, "LCP established", vpnlog.Fields{"mru": cfg.MRU})
+	vpnlog.Info(stage, "LCP established", vpnlog.Fields{"mru": cfg.MRU, "auth_proto": peerAuth.Protocol, "auth_algo": peerAuth.Algorithm})
 
-	if err := runAuth(ctx, t, cfg.Username, cfg.Password, magic); err != nil {
+	if err := runAuth(ctx, t, cfg.Username, cfg.Password, magic, peerAuth); err != nil {
 		return nil, fmt.Errorf("PPP_AUTH_FAILURE: %w", err)
 	}
-	vpnlog.Info(stage, "MS-CHAPv2 authentication succeeded", nil)
+	vpnlog.Info(stage, "PPP authentication succeeded", nil)
 
 	ipcp, err := runIPCP(ctx, t, cfg.RequestedIP)
 	if err != nil {
@@ -230,21 +230,25 @@ func dropRejected(ours []Option, rejected []Option) []Option {
 }
 
 // runLCP returns our Magic-Number as the peer finally acked it (0 if it
-// rejected the option).
-func runLCP(ctx context.Context, t Transport, cfg LCPConfig) (uint32, error) {
+// rejected the option) and the peer's negotiated AuthProtocol.
+func runLCP(ctx context.Context, t Transport, cfg LCPConfig) (uint32, AuthProtocol, error) {
+	var peerAuth AuthProtocol
 	ourOptions, err := negotiatePhase(ctx, t, ProtoLCP,
 		cfg.ConfigureRequestOptions,
 		func(opts []Option) ([]Option, bool) {
-			// Accept the peer's Configure-Request as-is — this client has
-			// no MRU/magic-number constraint of its own to enforce on the
-			// peer, and Auth-Protocol here just states which method the
-			// LNS will challenge us with, handled in runAuth, not here.
+			for _, o := range opts {
+				if o.Type == OptAuthProtocol {
+					if ap, err := ParseAuthProtocolOption(o.Data); err == nil {
+						peerAuth = ap
+					}
+				}
+			}
 			return opts, true
 		})
 	if err != nil {
-		return 0, err
+		return 0, AuthProtocol{}, err
 	}
-	return magicOf(ourOptions), nil
+	return magicOf(ourOptions), peerAuth, nil
 }
 
 func runIPCP(ctx context.Context, t Transport, requestedIP net.IP) (*NegotiatedIPCP, error) {
@@ -318,13 +322,18 @@ func Terminate(t Transport, id uint8) {
 	}
 }
 
-func runAuth(ctx context.Context, t Transport, username, password string, magic uint32) error {
+func runAuth(ctx context.Context, t Transport, username, password string, magic uint32, peerAuth AuthProtocol) error {
+	if peerAuth.Protocol == ProtoPAP {
+		return runPAPAuth(ctx, t, username, password, magic)
+	}
+
 	// Every Response sent so far. A retransmitted Challenge gets a fresh
 	// Response (new PeerChallenge), but the LNS may still answer an earlier
 	// one — e.g. pppd resends the Success it already computed for Response
 	// #1 when a late Response #2 arrives — so Success is valid if it
 	// authenticates any Response we actually sent.
 	var sent []*MSCHAPv2Response
+	var sentMD5 bool
 	for {
 		frameCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		proto, payload, err := t.RecvFrame(frameCtx)
@@ -335,7 +344,7 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 			}
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("timed out waiting for CHAP Challenge")
+				return fmt.Errorf("timed out waiting for authentication challenge")
 			default:
 				continue
 			}
@@ -355,6 +364,9 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 			HandleOpenedLCP(t, payload, magic)
 			continue
 		}
+		if proto == ProtoPAP {
+			return runPAPAuth(ctx, t, username, password, magic)
+		}
 		if proto != ProtoCHAP {
 			continue
 		}
@@ -364,16 +376,28 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 		}
 		switch pkt.Code {
 		case CHAPCodeChallenge:
-			resp, err := GenerateMSCHAPv2Response(pkt.Value, username, password)
-			if err != nil {
-				return err
-			}
-			sent = append(sent, resp)
-			reply := CHAPPacket{Code: CHAPCodeResponse, Identifier: pkt.Identifier, Value: resp.Marshal(), Name: []byte(username)}
-			if err := t.SendFrame(ProtoCHAP, reply.Marshal()); err != nil {
-				return err
+			if peerAuth.Algorithm == CHAPAlgoMD5 {
+				sentMD5 = true
+				resp := GenerateCHAPMD5Response(pkt.Identifier, password, pkt.Value)
+				reply := CHAPPacket{Code: CHAPCodeResponse, Identifier: pkt.Identifier, Value: resp, Name: []byte(username)}
+				if err := t.SendFrame(ProtoCHAP, reply.Marshal()); err != nil {
+					return err
+				}
+			} else {
+				resp, err := GenerateMSCHAPv2Response(pkt.Value, username, password)
+				if err != nil {
+					return err
+				}
+				sent = append(sent, resp)
+				reply := CHAPPacket{Code: CHAPCodeResponse, Identifier: pkt.Identifier, Value: resp.Marshal(), Name: []byte(username)}
+				if err := t.SendFrame(ProtoCHAP, reply.Marshal()); err != nil {
+					return err
+				}
 			}
 		case CHAPCodeSuccess:
+			if sentMD5 {
+				return nil
+			}
 			if len(sent) == 0 {
 				return fmt.Errorf("CHAP Success received before any Challenge was answered")
 			}
@@ -386,6 +410,45 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 			return verifyErr
 		case CHAPCodeFailure:
 			return fmt.Errorf("CHAP authentication rejected by peer: %s", string(pkt.Message))
+		}
+	}
+}
+
+func runPAPAuth(ctx context.Context, t Transport, username, password string, magic uint32) error {
+	req := GeneratePAPAuthenticateRequest(1, username, password)
+	if err := t.SendFrame(ProtoPAP, req.Marshal()); err != nil {
+		return err
+	}
+	for {
+		frameCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		proto, payload, err := t.RecvFrame(frameCtx)
+		cancel()
+		if err != nil {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("timed out waiting for PAP response")
+			default:
+				_ = t.SendFrame(ProtoPAP, req.Marshal())
+				continue
+			}
+		}
+		if proto == ProtoLCP {
+			HandleOpenedLCP(t, payload, magic)
+			continue
+		}
+		if proto != ProtoPAP {
+			continue
+		}
+		pkt, err := ParsePAPPacket(payload)
+		if err != nil {
+			return err
+		}
+		switch pkt.Code {
+		case PAPCodeAuthenticateAck:
+			return nil
+		case PAPCodeAuthenticateNak:
+			msg := ParsePAPMessage(pkt.Data)
+			return fmt.Errorf("PAP authentication rejected by peer: %s", msg)
 		}
 	}
 }
