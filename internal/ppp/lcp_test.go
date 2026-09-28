@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -147,5 +149,27 @@ func TestRunLCPReturnsNegotiatedMagic(t *testing.T) {
 				t.Fatalf("magic = %08x, want %08x", got, tc.want)
 			}
 		})
+	}
+}
+
+// brokenTransport's link is gone: every receive fails at once.
+type brokenTransport struct{ sends int }
+
+func (b *brokenTransport) SendFrame(uint16, []byte) error { b.sends++; return nil }
+func (b *brokenTransport) RecvFrame(context.Context) (uint16, []byte, error) {
+	return 0, nil, errors.New("the server closed the L2TP session")
+}
+
+// A failed link ends LCP at once, with its reason, instead of retransmitting
+// Configure-Requests into it until the phase deadline.
+func TestRunLCPStopsOnFailedLink(t *testing.T) {
+	bt := &brokenTransport{}
+	start := time.Now()
+	_, err := runLCP(context.Background(), bt, LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
+	if err == nil || !strings.Contains(err.Error(), "closed the L2TP session") {
+		t.Fatalf("err = %v, want the link's own error", err)
+	}
+	if time.Since(start) > time.Second || bt.sends > 1 {
+		t.Fatalf("kept going on a dead link: %v, %d sends", time.Since(start), bt.sends)
 	}
 }
