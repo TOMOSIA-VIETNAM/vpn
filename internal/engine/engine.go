@@ -873,6 +873,8 @@ func newESPSA(c ike.ChildSA) (*ipsec.SA, error) {
 	}
 	var integrity ipsec.Integrity
 	switch c.Transform.Hash {
+	case ike.HashMD5:
+		integrity = ipsec.IntegHMACMD5_96
 	case ike.HashSHA1:
 		integrity = ipsec.IntegHMACSHA1_96
 	case ike.HashSHA256:

@@ -119,6 +119,28 @@ func encodeAttrTV(typ uint16, val uint16) []byte {
 	return b
 }
 
+// encodeAttrTLV encodes a variable-length (TLV) attribute. RFC 2409 Appendix A
+// specifies that LifeDuration (class 12) is a variable-length attribute that
+// MUST be encoded as TLV, not TV. Many VPN servers (Cisco, Juniper, Windows
+// RRAS) strictly enforce this: a 2-byte TV-encoded LifeDuration triggers
+// the "payload chain truncated" error because the receiver expects 4 bytes.
+func encodeAttrTLV(typ uint16, val []byte) []byte {
+	b := make([]byte, 4+len(val))
+	binary.BigEndian.PutUint16(b[0:2], typ&^0x8000) // TLV: high bit clear
+	binary.BigEndian.PutUint16(b[2:4], uint16(len(val)))
+	copy(b[4:], val)
+	return b
+}
+
+// encodeLifeDuration encodes a life-duration value as a 4-byte TLV attribute.
+// LifeDuration is defined as a variable-length attribute in RFC 2409 Appendix A
+// (class 12, Basic Attribute Class 0); the RFC-recommended encoding is 4 bytes.
+func encodeLifeDuration(secs uint32) []byte {
+	val := make([]byte, 4)
+	binary.BigEndian.PutUint32(val, secs)
+	return encodeAttrTLV(attrLifeDuration, val)
+}
+
 // MarshalTransform encodes one Phase 1 transform payload (transform-id =
 // KEY_IKE = 1, RFC 2409 §5).
 func (t Transform) MarshalTransform(number uint8, nextPayload uint8) []byte {
@@ -128,7 +150,10 @@ func (t Transform) MarshalTransform(number uint8, nextPayload uint8) []byte {
 	attrs = append(attrs, encodeAttrTV(attrAuthMethod, uint16(t.AuthMethod))...)
 	attrs = append(attrs, encodeAttrTV(attrGroupDescription, uint16(t.Group))...)
 	attrs = append(attrs, encodeAttrTV(attrLifeType, lifeTypeSeconds)...)
-	attrs = append(attrs, encodeAttrTV(attrLifeDuration, uint16(t.LifeSecs))...)
+	// LifeDuration is encoded as 4-byte TLV per RFC 2409 Appendix A, not 2-byte
+	// TV. Strict servers (Cisco IOS, Juniper, Windows RRAS) reject the 2-byte
+	// form with a truncation error because they parse exactly 4 bytes for it.
+	attrs = append(attrs, encodeLifeDuration(t.LifeSecs)...)
 	if t.Encryption == EncAES {
 		attrs = append(attrs, encodeAttrTV(attrKeyLength, uint16(t.KeyBits))...)
 	}

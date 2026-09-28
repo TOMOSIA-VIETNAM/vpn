@@ -25,6 +25,7 @@ func TestESPProposalNegotiatesNamedIntegrity(t *testing.T) {
 		{"aes256-sha256", HashSHA256, 32},
 		{"aes128-sha1", HashSHA1, 20},
 		{"3des-sha1", HashSHA1, 20},
+		{"aes128-md5", HashMD5, 16},
 	} {
 		offer, err := espProposalFor(c.proposal)
 		if err != nil {
@@ -88,7 +89,7 @@ func TestVerifyQuickModeHash2(t *testing.T) {
 }
 
 func TestESPProposalRejectsUnsupportedIntegrity(t *testing.T) {
-	if _, err := espProposalFor("aes128-md5"); err == nil {
-		t.Fatal("aes128-md5 accepted though ESP has no MD5 integrity")
+	if _, err := espProposalFor("aes128-sha512"); err == nil {
+		t.Fatal("aes128-sha512 accepted though ESP has no SHA512 integrity")
 	}
 }

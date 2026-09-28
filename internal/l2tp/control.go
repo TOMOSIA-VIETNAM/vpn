@@ -173,8 +173,14 @@ func (tun *Tunnel) doIncomingCall(ctx context.Context) error {
 		MessageTypeAVP(MsgICCN),
 		TxConnectSpeedAVP(txConnectSpeed),
 		FramingTypeAVP(1), // bit 0 = sync framing, matching PPP-over-L2TP norms
+		// TxConnectSpeed: RFC 2661 §6.11 SHOULD include this in ICCN.
+		// Cisco IOS and Juniper LNS reject ICCN without it. Report 100Mbps
+		// (a realistic value for a software client — the LNS uses this for
+		// accounting/logging only, it does not affect actual throughput).
+		TxConnectSpeedAVP(100_000_000),
 	)
 	return tun.sendReliableNoReply(ctx, avps)
+
 }
 
 // Close tears the session and tunnel down cleanly (CDN then StopCCN, RFC

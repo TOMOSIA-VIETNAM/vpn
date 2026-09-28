@@ -10,6 +10,7 @@ import (
 	"crypto/cipher"
 	"crypto/des"
 	"crypto/hmac"
+	"crypto/md5" //nolint:gosec // required: HMAC-MD5-96 (RFC 2403) is used by legacy VPN servers
 	"crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -32,7 +33,8 @@ const (
 type Integrity int
 
 const (
-	IntegHMACSHA1_96    Integrity = iota + 1 // RFC 2404, 20-byte key, 12-byte ICV
+	IntegHMACMD5_96     Integrity = iota + 1 // RFC 2403, 16-byte key, 12-byte ICV
+	IntegHMACSHA1_96                         // RFC 2404, 20-byte key, 12-byte ICV
 	IntegHMACSHA256_128                      // RFC 4868, 32-byte key, 16-byte ICV
 )
 
@@ -95,6 +97,10 @@ func NewSA(spi uint32, c Cipher, i Integrity, encKey, authKey []byte) (*SA, erro
 	}
 	var keyLen int
 	switch i {
+	case IntegHMACMD5_96:
+		// RFC 2403: HMAC-MD5-96 uses 16-byte key and 96-bit (12-byte) ICV.
+		// Required by many legacy VPN servers (Windows RRAS, old Cisco, MikroTik).
+		sa.newHash, keyLen, sa.icvLen = md5.New, md5.Size, 12 //nolint:gosec
 	case IntegHMACSHA1_96:
 		sa.newHash, keyLen, sa.icvLen = sha1.New, sha1.Size, 12
 	case IntegHMACSHA256_128:
