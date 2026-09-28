@@ -166,8 +166,9 @@ func (b *brokenTransport) RecvFrame(context.Context) (uint16, []byte, error) {
 func TestRunLCPStopsOnFailedLink(t *testing.T) {
 	bt := &brokenTransport{}
 	start := time.Now()
-	_, err := runLCP(context.Background(), bt, LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
+	_, _, err := runLCP(context.Background(), bt, LCPConfig{MRU: 1400, MagicNumber: testOurMagic})
 	if err == nil || !strings.Contains(err.Error(), "closed the L2TP session") {
+
 		t.Fatalf("err = %v, want the link's own error", err)
 	}
 	if time.Since(start) > time.Second || bt.sends > 1 {

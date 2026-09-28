@@ -139,14 +139,6 @@ func RxConnectSpeedAVP(bps uint32) []byte {
 	return MarshalAVP(true, AVPRxConnectSpeed, b)
 }
 
-// TxConnectSpeedAVP is ICCN's mandatory (Tx) Connect Speed (RFC 2661 §4.4.5),
-// in bits per second.
-func TxConnectSpeedAVP(bps uint32) []byte {
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, bps)
-	return MarshalAVP(true, AVPTxConnectSpeed, b)
-}
-
 // describeResult renders a CDN/StopCCN's Result Code AVP (RFC 2661 §4.4.2):
 // result code, then optionally an error code and a human-readable message.
 func describeResult(avps []AVP) string {
