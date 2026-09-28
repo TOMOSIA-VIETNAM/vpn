@@ -2,6 +2,7 @@ package ppp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -111,6 +112,9 @@ func negotiatePhase(
 		proto, payload, err := t.RecvFrame(frameCtx)
 		cancel()
 		if err != nil {
+			if !isWaitTimeout(err) {
+				return nil, err // the link itself is gone (e.g. the LNS closed the session): retransmitting cannot help
+			}
 			select {
 			case <-ctx.Done():
 				return nil, fmt.Errorf("timed out waiting for peer (our_acked=%v peer_acked=%v)", ourAcked, peerAcked)
@@ -326,6 +330,9 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 		proto, payload, err := t.RecvFrame(frameCtx)
 		cancel()
 		if err != nil {
+			if !isWaitTimeout(err) {
+				return err
+			}
 			select {
 			case <-ctx.Done():
 				return fmt.Errorf("timed out waiting for CHAP Challenge")
@@ -389,4 +396,10 @@ func runAuth(ctx context.Context, t Transport, username, password string, magic 
 func TerminateNoWait(t Transport, id uint8) {
 	req := ControlPacket{Code: CodeTerminateRequest, Identifier: id}
 	_ = t.SendFrame(ProtoLCP, req.Marshal())
+}
+
+// isWaitTimeout tells a RecvFrame that merely ran out of time (keep waiting,
+// or give up on the phase deadline) from one whose transport failed for good.
+func isWaitTimeout(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }

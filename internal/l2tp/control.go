@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,11 @@ import (
 )
 
 const stage = "L2TP"
+
+// txConnectSpeed is what ICCN reports as the call's (Tx) Connect Speed:
+// xl2tpd's default, 10 Mbit/s. The value is informational for an L2TP/IPsec
+// client, but the AVP itself is mandatory.
+const txConnectSpeed = 10000000
 
 // Transport is the minimum a control connection needs from whatever carries
 // its datagrams — the ESP-protected UDP/1701 socket, in this client.
@@ -40,7 +46,13 @@ type Tunnel struct {
 	ns, nr uint16 // our next-to-send / next-expected sequence numbers
 
 	strayData uint64 // data messages dropped for carrying another tunnel/session ID
+
+	closed error // set once the LNS ends our session or tunnel (CDN/StopCCN); RecvData returns it
 }
+
+// ErrPeerClosed is wrapped when the LNS ends our session (CDN) or tunnel
+// (StopCCN), so the layer above stops waiting on a link that is gone.
+var ErrPeerClosed = errors.New("the server closed the L2TP session")
 
 // Config is what the engine supplies to establish one tunnel+session.
 type Config struct {
@@ -134,6 +146,7 @@ func (tun *Tunnel) doIncomingCall(ctx context.Context) error {
 		MessageTypeAVP(MsgICRQ),
 		AssignedSessionIDAVP(tun.localSessionID),
 		CallSerialNumberAVP(1),
+		BearerTypeAVP(0), // optional here (RFC 2661 §6.10); 0 = digital — this client has no analog modem
 	)
 	resp, err := tun.sendReliable(ctx, avps)
 	if err != nil {
@@ -152,9 +165,13 @@ func (tun *Tunnel) doIncomingCall(ctx context.Context) error {
 		return fmt.Errorf("ICRP missing Assigned Session ID")
 	}
 
+	// RFC 2661 §6.12: ICCN must carry (Tx) Connect Speed and Framing Type,
+	// and Bearer Type has no place in it. xl2tpd lets either slide; a stricter
+	// LNS treats the message as malformed and never starts PPP for the
+	// session — seen live as LCP getting no answer at all.
 	avps = concatAVPs(
 		MessageTypeAVP(MsgICCN),
-		BearerTypeAVP(0),  // 0 = Digital — this client has no analog modem
+		TxConnectSpeedAVP(txConnectSpeed),
 		FramingTypeAVP(1), // bit 0 = sync framing, matching PPP-over-L2TP norms
 	)
 	return tun.sendReliableNoReply(ctx, avps)
@@ -205,6 +222,9 @@ func (tun *Tunnel) SendData(pppFrame []byte) error {
 // interleaved with data (e.g. a Hello keepalive from the LNS).
 func (tun *Tunnel) RecvData(ctx context.Context) ([]byte, error) {
 	for {
+		if tun.closed != nil {
+			return nil, tun.closed
+		}
 		raw, err := tun.t.Recv(ctx)
 		if err != nil {
 			return nil, err
@@ -250,6 +270,15 @@ func (tun *Tunnel) handleInterleavedControl(msg *ParsedMessage) {
 	switch msgType {
 	case MsgHello:
 		_ = tun.sendReliableNoReply(context.Background(), concatAVPs(MessageTypeAVP(MsgHello)))
+	case MsgCDN:
+		if msg.Header.SessionID != tun.localSessionID {
+			return
+		}
+		tun.closed = fmt.Errorf("%w (CDN, %s)", ErrPeerClosed, describeResult(msg.AVPs))
+		vpnlog.Error(stage, "server closed the L2TP session", vpnlog.Fields{"message": "CDN", "reason": describeResult(msg.AVPs)})
+	case MsgStopCCN:
+		tun.closed = fmt.Errorf("%w (StopCCN, %s)", ErrPeerClosed, describeResult(msg.AVPs))
+		vpnlog.Error(stage, "server closed the L2TP tunnel", vpnlog.Fields{"message": "StopCCN", "reason": describeResult(msg.AVPs)})
 	}
 }
 

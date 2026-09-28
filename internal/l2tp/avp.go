@@ -128,6 +128,31 @@ func FramingTypeAVP(v uint32) []byte {
 	return MarshalAVP(true, AVPFramingType, b)
 }
 
+// TxConnectSpeedAVP is ICCN's mandatory (Tx) Connect Speed (RFC 2661 §4.4.5),
+// in bits per second.
+func TxConnectSpeedAVP(bps uint32) []byte {
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, bps)
+	return MarshalAVP(true, AVPTxConnectSpeed, b)
+}
+
+// describeResult renders a CDN/StopCCN's Result Code AVP (RFC 2661 §4.4.2):
+// result code, then optionally an error code and a human-readable message.
+func describeResult(avps []AVP) string {
+	a, ok := Find(avps, AVPResultCode)
+	if !ok || len(a.Value) < 2 {
+		return "no result code"
+	}
+	s := fmt.Sprintf("result %d", binary.BigEndian.Uint16(a.Value[0:2]))
+	if len(a.Value) >= 4 {
+		s += fmt.Sprintf(", error %d", binary.BigEndian.Uint16(a.Value[2:4]))
+	}
+	if len(a.Value) > 4 {
+		s += fmt.Sprintf(": %q", a.Value[4:])
+	}
+	return s
+}
+
 // ParseAVPs decodes a sequence of AVPs from a control message body,
 // following each AVP's own length field (RFC 2661 §4.3) rather than
 // assuming fixed sizes.
