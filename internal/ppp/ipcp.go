@@ -90,3 +90,24 @@ func (n *NegotiatedIPCP) ApplyPeerOption(o Option) {
 		n.PeerIP = ip
 	}
 }
+
+// defaultPeerIP stands in for an LNS that has no inside address of its own:
+// its IPCP Configure-Request carries IP-Address 0.0.0.0, or none at all
+// (seen live, answering an IPCP with no address of its own). pppd does the
+// same — "make up an arbitrary address for the peer", 10.64.64.64 plus the
+// unit number (ipcp.c). It only names the far end of the point-to-point
+// interface: every route through the tunnel points at the interface itself.
+var defaultPeerIP = net.IPv4(10, 64, 64, 64).To4()
+
+// PointToPointPeer is the address to configure as the far end of the tunnel
+// interface: the LNS's own, or defaultPeerIP when it has none (never our own
+// address, which the interface would then point at itself).
+func (n NegotiatedIPCP) PointToPointPeer() net.IP {
+	if n.PeerIP != nil && !n.PeerIP.IsUnspecified() && !n.PeerIP.Equal(n.LocalIP) {
+		return n.PeerIP
+	}
+	if n.LocalIP.Equal(defaultPeerIP) {
+		return net.IPv4(10, 64, 64, 65).To4()
+	}
+	return defaultPeerIP
+}
