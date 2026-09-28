@@ -879,6 +879,10 @@ func newESPSA(c ike.ChildSA) (*ipsec.SA, error) {
 		integrity = ipsec.IntegHMACSHA1_96
 	case ike.HashSHA256:
 		integrity = ipsec.IntegHMACSHA256_128
+	case ike.HashSHA384:
+		integrity = ipsec.IntegHMACSHA384_192
+	case ike.HashSHA512:
+		integrity = ipsec.IntegHMACSHA512_256
 	default:
 		return nil, fmt.Errorf("negotiated ESP integrity %d has no data-plane implementation", c.Transform.Hash)
 	}

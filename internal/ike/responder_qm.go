@@ -82,7 +82,7 @@ func parseOfferedESPSA(saBody []byte) (situation []byte, offers []espOffer, err 
 // transforms and uses the UDP-encapsulated transport mode this client speaks.
 func chooseESP(offers []espOffer, ours []Transform) (espOffer, bool) {
 	for _, o := range offers {
-		if o.EncapMode != encapUDPTransport {
+		if o.EncapMode != encapUDPTransport && o.EncapMode != encapTransport {
 			continue
 		}
 		if offeredESP(o.Transform, ours) {

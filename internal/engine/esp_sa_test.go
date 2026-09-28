@@ -18,7 +18,11 @@ func TestNewESPSAUsesNegotiatedTransform(t *testing.T) {
 		{ike.Transform{Encryption: ike.Enc3DES, Hash: ike.HashSHA1}, 24, 20, ipsec.Cipher3DESCBC, ipsec.IntegHMACSHA1_96},
 		{ike.Transform{Encryption: ike.EncAES, KeyBits: 128, Hash: ike.HashSHA1}, 16, 20, ipsec.CipherAESCBC, ipsec.IntegHMACSHA1_96},
 		{ike.Transform{Encryption: ike.EncAES, KeyBits: 256, Hash: ike.HashSHA256}, 32, 32, ipsec.CipherAESCBC, ipsec.IntegHMACSHA256_128},
+		{ike.Transform{Encryption: ike.EncAES, KeyBits: 128, Hash: ike.HashMD5}, 16, 16, ipsec.CipherAESCBC, ipsec.IntegHMACMD5_96},
+		{ike.Transform{Encryption: ike.EncAES, KeyBits: 256, Hash: ike.HashSHA384}, 32, 48, ipsec.CipherAESCBC, ipsec.IntegHMACSHA384_192},
+		{ike.Transform{Encryption: ike.EncAES, KeyBits: 256, Hash: ike.HashSHA512}, 32, 64, ipsec.CipherAESCBC, ipsec.IntegHMACSHA512_256},
 	}
+
 	for _, c := range cases {
 		sa, err := newESPSA(ike.ChildSA{SPI: 1, EncKey: make([]byte, c.enc), AuthKey: make([]byte, c.auth), Transform: c.tr})
 		if err != nil {

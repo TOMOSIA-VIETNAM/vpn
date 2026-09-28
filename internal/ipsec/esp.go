@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -36,6 +37,8 @@ const (
 	IntegHMACMD5_96     Integrity = iota + 1 // RFC 2403, 16-byte key, 12-byte ICV
 	IntegHMACSHA1_96                         // RFC 2404, 20-byte key, 12-byte ICV
 	IntegHMACSHA256_128                      // RFC 4868, 32-byte key, 16-byte ICV
+	IntegHMACSHA384_192                      // RFC 4868, 48-byte key, 24-byte ICV
+	IntegHMACSHA512_256                      // RFC 4868, 64-byte key, 32-byte ICV
 )
 
 // SA is one direction's ESP security association — mirrors ike.ChildSA but
@@ -105,9 +108,14 @@ func NewSA(spi uint32, c Cipher, i Integrity, encKey, authKey []byte) (*SA, erro
 		sa.newHash, keyLen, sa.icvLen = sha1.New, sha1.Size, 12
 	case IntegHMACSHA256_128:
 		sa.newHash, keyLen, sa.icvLen = sha256.New, sha256.Size, 16
+	case IntegHMACSHA384_192:
+		sa.newHash, keyLen, sa.icvLen = sha512.New384, sha512.Size384, 24
+	case IntegHMACSHA512_256:
+		sa.newHash, keyLen, sa.icvLen = sha512.New, sha512.Size, 32
 	default:
 		return nil, fmt.Errorf("unsupported ESP integrity algorithm %d", i)
 	}
+
 	if len(authKey) != keyLen {
 		return nil, fmt.Errorf("ESP integrity key is %d bytes, want %d", len(authKey), keyLen)
 	}

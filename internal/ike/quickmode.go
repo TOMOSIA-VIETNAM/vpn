@@ -31,25 +31,27 @@ const (
 
 // Encapsulation Mode values — Tunnel/Transport from RFC 2407, the
 // UDP-encapsulated variants from the NAT-T drafts (RFC 3947/3948 lineage).
-// This client only ever uses transport-mode ESP (matches entrypoint.sh's
-// `type=transport`), and always the UDP-encapsulated variant since this
-// client only completes Quick Mode after Phase 1 has already floated to
-// port 4500 for NAT-T.
-const encapUDPTransport = 4
+const (
+	encapTransport    = 2
+	encapUDPTransport = 4
+)
 
-// Authentication Algorithm values (RFC 2407 §4.5):
+// Authentication Algorithm values (RFC 2407 §4.5, RFC 4868 §2.4):
 //   - HMAC-MD5-96: IANA value 1 (RFC 2403), 16-byte key, 12-byte ICV
 //   - HMAC-SHA1-96: IANA value 2 (RFC 2404), 20-byte key, 12-byte ICV
 //   - HMAC-SHA2-256: IANA value 5 (RFC 4868 §2.4), 32-byte key, 16-byte ICV
+//   - HMAC-SHA2-384: IANA value 6 (RFC 4868 §2.4), 48-byte key, 24-byte ICV
+//   - HMAC-SHA2-512: IANA value 7 (RFC 4868 §2.4), 64-byte key, 32-byte ICV
 const (
 	authHMACMD5    = 1
 	authHMACSHA1   = 2
 	authHMACSHA256 = 5
+	authHMACSHA384 = 6
+	authHMACSHA512 = 7
 )
 
 // espAuthAlgorithm maps a proposal's hash to the ESP authentication
-// algorithm it names — "aes256-sha256" means HMAC-SHA2-256 integrity, not
-// SHA-1 with a SHA-256 label.
+// algorithm it names.
 func espAuthAlgorithm(hash int) (uint16, error) {
 	switch hash {
 	case HashMD5:
@@ -58,6 +60,10 @@ func espAuthAlgorithm(hash int) (uint16, error) {
 		return authHMACSHA1, nil
 	case HashSHA256:
 		return authHMACSHA256, nil
+	case HashSHA384:
+		return authHMACSHA384, nil
+	case HashSHA512:
+		return authHMACSHA512, nil
 	default:
 		return 0, fmt.Errorf("unsupported ESP integrity hash %d", hash)
 	}
@@ -305,9 +311,14 @@ func parseESPTransformBody(body []byte) (t Transform, encapMode uint32, err erro
 				t.Hash = HashSHA1
 			case authHMACSHA256:
 				t.Hash = HashSHA256
+			case authHMACSHA384:
+				t.Hash = HashSHA384
+			case authHMACSHA512:
+				t.Hash = HashSHA512
 			default:
 				return Transform{}, 0, fmt.Errorf("unsupported ESP authentication algorithm %d", val)
 			}
+
 		case ipsecAttrKeyLength:
 			t.KeyBits = int(val)
 		case ipsecAttrEncapsulateMode:
@@ -475,11 +486,16 @@ func espKeyLens(t Transform) (encLen, authLen int) {
 	case HashMD5:
 		authLen = 16 // RFC 2403: HMAC-MD5-96 uses 16-byte key
 	case HashSHA256:
-		authLen = 32
+		authLen = 32 // RFC 4868: HMAC-SHA256 uses 32-byte key
+	case HashSHA384:
+		authLen = 48 // RFC 4868: HMAC-SHA384 uses 48-byte key
+	case HashSHA512:
+		authLen = 64 // RFC 4868: HMAC-SHA512 uses 64-byte key
 	default:
 		authLen = 20 // SHA-1: 20-byte key
 	}
 	return
+
 }
 
 // EstablishQuickMode negotiates one Phase 2 (IPsec) SA pair over an already

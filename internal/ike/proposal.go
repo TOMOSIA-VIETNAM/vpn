@@ -30,6 +30,8 @@ const (
 	HashMD5    = 1
 	HashSHA1   = 2
 	HashSHA256 = 4
+	HashSHA384 = 5
+	HashSHA512 = 6
 )
 
 // AuthMethodPSK is the only authentication method this client implements —
@@ -89,6 +91,10 @@ func ParseProposal(s string) (Transform, error) {
 		t.Hash = HashSHA1
 	case "sha256", "sha2":
 		t.Hash = HashSHA256
+	case "sha384":
+		t.Hash = HashSHA384
+	case "sha512":
+		t.Hash = HashSHA512
 	default:
 		return Transform{}, fmt.Errorf("proposal %q: unknown hash %q", s, parts[1])
 	}
