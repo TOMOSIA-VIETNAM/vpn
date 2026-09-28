@@ -13,4 +13,6 @@ const (
 	Scutil       = "/usr/sbin/scutil"
 	Security     = "/usr/bin/security"
 	Tail         = "/usr/bin/tail"
+	Dscacheutil  = "/usr/bin/dscacheutil"
+	Killall      = "/usr/bin/killall"
 )
