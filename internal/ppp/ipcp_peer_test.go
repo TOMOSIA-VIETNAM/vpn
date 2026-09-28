@@ -21,6 +21,10 @@ func TestPointToPointPeer(t *testing.T) {
 		{"0.0.0.0", local, net.IPv4zero.To4(), "10.64.64.64"},
 		{"none", local, nil, "10.64.64.64"},
 		{"our own address", local, local, "10.64.64.64"},
+		{"loopback 127.0.0.1", local, net.ParseIP("127.0.0.1").To4(), "10.64.64.64"},
+		{"link-local 169.254.1.1", local, net.ParseIP("169.254.1.1").To4(), "10.64.64.64"},
+		{"multicast 224.0.0.1", local, net.ParseIP("224.0.0.1").To4(), "10.64.64.64"},
+		{"broadcast 255.255.255.255", local, net.IPv4bcast.To4(), "10.64.64.64"},
 		{"stand-in taken by us", net.ParseIP("10.64.64.64").To4(), nil, "10.64.64.65"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
