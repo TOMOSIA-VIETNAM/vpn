@@ -87,7 +87,9 @@ func (s *Snapshot) ProtectServer(serverIP string) error {
 	_ = exec.Command(sysbin.Route, "-n", "delete", "-host", serverIP).Run()
 	cmd := exec.Command(sysbin.Route, s.serverRouteAddArgs()...)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("add host route to VPN server via %s: %w (%s)", s.DefaultGateway, err, strings.TrimSpace(string(out)))
+		if !strings.Contains(string(out), "File exists") {
+			return fmt.Errorf("add host route to VPN server via %s: %w (%s)", s.DefaultGateway, err, strings.TrimSpace(string(out)))
+		}
 	}
 	s.hostRouteAdded = true
 	return nil
@@ -101,6 +103,9 @@ func (s *Snapshot) ProtectServer(serverIP string) error {
 // implicitly installs the host route to peer that ApplyFullTunnel's
 // "-interface" routes rely on being resolvable).
 func ConfigureP2PInterface(iface, local, peer string, mtu int) error {
+	if peer == "" || peer == "0.0.0.0" {
+		peer = local
+	}
 	args := []string{iface, "inet", local, peer, "netmask", "255.255.255.255"}
 	if mtu > 0 {
 		args = append(args, "mtu", fmt.Sprintf("%d", mtu))
@@ -207,10 +212,15 @@ func ipv4OverrideChangeArgs(net, tunIface string) []string {
 func (s *Snapshot) RouteHostsViaTunnel(hosts []string, tunIface string) error {
 	s.tunIface = tunIface
 	for _, h := range hosts {
+		if h == "" || h == "0.0.0.0" {
+			continue
+		}
 		_ = exec.Command(sysbin.Route, "-n", "delete", "-host", h).Run()
 		s.tunnelHosts = append(s.tunnelHosts, h) // before add: Restore must remove a partial success
 		if out, err := exec.Command(sysbin.Route, tunnelHostAddArgs(h, tunIface)...).CombinedOutput(); err != nil {
-			return fmt.Errorf("route %s via %s: %w (%s)", h, tunIface, err, strings.TrimSpace(string(out)))
+			if !strings.Contains(string(out), "File exists") {
+				return fmt.Errorf("route %s via %s: %w (%s)", h, tunIface, err, strings.TrimSpace(string(out)))
+			}
 		}
 	}
 	return nil

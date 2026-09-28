@@ -86,7 +86,7 @@ func (n *NegotiatedIPCP) ApplyPeerOption(o Option) {
 	if o.Type != IPCPOptIPAddress {
 		return
 	}
-	if ip, ok := ParseIPv4Option(o); ok {
+	if ip, ok := ParseIPv4Option(o); ok && !ip.IsUnspecified() {
 		n.PeerIP = ip
 	}
 }

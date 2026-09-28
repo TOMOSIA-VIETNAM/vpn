@@ -33,6 +33,7 @@ type Config struct {
 // Result is everything the engine needs once PPP reaches the OPENED state.
 type Result struct {
 	IPCP NegotiatedIPCP
+	MRU  uint16
 	// Magic is our LCP Magic-Number as negotiated (0 if the peer rejected
 	// it), for answering the peer's Echo-Requests (see HandleOpenedLCP).
 	Magic uint32
@@ -54,11 +55,11 @@ func Run(ctx context.Context, t Transport, cfg Config) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	magic, peerAuth, err := runLCP(ctx, t, lcp)
+	magic, peerAuth, negotiatedMRU, err := runLCP(ctx, t, lcp)
 	if err != nil {
 		return nil, fmt.Errorf("LCP_FAILED: %w", err)
 	}
-	vpnlog.Info(stage, "LCP established", vpnlog.Fields{"mru": cfg.MRU, "auth_proto": peerAuth.Protocol, "auth_algo": peerAuth.Algorithm})
+	vpnlog.Info(stage, "LCP established", vpnlog.Fields{"mru": negotiatedMRU, "auth_proto": peerAuth.Protocol, "auth_algo": peerAuth.Algorithm})
 
 	if err := runAuth(ctx, t, cfg.Username, cfg.Password, magic, peerAuth); err != nil {
 		return nil, fmt.Errorf("PPP_AUTH_FAILURE: %w", err)
@@ -71,7 +72,7 @@ func Run(ctx context.Context, t Transport, cfg Config) (*Result, error) {
 	}
 	vpnlog.Info(stage, "IPCP established", vpnlog.Fields{"local_ip": ipcp.LocalIP.String()})
 
-	return &Result{IPCP: *ipcp, Magic: magic}, nil
+	return &Result{IPCP: *ipcp, MRU: negotiatedMRU, Magic: magic}, nil
 }
 
 // negotiatePhase runs one side-agnostic RFC 1661 §4 option-negotiation loop
@@ -230,8 +231,8 @@ func dropRejected(ours []Option, rejected []Option) []Option {
 }
 
 // runLCP returns our Magic-Number as the peer finally acked it (0 if it
-// rejected the option) and the peer's negotiated AuthProtocol.
-func runLCP(ctx context.Context, t Transport, cfg LCPConfig) (uint32, AuthProtocol, error) {
+// rejected the option), the peer's negotiated AuthProtocol, and the negotiated MRU.
+func runLCP(ctx context.Context, t Transport, cfg LCPConfig) (uint32, AuthProtocol, uint16, error) {
 	var peerAuth AuthProtocol
 	ourOptions, err := negotiatePhase(ctx, t, ProtoLCP,
 		cfg.ConfigureRequestOptions,
@@ -246,9 +247,13 @@ func runLCP(ctx context.Context, t Transport, cfg LCPConfig) (uint32, AuthProtoc
 			return opts, true
 		})
 	if err != nil {
-		return 0, AuthProtocol{}, err
+		return 0, AuthProtocol{}, 0, err
 	}
-	return magicOf(ourOptions), peerAuth, nil
+	mru := mruOf(ourOptions)
+	if mru == 0 {
+		mru = cfg.MRU
+	}
+	return magicOf(ourOptions), peerAuth, mru, nil
 }
 
 func runIPCP(ctx context.Context, t Transport, requestedIP net.IP) (*NegotiatedIPCP, error) {
@@ -274,7 +279,7 @@ func runIPCP(ctx context.Context, t Transport, requestedIP net.IP) (*NegotiatedI
 	for _, o := range ourOptions {
 		result.ApplyOption(o)
 	}
-	if result.LocalIP == nil {
+	if result.LocalIP == nil || result.LocalIP.IsUnspecified() {
 		return nil, fmt.Errorf("IPCP completed without an assigned IP address")
 	}
 	return result, nil

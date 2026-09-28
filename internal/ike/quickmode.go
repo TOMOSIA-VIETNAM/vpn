@@ -109,7 +109,7 @@ func espProposalFor(s string) (Transform, error) {
 	full.Group = 0
 	// ParseProposal accepts md5/sha1/sha256 — all are now valid for ESP.
 	if _, err := espAuthAlgorithm(full.Hash); err != nil {
-		return Transform{}, fmt.Errorf("ESP proposal %q: %w (use md5, sha1, or sha256)", s, err)
+		return Transform{}, fmt.Errorf("ESP proposal %q: %w (use md5, sha1, sha256, sha384, or sha512)", s, err)
 	}
 	return full, nil
 }
