@@ -3,6 +3,7 @@ package ike
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -503,10 +504,9 @@ func (s *Session) quickMode(espProposals []string, localIP, remoteIP net.IP, rou
 
 	bs := blockSize(s.Transform)
 
-	// IDci/IDcr: transport-mode selectors restricted to UDP/1701, matching
-	// entrypoint.sh's leftprotoport=17/1701, rightprotoport=17/1701.
-	idci := marshalUDPPortID(localIP, 1701)
-	idcr := marshalUDPPortID(remoteIP, 1701)
+	// IDci/IDcr: transport-mode selectors restricted to UDP — our L2TP port
+	// (see Session.L2TPPort) and the server's 1701.
+	idci, idcr := s.quickModeIDs(localIP, remoteIP)
 
 	var natOA1, natOA2 []byte
 	if s.floated {
@@ -675,4 +675,28 @@ func randomMessageID() uint32 {
 		v = 1 // Message-ID 0 is reserved for Phase 1
 	}
 	return v
+}
+
+// L2TPPort is L2TP's well-known UDP port (RFC 2661 §8.1): always the server's
+// port, and ours unless Session.L2TPPort picks another.
+const L2TPPort = 1701
+
+// ErrQuickModeRejected is wrapped when the server answers a Quick Mode with
+// an error Notify (e.g. INVALID-ID-INFORMATION) instead of QM2.
+var ErrQuickModeRejected = errors.New("Quick Mode rejected by the server")
+
+// notifyErrorLimit: Notify types below it are errors (RFC 2408 §3.14.1);
+// from 16384 up they are status messages.
+const notifyErrorLimit = 16384
+
+// quickModeIDs are IDci/IDcr: our L2TP port on our address, 1701 on the server's.
+func (s *Session) quickModeIDs(localIP, remoteIP net.IP) (idci, idcr []byte) {
+	return marshalUDPPortID(localIP, s.l2tpPort()), marshalUDPPortID(remoteIP, L2TPPort)
+}
+
+func (s *Session) l2tpPort() uint16 {
+	if s.L2TPPort == 0 {
+		return L2TPPort
+	}
+	return s.L2TPPort
 }

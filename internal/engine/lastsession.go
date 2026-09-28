@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"vpn/internal/config"
+	"vpn/internal/ike"
 	"vpn/internal/vpnlog"
 )
 
@@ -33,6 +34,7 @@ type lastSession struct {
 	Server      string    `json:"server"`
 	PeerTunnel  uint16    `json:"peer_tunnel"`
 	PeerSession uint16    `json:"peer_session"`
+	L2TPPort    uint16    `json:"l2tp_port,omitempty"` // absent in records from before per-connection ports: 1701
 	AliveAt     time.Time `json:"alive_at"`
 }
 
@@ -46,12 +48,12 @@ func lastSessionPath() (string, error) {
 
 // saveLastSession records the session just established (or refreshes its
 // liveness stamp). Best effort: failing to save only loses the eviction.
-func saveLastSession(server string, tunnel, session uint16) {
+func saveLastSession(server string, tunnel, session, l2tpPort uint16) {
 	p, err := lastSessionPath()
 	if err != nil {
 		return
 	}
-	data, err := json.Marshal(lastSession{Server: server, PeerTunnel: tunnel, PeerSession: session, AliveAt: time.Now()})
+	data, err := json.Marshal(lastSession{Server: server, PeerTunnel: tunnel, PeerSession: session, L2TPPort: l2tpPort, AliveAt: time.Now()})
 	if err != nil {
 		return
 	}
@@ -88,5 +90,9 @@ func loadLastSession(server string, now time.Time) *staleSession {
 	if age := now.Sub(ls.AliveAt); age < 0 || age > lastSessionMaxAge {
 		return nil
 	}
-	return &staleSession{tunnel: ls.PeerTunnel, session: ls.PeerSession}
+	port := ls.L2TPPort
+	if port == 0 {
+		port = ike.L2TPPort
+	}
+	return &staleSession{tunnel: ls.PeerTunnel, session: ls.PeerSession, l2tpPort: port}
 }

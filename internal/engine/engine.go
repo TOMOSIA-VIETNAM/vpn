@@ -83,7 +83,11 @@ func (e *tunnelDropped) Unwrap() error { return e.cause }
 // may still be alive on the server.
 type staleSession struct {
 	tunnel, session uint16
-	done            bool // already sent: one round of Terminate per record, not one per attempt
+	// l2tpPort is the L2TP port that session ran on. The LNS finds a tunnel by
+	// the peer's address and port as well as its ID, so the Terminate only
+	// reaches the session from that same port: the attempt carrying it reuses it.
+	l2tpPort uint16
+	done     bool // already sent: one round of Terminate per record, not one per attempt
 }
 
 // staleTerminateAttempts / staleTerminateGap: the Terminate-Request is
@@ -443,6 +447,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			ServerID:   cfg.ServerID,
 			PSK:        cfg.PSK,
 			Proposals:  cfg.IKEProposals,
+			L2TPPort:   l2tpPortFor(stale),
 			LocalIP:    localIP,
 		})
 		if err != nil {
@@ -453,11 +458,20 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 		vpnlog.Info("ENGINE", "IKE Phase 1 established", vpnlog.Fields{"nat_detected": sess.NATDetected})
 
 		qm, err := sess.EstablishQuickMode(cfg.ESPProposals, localIP, serverIP)
+		if err != nil && sess.L2TPPort != ike.L2TPPort {
+			// A server that only accepts L2TP from port 1701 refuses our own
+			// port — with an error Notify (ike.ErrQuickModeRejected) or by not
+			// answering at all — so any failure here is retried on 1701: never
+			// worse than a client that always used it.
+			vpnlog.Error("IKE", "Quick Mode on our own L2TP port failed — retrying on 1701", vpnlog.Fields{"port": sess.L2TPPort, "err": err})
+			sess.L2TPPort = ike.L2TPPort
+			qm, err = sess.EstablishQuickMode(cfg.ESPProposals, localIP, serverIP)
+		}
 		if err != nil {
 			restoreRoutes()
 			return fail("IPSEC_FAILURE", "Quick Mode (ESP SA) negotiation", err)
 		}
-		vpnlog.Info("ENGINE", "Quick Mode established", vpnlog.Fields{"in_spi": fmt.Sprintf("%08x", qm.Inbound.SPI), "out_spi": fmt.Sprintf("%08x", qm.Outbound.SPI)})
+		vpnlog.Info("ENGINE", "Quick Mode established", vpnlog.Fields{"in_spi": fmt.Sprintf("%08x", qm.Inbound.SPI), "out_spi": fmt.Sprintf("%08x", qm.Outbound.SPI), "l2tp_port": sess.L2TPPort})
 
 		sas, err = newSASet(qm)
 		if err != nil {
@@ -515,6 +529,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 						Proposals:  cfg.IKEProposals,
 						LocalIP:    localIP,
 						Reauth:     true,
+						L2TPPort:   sess.L2TPPort, // the L2TP tunnel keeps running on it
 					})
 					if err != nil {
 						return fmt.Errorf("IKE Phase 1: %w", err)
@@ -536,9 +551,10 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			go runReauth(ctx, mux, sas, establish, giveUp)
 		}
 		espT := &espTransport{
-			mux:  mux,
-			sas:  sas,
-			live: live,
+			l2tpPort: sess.L2TPPort,
+			mux:      mux,
+			sas:      sas,
+			live:     live,
 			repairRoute: func() error {
 				return privilege.Elevate(func() error {
 					return rtSnapshot.ProtectServer(serverIP.String())
@@ -682,7 +698,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 	}
 	{
 		pt, ps := l2tpTun.PeerIDs()
-		saveLastSession(cfg.Server, pt, ps)
+		saveLastSession(cfg.Server, pt, ps, ikeSess.L2TPPort)
 	}
 	vpnlog.Info("ENGINE", "VPN connected", vpnlog.Fields{"local_ip": ipcp.LocalIP.String(), "device": dev.Name, "mtu": cfg.MTU, "full_tunnel": cfg.FullTunnel, "reconnects": reconnects,
 		"ike_lifetime_s": int(mux.current().IKELifetime() / time.Second), "esp_lifetime_s": int(sas.current().expires.Sub(connectedAt) / time.Second)})
@@ -741,7 +757,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			if reports++; time.Duration(reports)*keepaliveEvery*statsEvery >= lastSessionRefresh {
 				reports = 0
 				pt, ps := l2tpTun.PeerIDs()
-				saveLastSession(cfg.Server, pt, ps)
+				saveLastSession(cfg.Server, pt, ps, ikeSess.L2TPPort)
 			}
 			cur := sas.current()
 			vpnlog.Info("ENGINE", "tunnel alive", vpnlog.Fields{
@@ -826,7 +842,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			_ = dropping.Save()
 			vpnlog.Error("ENGINE", "data plane stopped unexpectedly", vpnlog.Fields{"err": pumpErr, "exposure": exposure})
 			pt, ps := l2tpTun.PeerIDs()
-			return &tunnelDropped{cause: pumpErr, uptime: uptime, stale: &staleSession{tunnel: pt, session: ps}, lastLocalIP: ipcp.LocalIP}
+			return &tunnelDropped{cause: pumpErr, uptime: uptime, stale: &staleSession{tunnel: pt, session: ps, l2tpPort: ikeSess.L2TPPort}, lastLocalIP: ipcp.LocalIP}
 		}
 		clearLastSession() // closed properly: nothing left on the server to end
 		_ = state.Clear()
