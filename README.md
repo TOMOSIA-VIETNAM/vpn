@@ -9,6 +9,19 @@ VPN client L2TP/IPsec thuần macOS — không phụ thuộc strongSwan, xl2tpd,
 - **App TMS VPN** (menu bar): dùng hằng ngày — thêm hồ sơ, bật/tắt kết nối, xem IP.
 - **CLI `vpn`**: engine thực hiện kết nối (IKE, ESP, L2TP, PPP, route, DNS). App gọi CLI này; dùng trực tiếp từ terminal cũng được.
 
+## Vì sao có tool này
+
+**Hiện trạng:** kết nối tới server công ty bằng VPN có sẵn của macOS (System Settings → VPN → L2TP over IPsec) không ổn định: lúc được lúc không, tuỳ mạng đang dùng. Khi lỗi, macOS chỉ báo chung chung, không biết hỏng ở bước nào để tự sửa hay báo admin.
+
+TMS VPN tự cài đặt toàn bộ giao thức (IKE, ESP, L2TP, PPP) thay vì dùng client có sẵn, nên xử lý được những tình huống đã gặp khi dùng thật:
+
+| | TMS VPN làm gì |
+|---|---|
+| **Mạng khó** | Có mạng văn phòng mà server không trả lời IKE gửi từ cổng nguồn UDP/500 (thường do router "IPsec passthrough"). Client thử cổng 500 trước, không có phản hồi thì tự chuyển sang cổng khác. NAT-T qua UDP/4500 và MTU 1280 (`vpn mtu`) cho hotspot/PPPoE. |
+| **Giữ kết nối lâu** | Trả lời keepalive của server (IKE DPD, PPP LCP Echo) để server không tưởng máy đã mất rồi cắt phiên. Tự làm mới khoá mã hoá (rekey) trong lúc kết nối, không rớt phiên. Mất kết nối thì tự nối lại; tuỳ chọn killswitch chặn internet trong lúc đó (full tunnel). |
+| **Biết hỏng ở đâu** | Lỗi ghi rõ bước và nguyên nhân (xem [Sự cố](#sự-cố)). `vpn diagnose` gửi gói IKE thật tới server để kiểm tra UDP 500/4500. `vpn logs` có log từng bước giao thức. |
+| **Dễ dùng** | Nhiều profile/account, bật/tắt từ menu bar hoặc terminal. Secret nằm trong Keychain. Không cần cài thêm strongSwan, xl2tpd hay Docker. |
+
 ## Yêu cầu
 
 - macOS 12+ (Apple Silicon hoặc Intel), quyền admin để cài (`sudo` một lần).
