@@ -240,7 +240,7 @@ func Connect(cfg Config) error {
 					// Really being refused, not merely racing our own stale
 					// session: stop instead of hammering the account.
 					releaseBlock()
-					return finalFailure(cfg, ce)
+					return finalFailure(cfg, ce, "giving up reconnecting: the server keeps rejecting the login")
 				}
 			} else {
 				authRejects = 0
@@ -253,7 +253,7 @@ func Connect(cfg Config) error {
 		case quiet && errors.As(err, &ce):
 			// Not a timeout (e.g. wrong password): the quiet attempt recorded
 			// CONNECTING, so record the real outcome before exiting.
-			return finalFailure(cfg, ce)
+			return finalFailure(cfg, ce, "connect failed — not retrying")
 		default:
 			return err
 		}
@@ -272,14 +272,16 @@ func Connect(cfg Config) error {
 	}
 }
 
-// finalFailure records that reconnecting was given up on and returns the error.
-func finalFailure(cfg Config, ce *connectError) error {
+// finalFailure records that connecting was given up on and returns the error.
+// why is the log line: it used to say "the server keeps rejecting the login"
+// for every failure, a network timeout or a local interface error included.
+func finalFailure(cfg Config, ce *connectError, why string) error {
 	failed := &state.State{
 		Phase: state.PhaseFailed, Profile: cfg.ProfileName, Account: cfg.AccountName, Server: cfg.Server,
 		FailStage: ce.stage, FailDetail: fmt.Sprintf("%s: %v", ce.detail, ce.err),
 	}
 	_ = privilege.Elevate(failed.Save)
-	vpnlog.Error("ENGINE", "giving up reconnecting: the server keeps rejecting the login", vpnlog.Fields{"err": ce})
+	vpnlog.Error("ENGINE", why, vpnlog.Fields{"stage": ce.stage, "err": ce})
 	return ce
 }
 
@@ -615,15 +617,12 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			restoreRoutes()
 		}
 
-		if ipcp.PeerIP == nil {
-			teardownPartial()
-			return fail("TUN_FAILURE", "configure utun interface", fmt.Errorf("LNS never sent its own IPCP IP-Address option — nothing to point the point-to-point link at"))
-		}
-		if err := routing.ConfigureP2PInterface(dev.Name, ipcp.LocalIP.String(), ipcp.PeerIP.String(), int(mru)); err != nil {
+		peer := ipcp.PointToPointPeer() // the LNS's address, or a stand-in when it has none
+		if err := routing.ConfigureP2PInterface(dev.Name, ipcp.LocalIP.String(), peer.String(), int(mru)); err != nil {
 			teardownPartial()
 			return fail("TUN_FAILURE", "configure utun interface", err)
 		}
-		vpnlog.Info("ENGINE", "utun interface up", vpnlog.Fields{"device": dev.Name, "local_ip": ipcp.LocalIP.String(), "peer_ip": ipcp.PeerIP.String()})
+		vpnlog.Info("ENGINE", "utun interface up", vpnlog.Fields{"device": dev.Name, "local_ip": ipcp.LocalIP.String(), "peer_ip": peer.String(), "peer_ip_from_server": peer.Equal(ipcp.PeerIP)})
 
 		if cfg.FullTunnel {
 			if err := rtSnapshot.ApplyFullTunnel(dev.Name); err != nil {
