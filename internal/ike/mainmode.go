@@ -214,8 +214,8 @@ var ErrNoResponse = errors.New("no response")
 // look like the expected next message — an encrypted Informational/Notify
 // interleaved with the real reply is normal IKE traffic, not a failure —
 // only a full retransmit-budget of silence is IKE_TIMEOUT.
-func (s *Session) exchange(ctx context.Context, msg []byte, expectMinLen int) ([]byte, error) {
-	return s.exchangeN(ctx, msg, expectMinLen, maxRetransmits)
+func (s *Session) exchange(ctx context.Context, msg []byte, want mmReply) ([]byte, error) {
+	return s.exchangeN(ctx, msg, want, maxRetransmits)
 }
 
 func (s *Session) mm1RetransmitBudget() int {
@@ -242,7 +242,7 @@ func calcRetransmitInterval(attempt int) time.Duration {
 }
 
 // exchangeN is exchange with an explicit retransmit budget.
-func (s *Session) exchangeN(ctx context.Context, msg []byte, expectMinLen, retransmits int) ([]byte, error) {
+func (s *Session) exchangeN(ctx context.Context, msg []byte, want mmReply, retransmits int) ([]byte, error) {
 	wire := msg
 	if s.floated {
 		wire = append(append([]byte{}, nonESPMarker...), msg...)
@@ -306,7 +306,13 @@ func (s *Session) exchangeN(ctx context.Context, msg []byte, expectMinLen, retra
 				continue
 			}
 			h, err := ParseHeader(got)
-			if err == nil && h.ExchangeType == ExchangeInformational {
+			if err != nil {
+				continue
+			}
+			if nt, ok := s.plainErrorNotify(h, got[headerLen:]); ok {
+				return nil, fmt.Errorf("%w: Notify %d", ErrServerRefused, nt)
+			}
+			if h.ExchangeType == ExchangeInformational {
 				vpnlog.Info(stage, "informational SPIs", vpnlog.Fields{
 					"got_i": fmt.Sprintf("%x", h.InitiatorSPI), "got_r": fmt.Sprintf("%x", h.ResponderSPI),
 					"our_i": fmt.Sprintf("%x", s.InitiatorSPI), "our_r": fmt.Sprintf("%x", s.ResponderSPI),
@@ -314,8 +320,13 @@ func (s *Session) exchangeN(ctx context.Context, msg []byte, expectMinLen, retra
 				s.logInformational(h, got[headerLen:])
 				continue // not the message this call is waiting for — keep listening
 			}
-			if len(got) < expectMinLen {
-				lastErr = fmt.Errorf("short response: %d bytes", len(got))
+			if !s.isReply(h, want) {
+				// A duplicate of an earlier reply (the server answering one of
+				// our retransmits), another IKE SA's traffic, or a forgery:
+				// never the message this step waits for.
+				vpnlog.Debug(stage, "ignored a message that is not the expected Main Mode reply", vpnlog.Fields{
+					"exchange": h.ExchangeType, "next_payload": h.NextPayload, "flags": h.Flags,
+				})
 				continue
 			}
 			return got, nil
@@ -525,10 +536,13 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 	mm1 := buildMM1(s.InitiatorSPI, sa)
 
 	vpnlog.Info(stage, "MM1 sent (SA proposal)", vpnlog.Fields{"proposals": cfg.Proposals})
-	resp, err := s.exchangeN(ctx, mm1, headerLen, s.mm1RetransmitBudget())
+	resp, err := s.exchangeN(ctx, mm1, mmReply{firstPayloads: []uint8{PayloadSA, PayloadNotify}}, s.mm1RetransmitBudget())
 	if err != nil {
 		if errors.Is(err, ErrNoResponse) {
 			return fmt.Errorf("MM1/MM2: %w: %w", errMM1Unanswered, err)
+		}
+		if errors.Is(err, ErrServerRefused) {
+			return fmt.Errorf("IKE_PROPOSAL_MISMATCH: MM1/MM2: %w (NO_PROPOSAL_CHOSEN is 14)", err)
 		}
 		return fmt.Errorf("MM1/MM2: %w", err)
 	}
@@ -617,7 +631,7 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 	mm3 := append(hdr3.Marshal(), body3...)
 
 	vpnlog.Info(stage, "MM3 sent (KE, nonce)", vpnlog.Fields{"group": chosen.Group})
-	resp4, err := s.exchange(ctx, mm3, headerLen)
+	resp4, err := s.exchange(ctx, mm3, mmReply{firstPayloads: []uint8{PayloadKE}})
 	if err != nil {
 		return fmt.Errorf("MM3/MM4: %w", err)
 	}
@@ -705,7 +719,7 @@ func (s *Session) runMainMode(ctx context.Context, cfg Config, transforms []Tran
 	mm5 := append(hdr5.Marshal(), cipher5...)
 
 	vpnlog.Info(stage, "MM5 sent (encrypted identity + auth)", nil)
-	resp6, err := s.exchange(ctx, mm5, headerLen)
+	resp6, err := s.exchange(ctx, mm5, mmReply{encrypted: true})
 	if err != nil {
 		return fmt.Errorf("MM5/MM6: %w", err)
 	}
@@ -839,3 +853,65 @@ func checkServerID(want string, peerIDBody []byte) error {
 // payload type 20. It postdates the original RFC 2408 payload registry, so
 // it is not one of the PayloadXxx constants in isakmp.go.
 const payloadNATD = 20
+
+// mmReply describes the Main Mode reply one step waits for (RFC 2409 §5):
+// MM2 opens with SA (or a Notify refusing it), MM4 with KE, and MM6 is the
+// first encrypted one.
+type mmReply struct {
+	firstPayloads []uint8 // for an unencrypted reply: the payload types it may open with
+	encrypted     bool
+}
+
+// isReply reports whether h is the reply want describes, on this IKE SA. The
+// shape check is what keeps a late duplicate MM2 from being read as MM4, or
+// a duplicate MM4 as MM6 (and blamed on a wrong PSK).
+func (s *Session) isReply(h Header, want mmReply) bool {
+	if h.ExchangeType != ExchangeIdentityProt || h.InitiatorSPI != s.InitiatorSPI {
+		return false
+	}
+	if s.ResponderSPI != ([8]byte{}) && h.ResponderSPI != s.ResponderSPI {
+		return false
+	}
+	if (h.Flags&FlagEncryption != 0) != want.encrypted {
+		return false
+	}
+	if want.encrypted {
+		return true
+	}
+	for _, t := range want.firstPayloads {
+		if h.NextPayload == t {
+			return true
+		}
+	}
+	return false
+}
+
+// ErrServerRefused is wrapped when the server answers a Main Mode step with
+// an error Notify instead of the next message.
+var ErrServerRefused = errors.New("server refused")
+
+// plainErrorNotify returns the type of an unencrypted error Notify (RFC 2408
+// §3.14.1: types below 16384) the server sent on this IKE SA — how a
+// responder refuses a Main Mode, e.g. NO-PROPOSAL-CHOSEN in place of MM2.
+// It carries no authentication: only a message bearing our own initiator
+// cookie, which an off-path sender cannot know, is taken into account.
+func (s *Session) plainErrorNotify(h Header, body []byte) (uint16, bool) {
+	if h.Flags&FlagEncryption != 0 || h.InitiatorSPI != s.InitiatorSPI {
+		return 0, false
+	}
+	if h.ExchangeType != ExchangeInformational && h.ExchangeType != ExchangeIdentityProt {
+		return 0, false
+	}
+	payloads, err := SplitPayloads(h.NextPayload, body)
+	if err != nil {
+		return 0, false
+	}
+	for _, p := range payloads {
+		if p.Type == PayloadNotify && len(p.Body) >= 8 {
+			if nt := uint16(p.Body[6])<<8 | uint16(p.Body[7]); nt != 0 && nt < 16384 {
+				return nt, true
+			}
+		}
+	}
+	return 0, false
+}

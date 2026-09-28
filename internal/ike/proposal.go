@@ -199,6 +199,11 @@ func ParseChosenTransform(saBody []byte) (Transform, error) {
 	if numTx != 1 {
 		return Transform{}, fmt.Errorf("expected exactly one transform in responder proposal, got %d", numTx)
 	}
+	// MM2 is neither encrypted nor authenticated: a size field must never be
+	// trusted to fit the payload it describes.
+	if len(prop) < 4+spiSize {
+		return Transform{}, fmt.Errorf("proposal claims a %d-byte SPI but is %d bytes long", spiSize, len(prop))
+	}
 	txData := prop[4+spiSize:]
 	txPayloads, err := SplitPayloads(PayloadTransform, txData)
 	if err != nil {
