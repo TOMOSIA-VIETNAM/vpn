@@ -22,7 +22,6 @@ const (
 	vpnServiceID = "com.tms.vpn.dns"
 	dnsStateKey  = "State:/Network/Service/" + vpnServiceID + "/DNS"
 	globalDNSKey = "State:/Network/Global/DNS"
-	ipv4StateKey = "State:/Network/Global/IPv4"
 )
 
 // Snapshot is the DNS configuration state for the VPN session.
@@ -138,7 +137,7 @@ func (s *Snapshot) Apply(servers []string) error {
 	serverList := strings.Join(ordered, " ")
 
 	var script strings.Builder
-	// 1. Service-level DNS entry (bound to the utun interface)
+	// Service-level DNS entry (bound to the utun interface with priority order)
 	script.WriteString("d.init\n")
 	script.WriteString(fmt.Sprintf("d.add ServerAddresses * %s\n", serverList))
 	script.WriteString("d.add SupplementalMatchDomains * \"\"\n")
@@ -147,26 +146,6 @@ func (s *Snapshot) Apply(servers []string) error {
 		script.WriteString(fmt.Sprintf("d.add InterfaceName %s\n", s.TunIface))
 	}
 	script.WriteString(fmt.Sprintf("set %s\n", dnsStateKey))
-
-	// 2. Global DNS entry (overrides Resolver #1 in macOS mDNSResponder)
-	script.WriteString("d.init\n")
-	script.WriteString(fmt.Sprintf("d.add ServerAddresses * %s\n", serverList))
-	script.WriteString("d.add SupplementalMatchDomains * \"\"\n")
-	script.WriteString("d.add SupplementalMatchOrders * 100000\n")
-	if s.TunIface != "" {
-		script.WriteString(fmt.Sprintf("d.add InterfaceName %s\n", s.TunIface))
-	}
-	script.WriteString(fmt.Sprintf("set %s\n", globalDNSKey))
-
-	// 3. IPv4 State - make VPN the PrimaryService and PrimaryInterface
-	script.WriteString("d.init\n")
-	script.WriteString(fmt.Sprintf("d.add PrimaryService %s\n", vpnServiceID))
-	if s.TunIface != "" {
-		script.WriteString(fmt.Sprintf("d.add PrimaryInterface %s\n", s.TunIface))
-		script.WriteString(fmt.Sprintf("d.add Router %s\n", s.TunIface))
-	}
-	script.WriteString(fmt.Sprintf("d.add Services * %s\n", vpnServiceID))
-	script.WriteString(fmt.Sprintf("set %s\n", ipv4StateKey))
 
 	cmd := exec.Command(sysbin.Scutil)
 	cmd.Stdin = strings.NewReader(script.String())
@@ -185,7 +164,6 @@ func (s *Snapshot) Restore() error {
 	var script strings.Builder
 	script.WriteString(fmt.Sprintf("remove %s\n", dnsStateKey))
 	script.WriteString(fmt.Sprintf("remove %s\n", globalDNSKey))
-	script.WriteString(fmt.Sprintf("remove %s\n", ipv4StateKey))
 
 	cmd := exec.Command(sysbin.Scutil)
 	cmd.Stdin = strings.NewReader(script.String())
