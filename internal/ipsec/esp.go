@@ -64,15 +64,10 @@ type SA struct {
 	// (the utun pump, PPP/L2TP control replies), and an unsynchronized
 	// seq++ could put two packets on the wire with one sequence number —
 	// the second then dropped by the peer as a replay.
-	mu         sync.Mutex
-	seq        uint32 // outbound: last sequence number sent
-	replaySeen []bool
-	replayBase uint32
-	replayInit bool
+	mu     sync.Mutex
+	seq    uint32       // outbound: last sequence number sent
+	replay replayWindow // inbound only
 }
-
-// ReplayWindowSize is the 8MB sliding anti-replay window (8,388,608 packets / ~11 GB in-flight buffer).
-const ReplayWindowSize = 8 * 1024 * 1024
 
 // NewSA builds an SA for the negotiated transforms, rejecting keys whose
 // length doesn't fit them — a mismatch here means the IKE layer and this
@@ -80,12 +75,11 @@ const ReplayWindowSize = 8 * 1024 * 1024
 // by running the wrong cipher.
 func NewSA(spi uint32, c Cipher, i Integrity, encKey, authKey []byte) (*SA, error) {
 	sa := &SA{
-		SPI:        spi,
-		Cipher:     c,
-		Integrity:  i,
-		EncKey:     encKey,
-		AuthKey:    authKey,
-		replaySeen: make([]bool, ReplayWindowSize),
+		SPI:       spi,
+		Cipher:    c,
+		Integrity: i,
+		EncKey:    encKey,
+		AuthKey:   authKey,
 	}
 	var err error
 	switch c {
@@ -262,7 +256,7 @@ func (sa *SA) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
 		return nil, 0, fmt.Errorf("ESP SPI mismatch: got %08x want %08x", spi, sa.SPI)
 	}
 	seq := binary.BigEndian.Uint32(pkt[4:8])
-	if err := sa.checkReplay(seq); err != nil {
+	if err := sa.replay.check(seq); err != nil {
 		return nil, 0, err
 	}
 
@@ -293,53 +287,6 @@ func (sa *SA) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
 	payloadLen := len(plain) - 2 - padLen
 	payload = make([]byte, payloadLen)
 	copy(payload, plain[:payloadLen])
-	sa.markSeqSeen(seq)
+	sa.replay.accept(seq)
 	return payload, nextHeader, nil
-}
-
-// checkReplay implements a standard sliding replay window (RFC 4303 §3.4.3):
-// a sequence number older than the window, or already seen, is rejected.
-func (sa *SA) checkReplay(seq uint32) error {
-	if seq == 0 {
-		return fmt.Errorf("ESP replay check: sequence number 0 is invalid")
-	}
-	if !sa.replayInit {
-		sa.replayBase = seq
-		sa.replayInit = true
-		return nil
-	}
-	if seq > sa.replayBase {
-		return nil // advances the window; markSeqSeen shifts it
-	}
-	diff := sa.replayBase - seq
-	if diff >= uint32(len(sa.replaySeen)) {
-		return fmt.Errorf("ESP replay check: sequence %d too old (window base %d)", seq, sa.replayBase)
-	}
-	if sa.replaySeen[diff] {
-		return fmt.Errorf("ESP replay check: sequence %d already seen (replay)", seq)
-	}
-	return nil
-}
-
-func (sa *SA) markSeqSeen(seq uint32) {
-	if !sa.replayInit {
-		sa.replayBase = seq
-		sa.replayInit = true
-	}
-	if seq > sa.replayBase {
-		shift := seq - sa.replayBase
-		if shift >= uint32(len(sa.replaySeen)) {
-			clear(sa.replaySeen)
-		} else {
-			copy(sa.replaySeen[shift:], sa.replaySeen[:len(sa.replaySeen)-int(shift)])
-			clear(sa.replaySeen[:shift])
-		}
-		sa.replayBase = seq
-		sa.replaySeen[0] = true
-		return
-	}
-	diff := sa.replayBase - seq
-	if diff < uint32(len(sa.replaySeen)) {
-		sa.replaySeen[diff] = true
-	}
 }
