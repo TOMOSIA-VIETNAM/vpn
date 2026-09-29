@@ -16,10 +16,13 @@ VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || true)}"
 VERSION="${VERSION#v}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || VERSION="0.0.0"
 export VERSION
+# build.sh also compiles the universal CLI (./build/vpn) that it bundles into the app;
+# installing that same binary keeps /usr/local/bin/vpn identical to the bundled copy.
 ./build.sh
-GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=v$VERSION" -o ./build/vpn-arm64 ./cmd/vpn
-GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=v$VERSION" -o ./build/vpn-amd64 ./cmd/vpn
-lipo -create ./build/vpn-arm64 ./build/vpn-amd64 -output ./build/vpn
+if [[ ! -x ./build/vpn ]]; then
+    echo "error: build.sh did not produce ./build/vpn (is Go installed?)" >&2
+    exit 1
+fi
 
 echo "==> [2/3] Installing CLI to /usr/local/bin/vpn"
 sudo install -o root -g wheel -m 4755 ./build/vpn /usr/local/bin/vpn
@@ -31,7 +34,7 @@ sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
 
 echo "==> [3/3] Installing app to /Applications/TOMOSIA-VPN.app"
 # Also drop the app installed under its name before the rename to TOMOSIA-VPN.
-killall "TMS VPN" 2>/dev/null || true
+killall "TOMOSIA-VPN" "TMS VPN" 2>/dev/null || true
 sudo rm -rf "/Applications/TMS VPN.app" "/Applications/TOMOSIA-VPN.app"
 sudo cp -R "./build/TOMOSIA-VPN.app" /Applications/
 sudo chown -R "$OWNER_UID:staff" "/Applications/TOMOSIA-VPN.app"

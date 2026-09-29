@@ -1016,6 +1016,9 @@ struct ConnectSwitch: View {
         }
         .buttonStyle(.plain)
         .focusable(false)
+        // A plain Button has no switch semantics; restore what VoiceOver read from Toggle.
+        .accessibilityLabel("VPN connection")
+        .accessibilityValue(isOn ? "On" : "Off")
     }
 }
 

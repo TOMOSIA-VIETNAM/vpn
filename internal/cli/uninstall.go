@@ -91,8 +91,8 @@ func cmdUninstall(args []string) error {
 	}
 
 	fmt.Println("vpn has been fully removed.")
-	if appInstalled() {
-		fmt.Printf("The menu bar app is still at %s — run uninstall.sh to remove it too, or move it to the Trash.\n", menuBarApp)
+	if app, ok := installedApp(); ok {
+		fmt.Printf("The menu bar app is still at %s — run uninstall.sh to remove it too, or move it to the Trash.\n", app)
 	}
 	return nil
 }

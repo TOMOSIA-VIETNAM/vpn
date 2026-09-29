@@ -101,6 +101,9 @@ if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
     killall "TMS VPN" 2>/dev/null || true
     rm -rf "$LEGACY_APP_DIR" 2>/dev/null || sudo rm -rf "$LEGACY_APP_DIR"
   fi
+  # Quit a running copy first, or it keeps running from the deleted bundle and the
+  # new launch below adds a second status item.
+  killall "TOMOSIA-VPN" 2>/dev/null || true
   rm -rf "$APP_DIR"
   # ditto (not unzip) restores the bundle exactly as the release workflow
   # packed it (`ditto -c` — see .github/workflows/release.yml), keeping
