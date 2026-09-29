@@ -8,21 +8,39 @@
   <a href="README.md">Tiếng Việt</a> · <b>English</b> · <a href="README.ja.md">日本語</a>
 </p>
 
-Requires macOS 12 or later.
+<p align="center">
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest"><img src="https://img.shields.io/github/v/release/TOMOSIA-VIETNAM/vpn?label=release&color=blue" alt="Latest release" /></a>
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/TOMOSIA-VIETNAM/vpn/test.yml?branch=main&label=tests" alt="Tests" /></a>
+  <img src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple" alt="macOS 12+" />
+  <img src="https://img.shields.io/badge/Apple%20Silicon%20%7C%20Intel-universal-555" alt="Apple Silicon and Intel" />
+  <img src="https://img.shields.io/badge/L2TP%2FIPsec-VPN-555" alt="L2TP/IPsec" />
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
+    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN in the menu bar" />
+  </picture>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+    <img src="assets/screenshots/settings-light.png" width="360" alt="Settings" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Adding a VPN configuration" />
+  </picture>
+</p>
 
 ## Install
 
 1. Download [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
 2. Open it and drag **TOMOSIA VPN** into **Applications**.
-3. Open the app (if macOS blocks it: right-click the app → **Open**). Enter your Mac password when asked, and choose **Allow** when the app asks to send notifications.
+3. Open the app (if macOS blocks it: right-click the app → **Open**).
 
-## Use
-
-1. Click the TOMOSIA VPN icon in the menu bar → click **+**.
-2. Enter the server, account, password and shared secret from your network administrator → **Create**.
-3. Turn the switch on to connect, off to disconnect.
-
-An icon with `!` means something went wrong: open the app to see why.
+Requires macOS 12 or later.
 
 ## Uninstall
 
