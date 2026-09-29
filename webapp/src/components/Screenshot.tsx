@@ -3,31 +3,35 @@ import { screenshots, type ScreenshotKey } from "@/config/site";
 interface ScreenshotProps {
   shot: ScreenshotKey;
   alt: string;
+  /** Fixed appearance; by default the viewer's (the -dark file under prefers-color-scheme: dark). */
+  appearance?: "light" | "dark";
   className?: string;
-  /** Load immediately instead of lazily; use for the screenshot above the fold. */
-  priority?: boolean;
 }
 
 /**
- * An app screenshot in the viewer's appearance: the -dark variant under
- * prefers-color-scheme: dark, the -light one otherwise. Files are retina
- * captures, so they render at half their pixel size.
+ * An app screenshot. Files are retina captures with the window shadow included,
+ * so they render at half their pixel size.
  */
-export function Screenshot({ shot, alt, className, priority = false }: ScreenshotProps) {
+export function Screenshot({ shot, alt, appearance, className }: ScreenshotProps) {
   const { name, width, height } = screenshots[shot];
+  const img = (
+    // A plain <img> because next/image cannot switch sources by color scheme.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/screenshots/${name}-${appearance ?? "light"}.png`}
+      width={width / 2}
+      height={height / 2}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      className={appearance ? className : undefined}
+    />
+  );
+  if (appearance) return img;
   return (
     <picture className={className}>
       <source media="(prefers-color-scheme: dark)" srcSet={`/screenshots/${name}-dark.png`} />
-      {/* A plain <img> because next/image cannot switch sources by color scheme. */}
-      <img
-        src={`/screenshots/${name}-light.png`}
-        width={width / 2}
-        height={height / 2}
-        alt={alt}
-        loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : undefined}
-        decoding="async"
-      />
+      {img}
     </picture>
   );
 }

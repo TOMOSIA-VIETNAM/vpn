@@ -3,8 +3,15 @@
 
 export type StatusTone = "ok" | "warning" | "error";
 
+/** Glyph beside an alert's title, after the SF Symbol the app uses (AlertStyle in main.swift). */
+export type AlertIcon = "lock" | "networkSlash" | "wifiExclamation";
+
+export type AlertId = "authFailed" | "ikeFailed" | "noResponse" | "offline";
+
 export interface AppAlert {
+  id: AlertId;
   tone: StatusTone;
+  icon: AlertIcon;
   title: string;
   message: string;
   action?: string;
@@ -13,30 +20,44 @@ export interface AppAlert {
 /** Alerts the menu bar app shows for the most common failures. */
 export const appAlerts: readonly AppAlert[] = [
   {
+    id: "authFailed",
     tone: "error",
+    icon: "lock",
     title: "Authentication Failed",
     message: "PPP/CHAP authentication failed: wrong account name or password.",
     action: "Update Password",
   },
   {
+    id: "ikeFailed",
     tone: "error",
+    icon: "networkSlash",
     title: "IKE Handshake Failed",
     message: "IPsec IKE handshake failed: check the shared secret.",
     action: "Try Again",
   },
   {
+    id: "noResponse",
     tone: "warning",
+    icon: "networkSlash",
     title: "Server Not Responding",
     message:
       "The VPN server did not answer. This network may be blocking VPN traffic (UDP 500/4500), or the server is down — try another network.",
     action: "Try Again",
   },
   {
+    id: "offline",
     tone: "warning",
+    icon: "wifiExclamation",
     title: "Waiting for Network…",
     message: "No network — the VPN reconnects once this Mac is back online.",
   },
 ];
+
+export function appAlert(id: AlertId): AppAlert {
+  const alert = appAlerts.find((a) => a.id === id);
+  if (!alert) throw new Error(`No app alert ${id}`);
+  return alert;
+}
 
 /** What the built-in macOS L2TP client reports for most failures. */
 export const builtInAlert = {
@@ -63,8 +84,11 @@ export const demoPublicIp = "203.0.113.24";
  */
 export const demoKeychainItems = ["vpn.psk.office", "vpn.pwd.office.alice"] as const;
 
-/** Connection phases of the popover, as the app names them. */
-export type LinkPhase = "idle" | "connecting" | "reconnecting" | "connected" | "disconnecting";
+/**
+ * Connection phases of the popover, as the app names them. "failed" is the app's
+ * idle state with an alert card showing (header "Connection Failed").
+ */
+export type LinkPhase = "idle" | "connecting" | "reconnecting" | "connected" | "disconnecting" | "failed";
 
 /** Header status word, the hint after it, and its tone, for each phase. */
 export function popoverHeader(phase: LinkPhase, profile: DemoProfile | null) {
@@ -83,6 +107,8 @@ export function popoverHeader(phase: LinkPhase, profile: DemoProfile | null) {
       } as const;
     case "disconnecting":
       return { status: "Disconnecting…", detail: "Restoring your network settings", tone: "warning" } as const;
+    case "failed":
+      return { status: "Connection Failed", detail: "Your traffic is not protected", tone: "error" } as const;
   }
 }
 
@@ -98,6 +124,8 @@ export const popoverLabels = {
   configurations: "Configurations",
   killSwitch: "Kill switch",
   killSwitchDetail: "If a full-tunnel VPN drops, block internet traffic until it reconnects instead of letting it leak.",
+  /** Secondary button on every alert card. */
+  dismiss: "Dismiss",
 } as const;
 
 /** The notifications the app posts when the tunnel drops (kill switch on) and when it is back. */

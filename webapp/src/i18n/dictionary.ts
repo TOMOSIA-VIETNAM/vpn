@@ -3,8 +3,19 @@
 //
 // Inline markup in strings: **text** renders bold; [[text]] marks a label quoted
 // from the app's English UI; {dmg} renders the download link.
+//
+// Copy is written for office staff, not network engineers: say what happens to
+// them, and keep protocol names in the small `detail` lines.
 
 export interface Feature {
+  title: string;
+  /** One plain-language sentence. */
+  body: string;
+  /** Smaller secondary line for the specifics. */
+  detail: string;
+}
+
+export interface Step {
   title: string;
   body: string;
 }
@@ -17,16 +28,19 @@ export interface Dictionary {
   header: {
     homeLabel: string;
     languageLabel: string;
-    github: string;
+    /** Short label of the download button in the header. */
+    download: string;
   };
   hero: {
-    title: string;
+    /** Headline, first line: the problem, shown muted. */
+    titleLead: string;
+    /** Headline, second line: the answer, shown strong. */
+    titleStrong: string;
     lead: string;
     download: string;
     /** {version} is replaced by the minimum macOS version. */
     requirements: string;
-    popoverAlt: string;
-    /** Controls of the promo video playing behind the hero. */
+    /** Controls of the promo video in the hero. */
     video: {
       pause: string;
       play: string;
@@ -34,48 +48,79 @@ export interface Dictionary {
       soundOff: string;
     };
   };
-  problem: {
+  /** Facts band under the hero; the numbers come from the config. */
+  stats: {
+    /** Heading for screen readers only. */
     title: string;
-    /** Why the problem exists: the protocol the company VPN uses. */
-    context: string;
+    switchLabel: string;
+    errorsLabel: string;
+    reconnectLabel: string;
+    macValue: string;
+    /** {version} is replaced by the minimum macOS version. */
+    macLabel: string;
+  };
+  problem: {
+    eyebrow: string;
+    title: string;
     body: string;
+    /** Small print naming the protocol. */
+    detail: string;
+    toggleLabel: string;
     builtInLabel: string;
-    builtInCaption: string;
     appLabel: string;
+    builtInCaption: string;
     appCaption: string;
+    /** What actually went wrong, in the order of appAlerts in config/app-ui.ts. */
+    causes: [string, string, string, string];
+  };
+  /** Scroll story: connect, the Wi-Fi drops, it reconnects, it names an error. */
+  story: {
+    eyebrow: string;
+    title: string;
+    steps: [Step, Step, Step, Step];
   };
   features: {
+    eyebrow: string;
     title: string;
+    lead: string;
     items: {
       menuBar: Feature;
       reconnect: Feature;
       errors: Feature;
+      network: Feature;
       killSwitch: Feature;
-      publicIp: Feature;
       keychain: Feature;
     };
   };
   screens: {
+    eyebrow: string;
     title: string;
-    settingsAlt: string;
-    settingsCaption: string;
     newConfigurationAlt: string;
     newConfigurationCaption: string;
+    settingsAlt: string;
+    settingsCaption: string;
   };
   install: {
+    eyebrow: string;
     title: string;
-    steps: [string, string, string];
-    /** {version} is replaced by the minimum macOS version. */
-    requirement: string;
+    /** Download, drag to Applications, open. */
+    steps: [Step, Step, Step];
+    uninstall: {
+      summary: string;
+      body: string;
+      copy: string;
+      copied: string;
+    };
   };
-  uninstall: {
+  /** Closing download band. */
+  cta: {
     title: string;
     body: string;
-    copy: string;
-    copied: string;
   };
   footer: {
+    tagline: string;
+    github: string;
+    releases: string;
     developers: string;
-    source: string;
   };
 }

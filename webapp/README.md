@@ -31,9 +31,11 @@ the default "Include files outside the Root Directory" setting.
 | `src/config/app-ui.ts` | Text quoted from the app's English UI (alerts, notifications, popover states) and the demo data |
 | `src/components/sections/` | Page sections; `src/app/[locale]/page.tsx` lists them in order |
 | `src/components/motion/` | `RevealObserver`, `Parallax`, `SplitText` |
-| `src/components/HeroVideo.tsx` | Promo video behind the hero, with pause and sound controls |
-| `src/components/PopoverDemo.tsx` | Working replica of the menu bar popover (first feature tile) |
-| `src/app/globals.css` | Design tokens (macOS system colors, light and dark) and all styles |
+| `src/components/HeroVideo.tsx` | Promo video in a window frame under the hero, with pause and sound controls and the scroll growth |
+| `src/components/Popover.tsx`, `Desk.tsx`, `AlertCard.tsx` | Replicas of the app's popover, its desktop (menu bar, notifications) and its alert card, drawn in a given state |
+| `src/components/Compare.tsx`, `StoryScroller.tsx`, `CountUp.tsx` | The interactive parts: before/after toggle, sticky scroll story, counting numbers |
+| `src/components/Icon.tsx` | Line glyphs and the system-colored icon tiles |
+| `src/app/globals.css` | Design tokens (macOS system colors and the wallpaper field, light and dark) and all styles |
 
 Dictionary strings accept `**bold**`, `[[App UI label]]` (kept English and on one
 line) and `{dmg}` (the download link).
@@ -43,8 +45,8 @@ switcher keeps the section being read (`/vi#features`).
 
 ## Motion
 
-No animation library: CSS transitions, one IntersectionObserver and one
-requestAnimationFrame loop. With `prefers-reduced-motion` or without JavaScript,
+No animation library: CSS transitions, IntersectionObservers and
+requestAnimationFrame loops. With `prefers-reduced-motion` or without JavaScript,
 everything renders in its final state and the hero shows the video poster.
 
 - A block marked `data-reveal` that starts below the fold waits hidden
@@ -56,9 +58,13 @@ everything renders in its final state and the hero shows the video poster.
   `data-parallax-range` px (default 16); keep the range below the free space around it.
 - The hero video (`promoVideo()` in `src/config/site.ts`) plays muted and looping,
   pauses off screen, and gets the 720p file on narrow screens. Locales without their
-  own edition use the Vietnamese one.
-- The popover demo plays a connect, drop and reconnect once when it comes into view;
-  its switches work.
+  own edition use the Vietnamese one. Its frame scales up toward the full viewport
+  width as the page scrolls (transform only); the stage under it reserves the room.
+- The stats count up once when they scroll into view.
+- The before/after toggle starts on the built-in VPN and switches to TOMOSIA VPN once,
+  after it scrolls into view; a click stops that. Its rendered default is TOMOSIA VPN.
+- The story's sticky desk takes the state of the step crossing the middle of the
+  viewport. Below 1000px each step card carries its own desk instead.
 
 ## Add a locale
 

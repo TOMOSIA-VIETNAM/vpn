@@ -6,25 +6,25 @@ import { DownloadButton } from "../DownloadButton";
 import { HeroVideo } from "../HeroVideo";
 
 /**
- * Hero over the promo video. It is on screen at load, so nothing in it waits for a
- * reveal: text and poster are complete on first paint, and the video fades in over
- * the poster once it plays.
+ * Centred headline on the wallpaper field, then the promo video in a window frame.
+ * It is on screen at load, so nothing in it waits for a reveal: text and poster
+ * are complete on first paint.
  */
 export function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const video = promoVideo(locale);
   preload(video.poster, { as: "image", fetchPriority: "high" });
+  const t = dict.hero;
 
   return (
-    <section className="hero" aria-labelledby="hero-title">
-      <HeroVideo sources={video} labels={dict.hero.video} />
-      <div className="hero__scrim" aria-hidden="true" />
-      <div className="container hero__inner" data-parallax="-0.08" data-parallax-range="60">
+    <section className="hero field" aria-labelledby="hero-title">
+      <div className="container hero__inner">
         <h1 id="hero-title" className="hero__title">
-          {dict.hero.title}
+          <span className="hero__title-lead">{t.titleLead}</span> <span className="hero__title-strong">{t.titleStrong}</span>
         </h1>
-        <p className="hero__lead">{dict.hero.lead}</p>
+        <p className="hero__lead">{t.lead}</p>
         <DownloadButton dict={dict} />
       </div>
+      <HeroVideo sources={video} labels={t.video} />
     </section>
   );
 }

@@ -8,6 +8,7 @@ export const site = {
   name: "TOMOSIA VPN",
   company: "TOMOSIA VIET NAM",
   repoUrl: `https://github.com/${repoSlug}`,
+  releasesUrl: `https://github.com/${repoSlug}/releases`,
   contributingUrl: `https://github.com/${repoSlug}/blob/main/CONTRIBUTING.md`,
   // Stable across releases: GitHub redirects /latest/download/<asset> to the newest release.
   downloadUrl: `https://github.com/${repoSlug}/releases/latest/download/TOMOSIA-VPN.dmg`,

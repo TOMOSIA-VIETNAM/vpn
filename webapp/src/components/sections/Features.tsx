@@ -1,100 +1,139 @@
 import type { ReactNode } from "react";
 import {
-  appAlerts,
+  appAlert,
   appNotifications,
   demoKeychainItems,
   demoProfiles,
-  demoPublicIp,
+  popoverHeader,
   popoverLabels,
 } from "@/config/app-ui";
+import { site } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
 import { localeInfo, type Locale } from "@/i18n/locales";
+import { AlertCard } from "../AlertCard";
+import { Icon, IconTile, type IconName, type TileColor } from "../Icon";
+import { Mark } from "../Mark";
 import { SplitText } from "../motion/SplitText";
 import { stagger } from "../motion/stagger";
 import { Notification } from "../Notification";
-import { PopoverDemo } from "../PopoverDemo";
+import { ProfileList, PublicIpCard } from "../Popover";
 import { RichText } from "../RichText";
 
 type FeatureKey = keyof Dictionary["features"]["items"];
 
 const office = demoProfiles[0];
 const notices = appNotifications(office);
+const reconnecting = popoverHeader("reconnecting", office);
 
-// A piece of the real app shown in each feature tile.
-function visuals(dict: Dictionary): Record<FeatureKey, ReactNode> {
-  return {
-    menuBar: <PopoverDemo label={dict.hero.popoverAlt} year={new Date().getFullYear()} />,
-    reconnect: (
-      <div className="tile__notices" aria-hidden="true">
-        <Notification {...notices.lost} className="tile__notice" style={stagger(1)} />
-        <Notification {...notices.back} className="tile__notice" style={stagger(2)} />
+// Tile order, glyph and system color; the grid in globals.css gives each position its size.
+const tiles: { key: FeatureKey; icon: IconName; color: TileColor }[] = [
+  { key: "menuBar", icon: "switch", color: "blue" },
+  { key: "reconnect", icon: "reconnect", color: "green" },
+  { key: "errors", icon: "alert", color: "red" },
+  { key: "killSwitch", icon: "shield", color: "indigo" },
+  { key: "network", icon: "network", color: "orange" },
+  { key: "keychain", icon: "lock", color: "gray" },
+];
+
+// A piece of the real app in each tile, on a small wallpaper tinted with the tile's color.
+const visuals: Record<FeatureKey, ReactNode> = {
+  menuBar: (
+    <div className="mini-popover">
+      <div className="mini-popover__bar">
+        <Mark style="solid" size={14} />
       </div>
-    ),
-    errors: (
-      <ul className="tile__alerts" aria-hidden="true" lang="en">
-        {appAlerts.slice(0, 3).map((alert) => (
-          <li key={alert.title}>
-            <span className={`status-dot status-dot--${alert.tone}`} />
-            {alert.title}
-          </li>
-        ))}
-      </ul>
-    ),
-    killSwitch: (
-      <div className="tile__setting" aria-hidden="true" lang="en">
-        <span>{popoverLabels.killSwitch}</span>
-        <span className="switch switch--static tile__kill-switch">
-          <span className="switch__knob" />
-        </span>
-      </div>
-    ),
-    publicIp: (
-      <div className="tile__ip" aria-hidden="true" lang="en">
-        <span className="tile__ip-label">{popoverLabels.publicIp}</span>
-        <span className="tile__ip-value">{demoPublicIp}</span>
-      </div>
-    ),
-    keychain: (
-      <ul className="tile__keychain" aria-hidden="true" lang="en">
+      <PublicIpCard open />
+      <ProfileList phase="connected" active="office" />
+    </div>
+  ),
+  reconnect: (
+    <div className="timeline">
+      <Notification {...notices.lost} className="timeline__event" />
+      <p className="timeline__status">
+        <span className="status-dot status-dot--warning is-pulsing" />
+        {reconnecting.status}
+      </p>
+      <Notification {...notices.back} className="timeline__event" />
+    </div>
+  ),
+  errors: (
+    <div className="deck">
+      <span className="deck__card deck__card--back2" />
+      <span className="deck__card deck__card--back1" />
+      <AlertCard alert={appAlert("noResponse")} className="deck__front" />
+    </div>
+  ),
+  killSwitch: (
+    <div className="setting-row">
+      <span className="setting-row__text">
+        <span className="setting-row__title">{popoverLabels.killSwitch}</span>
+        <span className="setting-row__detail">{popoverLabels.killSwitchDetail}</span>
+      </span>
+      <span className="switch is-on">
+        <span className="switch__knob" />
+      </span>
+    </div>
+  ),
+  network: (
+    <div className="waiting">
+      <Icon name="wifiExclamation" size={44} className="waiting__glyph" />
+      <p className="waiting__status">
+        <span className="status-dot status-dot--warning is-pulsing" />
+        {appAlert("offline").title}
+      </p>
+      <p className="waiting__detail">{office.title}</p>
+    </div>
+  ),
+  keychain: (
+    <div className="keychain">
+      <Icon name="lock" size={40} className="keychain__lock" />
+      <ul className="keychain__items">
         {demoKeychainItems.map((item) => (
           <li key={item}>
-            <svg viewBox="0 0 20 20" width="16" height="16">
-              <circle cx="7" cy="10" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M10.6 10H17.5M15 10v2.6M17.5 10v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-            {item}
+            <Icon name="key" size={18} className="keychain__key" />
+            <span className="keychain__name">{item}</span>
+            <span className="keychain__where">{site.name}</span>
           </li>
         ))}
       </ul>
-    ),
-  };
-}
+    </div>
+  ),
+};
 
-// Tile order; the grid in globals.css gives each position its size.
-const order: FeatureKey[] = ["menuBar", "reconnect", "errors", "killSwitch", "publicIp", "keychain"];
-
-/** Features as a bento grid of tiles, each with a small piece of the real app. */
+/** Features as a bento grid; every tile has an icon, a plain-language line and a visual. */
 export function Features({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const tileVisuals = visuals(dict);
+  const t = dict.features;
   return (
-    <section id="features" className="section" aria-labelledby="features-title">
+    <section id="features" className="section section--alt" aria-labelledby="features-title">
       <div className="container">
-        <h2 id="features-title" className="section__title split" data-reveal>
-          <SplitText text={dict.features.title} byWord={localeInfo[locale].splitWords} />
-        </h2>
+        <div className="section__head section__head--split" data-reveal>
+          <div>
+            <p className="eyebrow eyebrow--blue" data-item style={stagger(0)}>
+              {t.eyebrow}
+            </p>
+            <h2 id="features-title" className="section__title split">
+              <SplitText text={t.title} byWord={localeInfo[locale].splitWords} start={1} />
+            </h2>
+          </div>
+          <p className="section__lead" data-item style={stagger(4)}>
+            {t.lead}
+          </p>
+        </div>
         <ul className="bento" data-reveal>
-          {order.map((key, i) => {
-            const feature = dict.features.items[key];
+          {tiles.map(({ key, icon, color }, i) => {
+            const feature = t.items[key];
             return (
-              <li key={key} className={`tile tile--${key}`} data-item style={stagger(i)}>
+              <li key={key} className={`tile tile--${key} tile--${color}`} data-item style={stagger(i)}>
                 <div className="tile__text">
+                  <IconTile name={icon} color={color} />
                   <h3 className="tile__title">{feature.title}</h3>
-                  <p className="tile__body">
-                    <RichText text={feature.body} />
+                  <p className="tile__body">{feature.body}</p>
+                  <p className="tile__detail">
+                    <RichText text={feature.detail} />
                   </p>
                 </div>
-                <div className="tile__visual" data-parallax={key === "menuBar" ? "0.06" : "0.03"}>
-                  {tileVisuals[key]}
+                <div className="tile__visual" aria-hidden="true">
+                  {visuals[key]}
                 </div>
               </li>
             );
