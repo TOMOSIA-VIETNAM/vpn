@@ -8,21 +8,28 @@
   <b>Tiếng Việt</b> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
 </p>
 
-Yêu cầu: macOS 12 trở lên.
+<p align="center">
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest"><img src="https://img.shields.io/github/v/release/TOMOSIA-VIETNAM/vpn?label=release&color=blue" alt="Latest release" /></a>
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/TOMOSIA-VIETNAM/vpn/test.yml?branch=main&label=tests" alt="Tests" /></a>
+  <img src="https://img.shields.io/badge/macOS-12%2B-black?logo=apple" alt="macOS 12+" />
+  <img src="https://img.shields.io/badge/Apple%20Silicon%20%7C%20Intel-universal-555" alt="Apple Silicon and Intel" />
+  <img src="https://img.shields.io/badge/L2TP%2FIPsec-VPN-555" alt="L2TP/IPsec" />
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshot-dark.png" />
+    <img src="assets/screenshot-light.png" width="412" alt="TOMOSIA VPN trên thanh Menu Bar" />
+  </picture>
+</p>
 
 ## Cài đặt
 
 1. Tải [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
 2. Mở file, kéo **TOMOSIA VPN** vào **Applications**.
-3. Mở app (nếu macOS chặn: chuột phải vào app → **Open**). Nhập mật khẩu máy khi được hỏi, chọn **Allow** khi app xin gửi thông báo.
+3. Mở app (nếu macOS chặn: chuột phải vào app → **Open**).
 
-## Sử dụng
-
-1. Click biểu tượng TOMOSIA VPN trên Menu Bar → bấm **+**.
-2. Nhập server, tài khoản, mật khẩu và shared secret do quản trị mạng cung cấp → **Create**.
-3. Bật công tắc để kết nối, tắt để ngắt.
-
-Biểu tượng có dấu `!` nghĩa là có lỗi: mở app để xem nguyên nhân.
+Yêu cầu macOS 12 trở lên.
 
 ## Gỡ cài đặt
 
