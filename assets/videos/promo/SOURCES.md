@@ -4,7 +4,7 @@ Every claim spoken or shown in the video, and where it comes from. Paths are rel
 
 | Claim | Source |
 |---|---|
-| TOMOSIA VPN is a menu bar L2TP/IPsec client for macOS 12+, Apple Silicon and Intel | `README.md`, `README.en.md` (badges and requirements) |
+| TOMOSIA VPN is a menu bar L2TP/IPsec client for macOS 12+, Apple Silicon and Intel | `README.md`, `README.vi.md` (badges and requirements) |
 | The company VPN uses L2TP over IPsec with a shared secret | `internal/ike/`, `internal/l2tp/`; "L2TP over IPsec" in the New Configuration sheet (`assets/screenshots/new-configuration-*.png`) |
 | One switch per configuration in the menu bar popover | `assets/screenshots/popover-*.png`; `main.swift` (popover view) |
 | "Not Connected" / "Connected" status text | `main.swift`, `Theme.statusText` |

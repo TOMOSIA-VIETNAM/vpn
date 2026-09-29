@@ -5,7 +5,7 @@
 <h1 align="center">TOMOSIA VPN</h1>
 
 <p align="center">
-  <a href="README.md">Tiếng Việt</a> · <b>English</b> · <a href="README.ja.md">日本語</a>
+  <a href="README.md">English</a> · <b>Tiếng Việt</b> · <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -19,30 +19,30 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
-    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN in the menu bar" />
+    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN trên thanh Menu Bar" />
   </picture>
 </p>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
-    <img src="assets/screenshots/settings-light.png" width="360" alt="Settings" />
+    <img src="assets/screenshots/settings-light.png" width="360" alt="Cài đặt" />
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
-    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Adding a VPN configuration" />
+    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Thêm cấu hình VPN" />
   </picture>
 </p>
 
-## Install
+## Cài đặt
 
-1. Download [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
-2. Open it and drag **TOMOSIA VPN** into **Applications**.
-3. Open the app (if macOS blocks it: right-click the app → **Open**).
+1. Tải [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
+2. Mở file, kéo **TOMOSIA VPN** vào **Applications**.
+3. Mở app (nếu macOS chặn: chuột phải vào app → **Open**).
 
-Requires macOS 12 or later.
+Yêu cầu macOS 12 trở lên.
 
-## Uninstall
+## Gỡ cài đặt
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/uninstall.sh | bash
@@ -50,4 +50,4 @@ curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/uninstall.
 
 ---
 
-For developers: [CONTRIBUTING.md](CONTRIBUTING.md).
+Dành cho người phát triển: [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -5,7 +5,7 @@
 <h1 align="center">TOMOSIA VPN</h1>
 
 <p align="center">
-  <b>Tiếng Việt</b> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
+  <b>English</b> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -19,30 +19,30 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
-    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN trên thanh Menu Bar" />
+    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN in the menu bar" />
   </picture>
 </p>
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
-    <img src="assets/screenshots/settings-light.png" width="360" alt="Cài đặt" />
+    <img src="assets/screenshots/settings-light.png" width="360" alt="Settings" />
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
-    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Thêm cấu hình VPN" />
+    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Adding a VPN configuration" />
   </picture>
 </p>
 
-## Cài đặt
+## Install
 
-1. Tải [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
-2. Mở file, kéo **TOMOSIA VPN** vào **Applications**.
-3. Mở app (nếu macOS chặn: chuột phải vào app → **Open**).
+1. Download [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
+2. Open it and drag **TOMOSIA VPN** into **Applications**.
+3. Open the app (if macOS blocks it: right-click the app → **Open**).
 
-Yêu cầu macOS 12 trở lên.
+Requires macOS 12 or later.
 
-## Gỡ cài đặt
+## Uninstall
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/uninstall.sh | bash
@@ -50,4 +50,4 @@ curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/uninstall.
 
 ---
 
-Dành cho người phát triển: [CONTRIBUTING.md](CONTRIBUTING.md).
+For developers: [CONTRIBUTING.md](CONTRIBUTING.md).
