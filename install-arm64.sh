@@ -4,4 +4,4 @@
 # over install.sh, which holds the one real install procedure.
 # ==============================================================================
 set -euo pipefail
-curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install.sh | VPN_ARCH=arm64 bash
+curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install.sh | VPN_ARCH=arm64 bash

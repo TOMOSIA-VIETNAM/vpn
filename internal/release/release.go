@@ -30,7 +30,7 @@ import (
 // repository's RELEASE_SIGNING_KEY Actions secret (base64 of the 32-byte
 // ed25519 seed — see cmd/releasesign keygen). Rotating the key means
 // shipping one release signed by the old key that carries the new one.
-const PublicKey = "Rmq0PrjOcajdr8764NjTBwKVTrG/jBSy0GZf/iIhGEE="
+const PublicKey = "k1pto5sjuH6enZg6r8/kQfm/7mboNyuxLnr184Y5U70="
 
 const (
 	ManifestName  = "SHA256SUMS"

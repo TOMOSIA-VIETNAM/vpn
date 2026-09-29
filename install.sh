@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-BASE_URL="https://github.com/tms-ninhle/vpn/releases/latest/download"
+BASE_URL="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download"
 INSTALL_PATH="/usr/local/bin/vpn"
 OWNER_FILE="/etc/vpn-owner-uid"
 APP_DIR="/Applications/TMS VPN.app"

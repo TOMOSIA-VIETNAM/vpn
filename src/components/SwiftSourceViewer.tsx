@@ -1410,9 +1410,9 @@ export const SwiftSourceViewer: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
 
-  const curlAuto = 'curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install.sh | bash';
-  const curlArm = 'curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install-arm64.sh | bash';
-  const curlIntel = 'curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install-intel.sh | bash';
+  const curlAuto = 'curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install.sh | bash';
+  const curlArm = 'curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-arm64.sh | bash';
+  const curlIntel = 'curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-intel.sh | bash';
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
