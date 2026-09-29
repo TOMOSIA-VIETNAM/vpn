@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Packs "TMS VPN.app" into a drag-to-Applications disk image.
+# Packs TOMOSIA-VPN.app into a drag-to-Applications disk image.
 #
 #   ./make-dmg.sh                 build the app first (build.sh), then the .dmg
 #   VERSION=1.2.3 ./make-dmg.sh
-#   OUT=path/to/TMS-VPN.dmg ./make-dmg.sh
+#   OUT=path/to/TOMOSIA-VPN.dmg ./make-dmg.sh
 #
-# Output: build/TMS-VPN.dmg (the fixed name lets install links use
-# releases/latest/download/TMS-VPN.dmg). The window layout (app icon → Applications
+# Output: build/TOMOSIA-VPN.dmg (the fixed name lets install links use
+# releases/latest/download/TOMOSIA-VPN.dmg). The window layout (app icon → Applications
 # shortcut) is set through Finder when a desktop session is available, and skipped
 # quietly otherwise (CI), leaving a plain but working image.
 # ==============================================================================
@@ -15,9 +15,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 BUILD_DIR="${BUILD_DIR:-./build}"
-APP_NAME="TMS VPN.app"
+APP_NAME="TOMOSIA-VPN.app"
 VOL_NAME="TOMOSIA VPN"
-OUT="${OUT:-$BUILD_DIR/TMS-VPN.dmg}"
+OUT="${OUT:-$BUILD_DIR/TOMOSIA-VPN.dmg}"
 
 if [[ ! -d "$BUILD_DIR/$APP_NAME" ]]; then
     BUILD_DIR="$BUILD_DIR" bash ./build.sh
@@ -35,7 +35,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "💿 Chuẩn bị nội dung đĩa..."
+echo "==> Staging disk image contents"
 ditto "$BUILD_DIR/$APP_NAME" "$STAGE/$APP_NAME"
 ln -s /Applications "$STAGE/Applications"
 cp assets/AppIcon.icns "$STAGE/.VolumeIcon.icns"
@@ -48,7 +48,7 @@ MOUNT="$(hdiutil attach "$RW" -readwrite -noverify -noautoopen | awk -F'\t' '/\/
 SetFile -a C "$MOUNT" 2>/dev/null || true # show the custom volume icon
 
 if [[ -z "${CI:-}" ]]; then
-    echo "🎨 Sắp xếp cửa sổ cài đặt (bỏ qua nếu Finder không phản hồi)..."
+    echo "==> Arranging the installer window (skipped if Finder does not respond)"
     ( osascript <<OSA >/dev/null 2>&1
 tell application "Finder"
   tell disk "$VOL_NAME"
@@ -82,4 +82,4 @@ MOUNT=""
 
 rm -f "$OUT"
 hdiutil convert "$RW" -quiet -format UDZO -imagekey zlib-level=9 -o "$OUT"
-echo "✅ Đã tạo: $OUT ($(du -h "$OUT" | awk '{print $1}'))"
+echo "Built disk image: $OUT ($(du -h "$OUT" | awk '{print $1}'))"

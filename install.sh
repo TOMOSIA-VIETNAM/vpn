@@ -16,8 +16,11 @@ set -euo pipefail
 BASE_URL="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download"
 INSTALL_PATH="/usr/local/bin/vpn"
 OWNER_FILE="/etc/vpn-owner-uid"
-APP_DIR="/Applications/TMS VPN.app"
-APP_ASSET="TMS-VPN.app.zip"
+APP_DIR="/Applications/TOMOSIA-VPN.app"
+APP_ASSET="TOMOSIA-VPN.app.zip"
+# Where releases before the rename to TOMOSIA-VPN installed the app; removed on
+# install so an upgraded Mac does not keep two copies in the menu bar.
+LEGACY_APP_DIR="/Applications/TMS VPN.app"
 
 ARCH="${VPN_ARCH:-}"
 if [ -z "$ARCH" ]; then
@@ -63,14 +66,12 @@ verify_sha256() {
   fi
 }
 
-echo "=================================================="
-echo "🛡️  INSTALLING TOMOSIA VPN (CLI & MENU BAR UI, $ARCH)"
-echo "=================================================="
+echo "Installing TOMOSIA VPN ($ARCH)"
 
 curl -fsSL -o "$DOWNLOAD/SHA256SUMS" "$BASE_URL/SHA256SUMS"
 
 # --- Step 1: Install `vpn` CLI Backend (setuid-root) ---
-echo "📦 [1/2] Downloading VPN CLI engine ($CLI_ASSET)..."
+echo "==> [1/2] Downloading CLI ($CLI_ASSET)"
 curl -fsSL -o "$DOWNLOAD/$CLI_ASSET" "$BASE_URL/$CLI_ASSET"
 # Copy into a root-owned directory *before* verifying: the download
 # directory is writable by this user, so anything checked there could be
@@ -88,28 +89,33 @@ sudo chown root:wheel "$OWNER_FILE"
 sudo chmod 600 "$OWNER_FILE"
 sudo chmod 755 /var/run/vpn 2>/dev/null || true
 sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
-echo "  -> CLI Installed: $INSTALL_PATH ($("$INSTALL_PATH" version))"
+echo "    Installed CLI: $INSTALL_PATH ($("$INSTALL_PATH" version))"
 
 # --- Step 2: Install Menu Bar UI (prebuilt universal app) ---
 # Runs as this user, not setuid, so verifying in the user's own download
 # directory is enough here.
-echo "🎨 [2/2] Installing TOMOSIA VPN Menu Bar UI..."
+echo "==> [2/2] Installing menu bar app"
 if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
   verify_sha256 "$DOWNLOAD/$APP_ASSET" "$APP_ASSET"
+  if [ -d "$LEGACY_APP_DIR" ]; then
+    killall "TMS VPN" 2>/dev/null || true
+    rm -rf "$LEGACY_APP_DIR" 2>/dev/null || sudo rm -rf "$LEGACY_APP_DIR"
+  fi
+  # Quit a running copy first, or it keeps running from the deleted bundle and the
+  # new launch below adds a second status item.
+  killall "TOMOSIA-VPN" 2>/dev/null || true
   rm -rf "$APP_DIR"
   # ditto (not unzip) restores the bundle exactly as the release workflow
   # packed it (`ditto -c` — see .github/workflows/release.yml), keeping
   # its executable bits and resource forks intact.
   ditto -x -k "$DOWNLOAD/$APP_ASSET" "$(dirname "$APP_DIR")"
-  echo "  -> UI Installed to $APP_DIR"
+  echo "    Installed app: $APP_DIR"
 else
-  echo "⚠️  Could not download Menu Bar UI from $BASE_URL/$APP_ASSET — is a release published yet?"
+  echo "warning: could not download the menu bar app from $BASE_URL/$APP_ASSET — is a release published yet?" >&2
 fi
 
-echo "=================================================="
-echo "🎉 SUCCESS: TOMOSIA VPN Engine & Menu Bar UI Installed!"
-echo "👉 Menu Bar App: $APP_DIR"
-echo "👉 CLI Engine: $INSTALL_PATH"
-echo "=================================================="
+echo "TOMOSIA VPN installed."
+echo "  CLI: $INSTALL_PATH"
+echo "  App: $APP_DIR"
 
 open -a "$APP_DIR" 2>/dev/null || true

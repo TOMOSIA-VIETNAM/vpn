@@ -82,18 +82,24 @@ func cmdUpdate(args []string) error {
 	}
 
 	fmt.Printf("Updated to %s.\n", version)
-	if appInstalled() {
+	if _, ok := installedApp(); ok {
 		fmt.Println("This updates the CLI only — to update the TOMOSIA VPN menu bar app too, re-run install.sh.")
 	}
 	return nil
 }
 
-// menuBarApp is where install.sh puts the menu bar app.
-const menuBarApp = "/Applications/TMS VPN.app"
+// menuBarApps are where install.sh puts the menu bar app, current name first, then the
+// name used before the rename to TOMOSIA-VPN (still present on Macs not reinstalled since).
+var menuBarApps = []string{"/Applications/TOMOSIA-VPN.app", "/Applications/TMS VPN.app"}
 
-func appInstalled() bool {
-	_, err := os.Stat(menuBarApp)
-	return err == nil
+// installedApp returns the path of the installed menu bar app, if any.
+func installedApp() (string, bool) {
+	for _, app := range menuBarApps {
+		if _, err := os.Stat(app); err == nil {
+			return app, true
+		}
+	}
+	return "", false
 }
 
 // downloadVerified fetches the signed manifest, its signature and the asset
