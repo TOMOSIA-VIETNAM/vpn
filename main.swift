@@ -865,7 +865,8 @@ enum Theme {
     static let connected = Color(nsColor: .systemGreen)
     static let connecting = Color(nsColor: .systemOrange)
     static let danger = Color(nsColor: .systemRed)
-    static let accent = Color.accentColor
+    /// The user's system accent color, not tied to whether the window is key.
+    static let accent = Color(nsColor: .controlAccentColor)
 
     static let primaryText = Color(nsColor: .labelColor)
     static let secondaryText = Color(nsColor: .secondaryLabelColor)
@@ -988,6 +989,33 @@ struct IconButton: View {
         .focusable(false)
         .help(help)
         .onHover { hovering = $0 }
+    }
+}
+
+/// On/off switch for a connection. Drawn by hand because the stock switch turns gray
+/// whenever its window is not key, which a popover often is not (for example right after
+/// it opens, or while another app has focus), so a live connection looked switched off.
+struct ConnectSwitch: View {
+    var isOn: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Capsule()
+                    .fill(isOn ? Theme.accent : Color.primary.opacity(0.15))
+                Circle()
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.25), radius: 1, y: 0.5)
+                    .padding(2)
+                    .offset(x: isOn ? 7 : -7)
+            }
+            .frame(width: 32, height: 18)
+            .contentShape(Capsule())
+            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isOn)
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
     }
 }
 
@@ -1170,15 +1198,8 @@ struct ProfileCardRow: View {
 
             Spacer(minLength: 8)
 
-            Toggle("", isOn: Binding(
-                get: { state != .idle },
-                set: { _ in vpn.toggleConnect(profile: profile) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .labelsHidden()
-            .focusable(false)
-            .help(state == .idle ? "Connect" : "Disconnect")
+            ConnectSwitch(isOn: state != .idle) { vpn.toggleConnect(profile: profile) }
+                .help(state == .idle ? "Connect" : "Disconnect")
 
             CustomMenuButton(profileTitle: profile.title, locked: locked, onEdit: onEdit, onDelete: onDelete)
         }
@@ -2030,8 +2051,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             MainActor.assumeIsolated {
                 VPNManager.shared.syncFromDisk()
             }
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // Activate first and make the popover key, so its controls draw in their
+            // active state from the first frame instead of after the first click.
             NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
         }
     }
 }
