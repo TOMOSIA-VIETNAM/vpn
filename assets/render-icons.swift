@@ -5,6 +5,7 @@
 // Writes next to this file, into assets/:
 //   AppIcon.icns                          .app icon (black tile, white mark)
 //   logo.png                              the same tile without margin, for the popover header and README
+//                                         (also written to docs/logo.png for the landing page)
 //   menubar-idle.png / @2x                status item template image, outline mark (disconnected)
 //   menubar-connected.png / @2x           status item template image, solid mark (connected)
 //
@@ -131,7 +132,9 @@ for (name, style) in [("menubar-idle", MarkStyle.outline), ("menubar-connected",
     }
 }
 
-try write(render(pixels: 256) { drawTile(in: $0, margin: 0) }, "logo.png")
+let logo = render(pixels: 256) { drawTile(in: $0, margin: 0) }
+try write(logo, "logo.png")
+try write(logo, "logo.png", in: assets.deletingLastPathComponent().appendingPathComponent("docs"))
 
 let iconset = FileManager.default.temporaryDirectory.appendingPathComponent("AppIcon.iconset")
 try? FileManager.default.removeItem(at: iconset)

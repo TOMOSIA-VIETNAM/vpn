@@ -48,8 +48,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # Also compiles the CLI that build.sh bundles into the app.
       - name: Build TOMOSIA-VPN.app
         run: bash build.sh
+
+      - name: Build TOMOSIA-VPN.dmg
+        run: bash make-dmg.sh
 
       - name: Zip the app bundle
         run: ditto -c -k --sequesterRsrc --keepParent build/TOMOSIA-VPN.app TOMOSIA-VPN.app.zip

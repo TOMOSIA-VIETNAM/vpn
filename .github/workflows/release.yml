@@ -59,19 +59,24 @@ jobs:
           done
 
       - name: Build TOMOSIA-VPN.app (universal — arm64 + Intel)
-        run: bash build.sh
+        run: VERSION="${GITHUB_REF_NAME#v}" bash build.sh
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.
       - name: Zip the app bundle
         run: ditto -c -k --sequesterRsrc --keepParent build/TOMOSIA-VPN.app TOMOSIA-VPN.app.zip
 
+      # Drag-to-Applications disk image for people who don't use the install script.
+      # The app inside carries the CLI and installs it on first launch.
+      - name: Build TOMOSIA-VPN.dmg
+        run: bash make-dmg.sh && cp build/TOMOSIA-VPN.dmg TOMOSIA-VPN.dmg
+
       - name: Sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
           go run ./cmd/releasesign sign -version "$GITHUB_REF_NAME" -out . \
-            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip
+            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg
 
       # gh is preinstalled on GitHub runners — no third-party release action.
       # Immutable releases only accept assets while draft, so upload into a
@@ -81,7 +86,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip SHA256SUMS SHA256SUMS.sig \
+            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig \
             --draft --verify-tag --title "$GITHUB_REF_NAME" \
             --notes "Built from ${GITHUB_SHA}. SHA256SUMS is signed with ed25519 (SHA256SUMS.sig)."
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

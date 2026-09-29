@@ -17,6 +17,12 @@ enum AppBranding {
     static let menuBarIdle: NSImage = template("menubar-idle", fallback: "shield")
     static let menuBarConnected: NSImage = template("menubar-connected", fallback: "shield.fill")
 
+    // Stamped into Info.plist by build.sh from the release tag; nil when run
+    // outside a bundle (e.g. a bare swiftc build), so the footer omits it.
+    static let version: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+    /// The current year, read from the system clock each launch.
+    static let copyright: String = "© \(Calendar.current.component(.year, from: Date())) TOMOSIA VIET NAM"
+
     private static func template(_ name: String, fallback symbol: String) -> NSImage {
         let image = Bundle.main.image(forResource: name)
             ?? NSImage(systemSymbolName: symbol, accessibilityDescription: AppBranding.name)
@@ -84,7 +90,15 @@ enum VPNAlertKind {
     case authFailed
     case ikeFailed
     case routeFailed
+    case processStopped
     case generic
+}
+
+/// A short, non-error outcome of something the user did (saved, blocked, removed).
+struct VPNNotice: Equatable {
+    enum Level { case success, info, error }
+    var level: Level
+    var message: String
 }
 
 struct VPNAlertInfo: Equatable {
@@ -119,6 +133,11 @@ final class VPNManager: ObservableObject {
     @Published var currentTunDevice: String = ""
     @Published var errorMessage: String?
     @Published var activeAlert: VPNAlertInfo?
+    /// Feedback for profile edits/deletes; clears itself after a few seconds.
+    @Published var notice: VPNNotice?
+    /// The user turned the VPN off and the daemon has not finished tearing down yet.
+    @Published var isDisconnecting: Bool = false
+    private var noticeWorkItem: DispatchWorkItem?
     var onStatusChanged: ((String) -> Void)?
     private var pollTimer: Timer?
     private var retryWorkItem: DispatchWorkItem?
@@ -319,6 +338,12 @@ final class VPNManager: ObservableObject {
 
         if daemonGone {
             update(\.errorMessage, "The VPN process stopped unexpectedly. Turn the VPN on again to restore protection.")
+            update(\.activeAlert, VPNAlertInfo(
+                kind: .processStopped,
+                title: "VPN Stopped Unexpectedly",
+                message: "The VPN process quit, so your traffic is no longer protected. Turn the VPN on again to reconnect.",
+                detail: ""
+            ))
             // A dead daemon can leave routes behind — with the kill switch, blocked ones. Clean up
             // once, in the background; `repair` refuses to touch a live connection.
             if !repairedStaleDaemon {
@@ -340,6 +365,7 @@ final class VPNManager: ObservableObject {
         update(\.currentPhase, phase)
         update(\.isConnected, phase == "CONNECTED")
         update(\.isConnecting, phase == "CONNECTING")
+        update(\.isDisconnecting, pendingIntent?.phase == "DISCONNECTED")
         update(\.currentIP, localIP)
         update(\.currentTunDevice, tunDev)
 
@@ -524,6 +550,7 @@ final class VPNManager: ObservableObject {
         update(\.currentPhase, phase)
         update(\.isConnecting, phase == "CONNECTING")
         update(\.isConnected, false)
+        update(\.isDisconnecting, phase == "DISCONNECTED")
         update(\.activeAlert, nil)
         if let profile = profile {
             update(\.activeProfileName, profile)
@@ -543,6 +570,7 @@ final class VPNManager: ObservableObject {
     private func endIntent(_ id: Int) {
         if pendingIntent?.id == id {
             pendingIntent = nil
+            update(\.isDisconnecting, false)
         }
         syncFromDisk()
     }
@@ -687,32 +715,135 @@ final class VPNManager: ObservableObject {
         }
     }
 
+    // MARK: Profile edits
+
+    /// Editing or deleting a profile under a live tunnel would change the server, account
+    /// or secrets it is running from, so both are refused until it is disconnected. The
+    /// CLI enforces the same rule; this check just explains it before anything is run.
+    func isLocked(_ profile: VPNProfileItem) -> Bool {
+        profile.isConnected || profile.isConnecting
+            || (activeProfileName == profile.name && (isConnected || isConnecting))
+    }
+
+    func showNotice(_ level: VPNNotice.Level, _ message: String) {
+        noticeWorkItem?.cancel()
+        update(\.notice, VPNNotice(level: level, message: message))
+        let work = DispatchWorkItem { [weak self] in self?.update(\.notice, nil) }
+        noticeWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + (level == .error ? 8 : 4), execute: work)
+    }
+
+    func dismissNotice() {
+        noticeWorkItem?.cancel()
+        update(\.notice, nil)
+    }
+
     func deleteProfile(name: String) {
+        guard let profile = profiles.first(where: { $0.name == name }) else { return }
+        if isLocked(profile) {
+            showNotice(.error, "Can't delete \"\(profile.title)\" while it is connected. Turn the VPN off first.")
+            return
+        }
         let cli = self.cli
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            Self.run(cli, ["profile", "remove", name])
-            Task { @MainActor in self?.syncFromDisk() }
+            let result = Self.runCapturing(cli, ["profile", "remove", name])
+            Task { @MainActor in
+                self?.syncFromDisk()
+                if result.ok {
+                    self?.showNotice(.success, "Deleted \"\(profile.title)\".")
+                } else {
+                    self?.showNotice(.error, "Couldn't delete \"\(profile.title)\": \(result.message)")
+                }
+            }
         }
     }
 
     /// `name` is the profile key; `displayName` the label shown in the app (edits only).
+    /// When editing, an empty `psk` / `password` means "keep the stored one" — the host,
+    /// username and tunnel mode can change without re-entering either secret.
     func saveProfile(name: String, displayName: String? = nil, server: String, user: String, psk: String, password: String, isFullTunnel: Bool, isNew: Bool) {
+        if !isNew, let profile = profiles.first(where: { $0.name == name }), isLocked(profile) {
+            showNotice(.error, "Can't edit \"\(profile.title)\" while it is connected. Turn the VPN off first.")
+            return
+        }
+        let label = (displayName?.isEmpty == false ? displayName : nil) ?? name
         let cli = self.cli
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            // The label is independent of everything else in the form (which needs the shared
-            // secret re-entered), so it is applied first and on its own.
-            if let displayName = displayName {
-                Self.run(cli, ["profile", "rename", name] + (displayName.isEmpty ? [] : [displayName]))
-            }
-            let args = ["profile", "add", name, "--server", server, "--full-tunnel=\(isFullTunnel)"]
-            Self.run(cli, args, secret: psk)
-
-            if !user.isEmpty {
-                Self.run(cli, ["account", "add", name, user, "--default"], secret: password)
+            var failure: String?
+            func step(_ args: [String], secret: String? = nil) {
+                guard failure == nil else { return }
+                let r = Self.runCapturing(cli, args, secret: secret)
+                if !r.ok { failure = r.message }
             }
 
-            Task { @MainActor in self?.syncFromDisk() }
+            if isNew {
+                step(["profile", "add", name, "--server", server, "--full-tunnel=\(isFullTunnel)"], secret: psk)
+                if !user.isEmpty {
+                    step(["account", "add", name, user, "--default"], secret: password)
+                }
+            } else {
+                // The label is independent of everything else in the form, so it goes first.
+                if let displayName = displayName {
+                    step(["profile", "rename", name] + (displayName.isEmpty ? [] : [displayName]))
+                }
+                var edit = ["profile", "edit", name, "--server", server, "--full-tunnel=\(isFullTunnel)"]
+                if !user.isEmpty { edit += ["--user", user] }
+                if !psk.isEmpty { edit.append("--set-psk") }
+                step(edit, secret: psk.isEmpty ? nil : psk)
+                if !password.isEmpty, !user.isEmpty {
+                    step(["account", "add", name, user, "--default"], secret: password)
+                }
+            }
+
+            Task { @MainActor in
+                self?.syncFromDisk()
+                if let failure {
+                    self?.showNotice(.error, "Couldn't save \"\(label)\": \(failure)")
+                } else {
+                    self?.showNotice(.success, isNew ? "Added \"\(label)\"." : "Saved \"\(label)\".")
+                }
+            }
         }
+    }
+
+    /// Like `run`, but reports whether the CLI succeeded and its `Error:` line if not.
+    nonisolated private static func runCapturing(_ path: String, _ args: [String], secret: String? = nil) -> (ok: Bool, message: String) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: path)
+        p.arguments = args
+        let input = Pipe()
+        let errPipe = Pipe()
+        p.standardError = errPipe
+        p.standardOutput = FileHandle.nullDevice
+        if secret != nil {
+            p.standardInput = input
+        }
+        do {
+            try p.run()
+        } catch {
+            return (false, "the vpn command-line tool is not installed")
+        }
+        // Written on its own queue: this thread drains stderr below, and a child that
+        // fills the stderr pipe before it has read stdin would otherwise deadlock both.
+        if let secret = secret {
+            DispatchQueue.global(qos: .userInitiated).async {
+                if !secret.isEmpty {
+                    input.fileHandleForWriting.write(Data((secret + "\n").utf8))
+                }
+                try? input.fileHandleForWriting.close()
+            }
+        }
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        guard p.terminationStatus != 0 else { return (true, "") }
+        let text = String(decoding: errData, as: UTF8.self)
+        let line = text.split(separator: "\n").last(where: { $0.hasPrefix("Error:") }) ?? text.split(separator: "\n").last
+        let msg = line.map { String($0).replacingOccurrences(of: "Error: ", with: "") } ?? "exit status \(p.terminationStatus)"
+        // An older `vpn` installed next to a newer app doesn't know the subcommand.
+        if msg.hasPrefix("unknown `profile` subcommand") {
+            return (false, "the installed vpn tool is older than this app. Reinstall the CLI and the app together.")
+        }
+        return (false, msg)
     }
 }
 
@@ -734,6 +865,7 @@ enum Theme {
     static let connected = Color(nsColor: .systemGreen)
     static let connecting = Color(nsColor: .systemOrange)
     static let danger = Color(nsColor: .systemRed)
+    static let accent = Color.accentColor
 
     static let primaryText = Color(nsColor: .labelColor)
     static let secondaryText = Color(nsColor: .secondaryLabelColor)
@@ -756,21 +888,9 @@ enum Theme {
 
     static func statusText(for state: LinkState, reconnecting: Bool) -> String {
         switch state {
-        case .idle: return "Not connected"
+        case .idle: return "Not Connected"
         case .connecting: return reconnecting ? "Reconnecting…" : "Connecting…"
         case .connected: return "Connected"
-        }
-    }
-}
-
-extension VPNAlertKind {
-    var tint: Color { self == .authFailed ? Theme.danger : Theme.connecting }
-
-    var symbol: String {
-        switch self {
-        case .sessionStale: return "clock.arrow.circlepath"
-        case .authFailed: return "lock.fill"
-        default: return "exclamationmark.triangle.fill"
         }
     }
 }
@@ -850,6 +970,7 @@ struct CardBackground: View {
 struct IconButton: View {
     var systemName: String
     var help: String
+    var dimmed: Bool = false
     var action: () -> Void
     @State private var hovering = false
 
@@ -858,6 +979,7 @@ struct IconButton: View {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(hovering ? Theme.primaryText : Theme.secondaryText)
+                .opacity(dimmed ? 0.5 : 1)
                 .frame(width: 24, height: 22)
                 .background(RoundedRectangle(cornerRadius: 5).fill(hovering ? Theme.hoverFill : .clear))
                 .contentShape(Rectangle())
@@ -872,49 +994,150 @@ struct IconButton: View {
 // MARK: - Native Helper for Menu Popups without ugly Dropdown Chevrons
 
 struct CustomMenuButton: View {
+    var profileTitle: String
+    /// True while the profile's tunnel is up or coming up: Edit / Delete are shown but disabled.
+    var locked: Bool
     var onEdit: () -> Void
     var onDelete: () -> Void
 
     var body: some View {
-        IconButton(systemName: "ellipsis", help: "More", action: showNativeMenu)
+        IconButton(
+            systemName: "ellipsis",
+            help: locked ? "Turn the VPN off to edit or delete this configuration" : "Edit or delete",
+            dimmed: locked,
+            action: showNativeMenu
+        )
     }
 
     private func showNativeMenu() {
         let menu = NSMenu()
-        let editItem = NSMenuItem(title: "Edit…", action: #selector(MenuHelper.editAction), keyEquivalent: "")
-        let deleteItem = NSMenuItem(title: "Delete", action: #selector(MenuHelper.deleteAction), keyEquivalent: "")
-        deleteItem.attributedTitle = NSAttributedString(string: "Delete", attributes: [.foregroundColor: NSColor.systemRed])
+        menu.autoenablesItems = false
 
-        let helper = MenuHelper(onEdit: onEdit, onDelete: onDelete)
+        let helper = MenuHelper(title: profileTitle, onEdit: onEdit, onDelete: onDelete)
+        let editItem = NSMenuItem(title: "Edit…", action: #selector(MenuHelper.editAction), keyEquivalent: "")
+        let deleteItem = NSMenuItem(title: "Delete…", action: #selector(MenuHelper.deleteAction), keyEquivalent: "")
         editItem.target = helper
         deleteItem.target = helper
+        deleteItem.attributedTitle = NSAttributedString(
+            string: "Delete…",
+            attributes: [.foregroundColor: locked ? NSColor.disabledControlTextColor : NSColor.systemRed]
+        )
+        editItem.isEnabled = !locked
+        deleteItem.isEnabled = !locked
 
         menu.addItem(editItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(deleteItem)
+        if locked {
+            menu.addItem(NSMenuItem.separator())
+            let hint = NSMenuItem(title: "Disconnect to edit or delete", action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            menu.addItem(hint)
+        }
 
         if let event = NSApp.currentEvent {
-            NSMenu.popUpContextMenu(menu, with: event, for: NSApp.keyWindow?.contentView ?? NSView())
+            // popUpContextMenu returns after the pick, but the menu (and helper) must
+            // outlive the call: the action fires on the helper during it.
+            withExtendedLifetime(helper) {
+                NSMenu.popUpContextMenu(menu, with: event, for: NSApp.keyWindow?.contentView ?? NSView())
+            }
         }
     }
 }
 
 @MainActor
 final class MenuHelper: NSObject {
+    let title: String
     let onEdit: () -> Void
     let onDelete: () -> Void
 
-    init(onEdit: @escaping () -> Void, onDelete: @escaping () -> Void) {
+    init(title: String, onEdit: @escaping () -> Void, onDelete: @escaping () -> Void) {
+        self.title = title
         self.onEdit = onEdit
         self.onDelete = onDelete
         super.init()
     }
 
     @objc func editAction() { onEdit() }
-    @objc func deleteAction() { onDelete() }
+    @objc func deleteAction() { Self.confirmDelete(title: title, onDelete: onDelete) }
+
+    /// Deleting also wipes the profile's saved secrets from Keychain, so ask first.
+    /// Shared by the "…" menu and the row's right-click menu.
+    static func confirmDelete(title: String, onDelete: () -> Void) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Delete \"\(title)\"?"
+        alert.informativeText = "The server, account and saved passwords for this configuration will be removed from this Mac. This can't be undone."
+        let delete = alert.addButton(withTitle: "Delete")
+        delete.hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn { onDelete() }
+    }
 }
 
 // MARK: - Main Menu Bar Popup View
+
+/// Per-kind look of the alert card: its icon and tint.
+struct AlertStyle {
+    var icon: String
+    var tint: Color
+
+    init(kind: VPNAlertKind) {
+        switch kind {
+        case .authFailed: (icon, tint) = ("lock.fill", Theme.danger)
+        case .ikeFailed: (icon, tint) = ("network.slash", Theme.connecting)
+        case .routeFailed: (icon, tint) = ("arrow.triangle.branch", Theme.connecting)
+        case .processStopped: (icon, tint) = ("bolt.slash.fill", Theme.connecting)
+        case .sessionStale: (icon, tint) = ("clock.arrow.circlepath", Theme.connecting)
+        case .generic: (icon, tint) = ("exclamationmark.triangle.fill", Theme.connecting)
+        }
+    }
+}
+
+/// One-line result of a profile edit / delete.
+struct NoticeBanner: View {
+    var notice: VPNNotice
+    var onDismiss: () -> Void
+
+    private var tint: Color {
+        switch notice.level {
+        case .success: return Theme.connected
+        case .info: return Theme.accent
+        case .error: return Theme.danger
+        }
+    }
+
+    private var icon: String {
+        switch notice.level {
+        case .success: return "checkmark.circle.fill"
+        case .info: return "info.circle.fill"
+        case .error: return "exclamationmark.octagon.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(tint)
+            Text(notice.message)
+                .font(.system(size: 11.5))
+                .foregroundColor(Theme.primaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Theme.secondaryText)
+            }
+            .buttonStyle(.plain)
+            .focusable(false)
+            .help("Dismiss")
+        }
+        .padding(10)
+        .background(CardBackground(fill: tint.opacity(0.08), stroke: tint.opacity(0.25)))
+    }
+}
 
 struct ProfileCardRow: View {
     let profile: VPNProfileItem
@@ -925,6 +1148,7 @@ struct ProfileCardRow: View {
 
     var body: some View {
         let state = profile.linkState
+        let locked = vpn.isLocked(profile)
         HStack(spacing: 10) {
             StatusDot(color: Theme.color(for: state), size: 7, pulsing: state == .connecting)
 
@@ -956,7 +1180,7 @@ struct ProfileCardRow: View {
             .focusable(false)
             .help(state == .idle ? "Connect" : "Disconnect")
 
-            CustomMenuButton(onEdit: onEdit, onDelete: onDelete)
+            CustomMenuButton(profileTitle: profile.title, locked: locked, onEdit: onEdit, onDelete: onDelete)
         }
         .padding(.leading, 12)
         .padding(.trailing, 6)
@@ -965,15 +1189,18 @@ struct ProfileCardRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .contextMenu {
-            Button("Edit…", action: onEdit)
+            Button("Edit…", action: onEdit).disabled(locked)
             Divider()
-            Button("Delete", action: onDelete)
+            Button("Delete…") { MenuHelper.confirmDelete(title: profile.title, onDelete: onDelete) }
+                .disabled(locked)
         }
         .animation(.easeInOut(duration: 0.2), value: state)
     }
 
     private func subtitle(for state: LinkState) -> String {
-        if state == .connecting { return "Connecting to \(profile.server)…" }
+        if state == .connecting {
+            return vpn.isReconnecting ? "Reconnecting to \(profile.server)…" : "Connecting to \(profile.server)…"
+        }
         return profile.username.isEmpty ? profile.server : "\(profile.server) · \(profile.username)"
     }
 }
@@ -1009,18 +1236,21 @@ struct ConnectionDetails: View {
 
 struct AlertCard: View {
     let alert: VPNAlertInfo
-    var onEditPassword: (() -> Void)?
+    /// The primary action for this failure (Update Password / Try Again), if any.
+    var primary: (title: String, action: () -> Void)?
     var onDismiss: () -> Void
 
     var body: some View {
+        let style = AlertStyle(kind: alert.kind)
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: alert.kind.symbol)
+                Image(systemName: style.icon)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(alert.kind.tint)
+                    .foregroundColor(style.tint)
                 Text(alert.title)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Theme.primaryText)
+                    .lineLimit(2)
             }
 
             Text(alert.message)
@@ -1036,23 +1266,21 @@ struct AlertCard: View {
                     .textSelection(.enabled)
             }
 
-            if alert.kind == .authFailed {
-                HStack(spacing: 8) {
-                    if let onEditPassword {
-                        Button("Edit Password", action: onEditPassword)
-                            .buttonStyle(.borderedProminent)
-                    }
-                    Button("Dismiss", action: onDismiss)
-                        .buttonStyle(.bordered)
+            HStack(spacing: 8) {
+                if let primary {
+                    Button(primary.title, action: primary.action)
+                        .buttonStyle(.borderedProminent)
                 }
-                .controlSize(.small)
-                .focusable(false)
-                .padding(.top, 2)
+                Button("Dismiss", action: onDismiss)
+                    .buttonStyle(.bordered)
             }
+            .controlSize(.small)
+            .focusable(false)
+            .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(CardBackground(fill: alert.kind.tint.opacity(0.08), stroke: alert.kind.tint.opacity(0.25)))
+        .background(CardBackground(fill: style.tint.opacity(0.08), stroke: style.tint.opacity(0.25)))
     }
 }
 
@@ -1101,12 +1329,51 @@ struct MenuBarPopupView: View {
         }
     }
 
+    private var activeProfile: VPNProfileItem? {
+        vpn.profiles.first(where: { $0.name == vpn.activeProfileName })
+    }
+
+    private var headerStatus: String {
+        if vpn.isDisconnecting { return "Disconnecting…" }
+        if vpn.linkState == .idle && vpn.activeAlert != nil { return "Connection Failed" }
+        return Theme.statusText(for: vpn.linkState, reconnecting: vpn.isReconnecting)
+    }
+
+    private var headerColor: Color {
+        if vpn.isDisconnecting { return Theme.connecting }
+        if vpn.linkState == .idle && vpn.activeAlert != nil { return Theme.danger }
+        return Theme.color(for: vpn.linkState)
+    }
+
+    /// A one-line hint for what the current state means, after the status word.
+    private var headerDetail: String {
+        if vpn.isDisconnecting { return "Restoring your network settings" }
+        let title = activeProfile?.title
+        switch vpn.linkState {
+        case .connected:
+            return title.map { "Protected via \($0)" } ?? "Your traffic is protected"
+        case .connecting:
+            return title ?? "Establishing the tunnel"
+        case .idle:
+            return vpn.profiles.isEmpty ? "Add a configuration to get started" : "Your traffic is not protected"
+        }
+    }
+
     private var currentAlert: VPNAlertInfo? {
         // A stale ("already logged in") server session never reaches here — it's
         // recovered silently, with no alert at all (see VPNManager.applyFailure) — so
         // `.sessionStale` no longer appears as a real activeAlert.kind.
         vpn.activeAlert ?? vpn.errorMessage.map {
             VPNAlertInfo(kind: .generic, title: "Connection Error", message: $0, detail: "")
+        }
+    }
+
+    private func primaryAction(for alert: VPNAlertInfo) -> (title: String, action: () -> Void)? {
+        guard let profile = activeProfile else { return nil }
+        switch alert.kind {
+        case .authFailed: return ("Update Password", { editingProfile = profile })
+        case .processStopped: return nil
+        default: return ("Try Again", { vpn.connect(profileName: profile.name) })
         }
     }
 
@@ -1121,11 +1388,13 @@ struct MenuBarPopupView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Theme.primaryText)
                     HStack(spacing: 5) {
-                        StatusDot(color: Theme.color(for: state), size: 6, pulsing: state == .connecting)
-                        Text(Theme.statusText(for: state, reconnecting: vpn.isReconnecting))
+                        StatusDot(color: headerColor, size: 6, pulsing: state == .connecting || vpn.isDisconnecting)
+                        (Text(headerStatus).foregroundColor(Theme.primaryText)
+                            + Text(" · \(headerDetail)").foregroundColor(Theme.secondaryText))
                             .font(.system(size: 11))
-                            .foregroundColor(Theme.secondaryText)
-                            .id(state)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .id(headerStatus + headerDetail)
                             .transition(.opacity)
                     }
                 }
@@ -1183,11 +1452,18 @@ struct MenuBarPopupView: View {
                 profileList
             }
 
+            // Outcome of the last edit / delete (saved, blocked while connected, failed).
+            if let notice = vpn.notice {
+                NoticeBanner(notice: notice, onDismiss: { vpn.dismissNotice() })
+                    .padding(.horizontal, Theme.inset)
+                    .padding(.top, 10)
+                    .transition(.opacity)
+            }
+
             if let alert = currentAlert {
                 AlertCard(
                     alert: alert,
-                    onEditPassword: vpn.profiles.first(where: { $0.name == vpn.activeProfileName })
-                        .map { profile in { editingProfile = profile } },
+                    primary: primaryAction(for: alert),
                     onDismiss: {
                         vpn.errorMessage = nil
                         vpn.activeAlert = nil
@@ -1200,8 +1476,14 @@ struct MenuBarPopupView: View {
 
             Divider().padding(.top, 12)
 
-            // Footer: settings (MTU, logging, kill switch) open in a sheet like the profile form.
+            // Footer: version and copyright; settings (MTU, logging, kill switch) open in a
+            // sheet like the profile form.
             HStack(spacing: 2) {
+                Text([AppBranding.version.map { "v\($0)" }, AppBranding.copyright].compactMap { $0 }.joined(separator: " · "))
+                    .font(.system(size: 10.5).monospacedDigit())
+                    .foregroundColor(Theme.tertiaryText)
+                    .lineLimit(1)
+                    .help(AppBranding.version.map { "\(AppBranding.name) \($0)" } ?? AppBranding.name)
                 Spacer()
                 IconButton(systemName: "gearshape", help: "Settings") { showingSettings = true }
                 IconButton(systemName: "power", help: "Quit \(AppBranding.name) (⌘Q)") { NSApplication.shared.terminate(nil) }
@@ -1213,6 +1495,7 @@ struct MenuBarPopupView: View {
         .frame(width: 340)
         .animation(.easeInOut(duration: 0.25), value: state)
         .animation(.easeInOut(duration: 0.25), value: vpn.activeAlert)
+        .animation(.easeInOut(duration: 0.25), value: vpn.notice)
         .sheet(isPresented: $showingSettings) {
             SettingsSheet(isPresented: $showingSettings)
         }
@@ -1356,16 +1639,25 @@ struct ProfileFormSheet: View {
 
     var isEdit: Bool { initialProfile != nil }
 
+    private func trimmed(_ v: String) -> String { v.trimmingCharacters(in: .whitespaces) }
+
+    /// Adding needs everything; editing only needs the visible fields — an empty
+    /// password / shared secret there means "keep the saved one".
     private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
-            !server.trimmingCharacters(in: .whitespaces).isEmpty
+        guard !trimmed(name).isEmpty, !trimmed(server).isEmpty else { return false }
+        if isEdit { return !trimmed(user).isEmpty }
+        return !trimmed(user).isEmpty && !password.isEmpty && !psk.isEmpty
     }
+
+    private var secretPrompt: Text { Text(isEdit ? "Leave blank to keep" : "Required") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SheetHeader(
                 title: isEdit ? "Edit Configuration" : "New Configuration",
-                subtitle: "L2TP over IPsec. Ask your network administrator for these details."
+                subtitle: isEdit
+                    ? "Password and shared secret stay saved in Keychain. Fill them in only to change them."
+                    : "L2TP over IPsec. Ask your network administrator for these details."
             )
             .padding(.bottom, 4)
 
@@ -1382,12 +1674,12 @@ struct ProfileFormSheet: View {
                     TextField("", text: $user, prompt: Text("Required"))
                 }
                 FormField(label: "Password") {
-                    SecureField("", text: $password, prompt: Text("Required"))
+                    SecureField("", text: $password, prompt: secretPrompt)
                 }
             }
 
             FormField(label: "Shared secret") {
-                SecureField("", text: $psk, prompt: Text("Required"))
+                SecureField("", text: $psk, prompt: secretPrompt)
             }
 
             SettingCard(title: "Send all traffic over VPN", detail: "Route all internet traffic through the VPN.") {
@@ -1410,10 +1702,10 @@ struct ProfileFormSheet: View {
                     guard canSave else { return }
 
                     VPNManager.shared.saveProfile(
-                        name: initialProfile?.name ?? name.trimmingCharacters(in: .whitespaces),
-                        displayName: isEdit ? name.trimmingCharacters(in: .whitespaces) : nil,
-                        server: server.trimmingCharacters(in: .whitespaces),
-                        user: user.trimmingCharacters(in: .whitespaces),
+                        name: initialProfile?.name ?? trimmed(name),
+                        displayName: isEdit ? trimmed(name) : nil,
+                        server: trimmed(server),
+                        user: trimmed(user),
                         psk: psk,
                         password: password,
                         isFullTunnel: isFullTunnel,
@@ -1438,6 +1730,138 @@ struct ProfileFormSheet: View {
                 isFullTunnel = p.isFullTunnel
             }
         }
+    }
+}
+
+// MARK: - CLI Installer (first launch after a drag-to-Applications install)
+
+/// The app drives `/usr/local/bin/vpn`, which has to be setuid-root. A DMG install has no
+/// installer step, so the CLI ships inside the app bundle and is installed here, once, after
+/// asking the user (macOS shows its own administrator password prompt).
+enum CLIInstaller {
+    static let installPath = "/usr/local/bin/vpn"
+
+    private static var bundledPath: String? {
+        Bundle.main.path(forResource: "vpn", ofType: nil)
+    }
+
+    /// `vpn version` prints "vpn v1.2.3"; returns "v1.2.3".
+    private static func version(of path: String) -> String? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: path)
+        p.arguments = ["version"]
+        let out = Pipe()
+        p.standardOutput = out
+        p.standardError = FileHandle.nullDevice
+        guard (try? p.run()) != nil else { return nil }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        guard p.terminationStatus == 0 else { return nil }
+        return String(decoding: data, as: UTF8.self)
+            .split(separator: " ").last.map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    private static func numbers(_ v: String) -> [Int]? {
+        let parts = v.trimmingCharacters(in: CharacterSet(charactersIn: "v")).split(separator: ".").map { Int($0) }
+        return parts.contains(where: { $0 == nil }) || parts.isEmpty ? nil : parts.map { $0! }
+    }
+
+    /// Missing, or older than the copy in the app. A newer installed one (after `vpn update`)
+    /// or a non-numeric dev build is left alone.
+    private static func reason(bundled: String) -> String? {
+        guard FileManager.default.isExecutableFile(atPath: installPath), let installed = version(of: installPath) else {
+            return "missing"
+        }
+        guard let have = numbers(installed), let want = version(of: bundled).flatMap(numbers) else { return nil }
+        for i in 0..<max(have.count, want.count) {
+            let a = i < have.count ? have[i] : 0, b = i < want.count ? want[i] : 0
+            if a != b { return a < b ? "outdated" : nil }
+        }
+        return nil
+    }
+
+    static func checkAtLaunch() {
+        guard let bundled = bundledPath else { return }
+        DispatchQueue.global(qos: .utility).async {
+            guard let why = reason(bundled: bundled) else { return }
+            DispatchQueue.main.async { promptAndInstall(bundled: bundled, missing: why == "missing") }
+        }
+    }
+
+    private static func promptAndInstall(bundled: String, missing: Bool) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = missing ? "Finish setting up \(AppBranding.name)" : "Update the \(AppBranding.name) network helper"
+        alert.informativeText = "\(AppBranding.name) needs its network helper (\(installPath)) to open VPN tunnels. Installing it needs your administrator password — macOS will ask for it next."
+        alert.addButton(withTitle: missing ? "Install" : "Update")
+        alert.addButton(withTitle: "Not Now")
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            MainActor.assumeIsolated {
+                VPNManager.shared.showNotice(.error, "The network helper isn't installed, so VPN can't connect yet. Relaunch \(AppBranding.name) to set it up.")
+            }
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let error = install(bundled: bundled)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if let error {
+                        VPNManager.shared.showNotice(.error, "Couldn't install the network helper: \(error)")
+                    } else {
+                        VPNManager.shared.showNotice(.success, "Network helper installed. You can connect now.")
+                        VPNManager.shared.syncFromDisk()
+                    }
+                }
+            }
+        }
+    }
+
+    private static func shellQuote(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
+
+    private static func sha256(_ path: String) -> String? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/shasum")
+        p.arguments = ["-a", "256", path]
+        let out = Pipe()
+        p.standardOutput = out
+        guard (try? p.run()) != nil else { return nil }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        return String(decoding: data, as: UTF8.self).split(separator: " ").first.map(String.init)
+    }
+
+    /// Returns nil on success, else a short reason. The binary is first copied into a
+    /// root-owned staging directory and re-checked against the hash taken before the password
+    /// prompt, so it can't be swapped in the (user-writable) app bundle in between.
+    private static func install(bundled: String) -> String? {
+        guard let digest = sha256(bundled) else { return "can't read the bundled tool" }
+        let uid = getuid()
+        let script = [
+            "set -e",
+            "STAGE=$(/usr/bin/mktemp -d /tmp/tmsvpn-install.XXXXXX)",
+            "trap '/bin/rm -rf \"$STAGE\"' EXIT",
+            "/usr/bin/install -o root -g wheel -m 0755 \(shellQuote(bundled)) \"$STAGE/vpn\"",
+            "[ \"$(/usr/bin/shasum -a 256 \"$STAGE/vpn\" | /usr/bin/awk '{print $1}')\" = \(shellQuote(digest)) ]",
+            "/bin/mkdir -p /usr/local/bin",
+            "/usr/bin/install -o root -g wheel -m 4755 \"$STAGE/vpn\" \(installPath)",
+            "echo \(uid) > /etc/vpn-owner-uid",
+            "/usr/sbin/chown root:wheel /etc/vpn-owner-uid",
+            "/bin/chmod 600 /etc/vpn-owner-uid",
+            "/bin/chmod 755 /var/run/vpn 2>/dev/null || true",
+        ].joined(separator: "; ")
+        let escaped = script.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        p.arguments = ["-e", "do shell script \"\(escaped)\" with administrator privileges"]
+        let err = Pipe()
+        p.standardError = err
+        p.standardOutput = FileHandle.nullDevice
+        guard (try? p.run()) != nil else { return "can't ask for administrator rights" }
+        let data = err.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        if p.terminationStatus == 0 { return nil }
+        let text = String(decoding: data, as: UTF8.self)
+        return text.contains("-128") ? "cancelled" : (text.split(separator: "\n").last.map(String.init) ?? "installation failed")
     }
 }
 
@@ -1484,6 +1908,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
         // Opened from Finder/Launchpad → show a regular window.
         showMainWindow()
+        CLIInstaller.checkAtLaunch()
     }
 
     // Clicking the app icon again (Launchpad, Finder, Dock) while it is running

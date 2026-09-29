@@ -5,11 +5,15 @@
 <h1 align="center">TOMOSIA VPN</h1>
 
 <p align="center">
+  <b>Tiếng Việt</b> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
   <b>VPN Client L2TP/IPsec thuần macOS — Ổn định, bảo mật, không phụ thuộc phần mềm ngoài.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.5.3-blue.svg" alt="Version 0.5.3" />
+  <img src="https://img.shields.io/badge/version-v0.6.1-blue.svg" alt="Version 0.6.1" />
   <img src="https://img.shields.io/badge/macOS-12.0+-black.svg" alt="macOS 12+" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-success.svg" alt="Architecture" />
   <img src="https://img.shields.io/badge/protocol-L2TP%20%2F%20IPsec-orange.svg" alt="L2TP/IPsec" />
@@ -29,6 +33,16 @@ VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) th
 
 ## 🚀 Cài đặt
 
+**Cách 1 — File .dmg (như các app macOS khác):**
+
+1. Tải [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg) (luôn là bản mới nhất).
+2. Mở file, kéo **TOMOSIA VPN** vào thư mục **Applications**.
+3. Mở app. Lần đầu, macOS hỏi mật khẩu quản trị một lần để cài phần lõi `vpn`. Nếu macOS cảnh báo nhà phát triển chưa xác minh: chuột phải vào app → **Open**.
+
+Tự build file .dmg: `VERSION=1.2.3 ./make-dmg.sh` (kết quả: `build/TOMOSIA-VPN.dmg`).
+
+**Cách 2 — Script:**
+
 **Cài đặt tự động (tự nhận diện chip Apple Silicon M1/M2/M3... hoặc Mac Intel 2017+):**
 
 ```bash
@@ -44,8 +58,9 @@ curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-in
 
 Kiểm tra xác nhận cài đặt thành công:
 ```bash
-vpn version    # Kết quả: vpn v0.5.3
+vpn version    # Kết quả: vpn v0.6.1
 ```
+Phiên bản App Menu Bar hiển thị ở góc dưới bên trái popover (VD: `v0.6.1`, kèm dòng bản quyền).
 
 ---
 
@@ -55,7 +70,7 @@ Chuẩn bị 4 thông tin từ quản trị mạng: **Server Address**, **IPsec 
 
 ### Cách 1: Sử dụng App Menu Bar (Khuyến nghị)
 
-1. Mở ứng dụng **TOMOSIA-VPN** từ thư mục `Applications` hoặc Spotlight.
+1. Mở ứng dụng **TOMOSIA VPN** từ thư mục `Applications` hoặc Spotlight.
 2. Click biểu tượng TOMOSIA VPN trên Menu Bar → bấm **+** cạnh **Configurations**.
 3. Nhập thông tin:
    - **Display name**: Tên gợi nhớ (VD: `Công ty`).
@@ -113,7 +128,8 @@ curl -4 https://ifconfig.co
 | **Quản lý Profile** | `vpn profile list` | Danh sách profile (* = active) |
 | | `vpn profile add <tên> --server <host>` | Thêm server mới |
 | | `vpn profile rename <tên> [tên mới]` | Đổi tên hiển thị trên App |
-| | `vpn profile remove <tên>` | Xóa profile và secret trong Keychain |
+| | `vpn profile edit <tên> [--server host] [--user tên] [--full-tunnel=bool] [--set-psk]` | Đổi host / username / chế độ tunnel, giữ nguyên password và secret đã lưu |
+| | `vpn profile remove <tên>` | Xóa profile và secret trong Keychain (không thể xóa/sửa khi đang kết nối) |
 | **Quản lý Account** | `vpn account add <profile> <user>` | Thêm tài khoản cho profile |
 | **Cài đặt chung** | `vpn mtu [1280\|1400]` | Đặt MTU (1280 cho mạng 4G/PPPoE hay nghẽn) |
 | | `vpn killswitch [on\|off]` | Bật/tắt bảo vệ ngắt mạng khi rớt kết nối |
@@ -152,7 +168,7 @@ vpn logs -f       # Xem chi tiết gói tin giao thức
   ```bash
   vpn update          # Tự động kiểm tra chữ ký số ed25519 và cập nhật CLI
   ```
-  *(Để cập nhật cả App Menu Bar, chạy lại lệnh cài đặt nhanh 1 dòng ở đầu trang).*
+  *(Để cập nhật cả App Menu Bar, chạy lại lệnh cài đặt nhanh 1 dòng ở đầu trang. So sánh phiên bản ở footer của App với `vpn version` để chắc chắn cả hai đã cùng bản).*
 
 - **Gỡ cài đặt hoàn toàn**:
   ```bash
@@ -178,18 +194,20 @@ sudo install -o root -g wheel -m 4755 vpn /usr/local/bin/vpn
 id -u | sudo tee /etc/vpn-owner-uid >/dev/null && sudo chmod 600 /etc/vpn-owner-uid
 
 # Build Menu Bar App (Universal arm64 + Intel)
-bash build.sh
+# Phiên bản hiển thị trên App lấy từ biến VERSION; bỏ trống thì dùng git tag
+# mới nhất (không có tag hợp lệ → 0.0.0)
+bash build.sh                   # hoặc: VERSION=0.6.1 bash build.sh
 ditto build/TOMOSIA-VPN.app /Applications/TOMOSIA-VPN.app
 
 # Chạy Unit Tests
 go test ./...
 ```
 
-### Quy trình Release (v0.5.3)
-Tạo tag phiên bản mới và push lên GitHub để kích hoạt CI/CD tự động build & ký chữ ký số:
+### Quy trình Release
+Tạo tag phiên bản mới và push lên GitHub để kích hoạt CI/CD tự động build & ký chữ ký số. Tag này được gắn vào cả CLI (`vpn version`) và App (footer popover, `CFBundleShortVersionString`):
 ```bash
-git tag v0.5.3
-git push origin v0.5.3
+git tag v0.6.1
+git push origin v0.6.1
 ```
 
 ---
