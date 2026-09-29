@@ -14,6 +14,7 @@ import (
 
 	"vpn/internal/config"
 	"vpn/internal/diagnostics"
+	"vpn/internal/engine"
 	"vpn/internal/keychain"
 	"vpn/internal/privilege"
 	"vpn/internal/secretinput"
@@ -83,6 +84,7 @@ func printUsage() {
 Usage:
   vpn profile add <name> --server <host> [--server-id id] [--mtu n] [--full-tunnel] [--psk key]
   vpn profile list                  (* = active profile / default account)
+  vpn profile edit <name> [--server host] [--user account] [--full-tunnel=bool] [--set-psk]   change host / username / tunnel mode; stored secrets are kept unless --set-psk
   vpn profile remove <name>
   vpn profile rename <name> [display name]   change the label shown in the app (empty: back to <name>); the key <name> and its stored secrets are untouched
   vpn account add <profile> <account> [--default] [--password pw]
@@ -98,6 +100,8 @@ Usage:
   vpn update [--force]              install the latest signed release if newer (--force: reinstall/downgrade)
   vpn uninstall [-y]                remove the CLI, log, state, all profiles/accounts (Keychain included); not the menu bar app
   vpn version
+
+Profiles cannot be edited or removed while connected — run `+"`vpn disconnect`"+` first.
 `)
 }
 
@@ -138,13 +142,15 @@ func flagsFirst(args []string, valueFlags map[string]bool) []string {
 
 func cmdProfile(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: vpn profile <add|list|remove|rename> ...")
+		return fmt.Errorf("usage: vpn profile <add|list|edit|remove|rename> ...")
 	}
 	switch args[0] {
 	case "add":
 		return cmdProfileAdd(args[1:])
 	case "list":
 		return cmdProfileList(args[1:])
+	case "edit":
+		return cmdProfileEdit(args[1:])
 	case "remove":
 		return cmdProfileRemove(args[1:])
 	case "rename":
@@ -169,6 +175,9 @@ func cmdProfileRename(args []string) error {
 	if !ok {
 		return fmt.Errorf("unknown VPN profile %q", key)
 	}
+	if err := errIfInUse(key, "rename"); err != nil {
+		return err
+	}
 	p.DisplayName = strings.TrimSpace(strings.Join(args[1:], " "))
 	if p.DisplayName == key {
 		p.DisplayName = ""
@@ -177,6 +186,111 @@ func cmdProfileRename(args []string) error {
 		return err
 	}
 	fmt.Printf("Profile %q is now shown as %q.\n", key, p.Label(key))
+	return nil
+}
+
+// errIfInUse refuses a change to a profile whose tunnel is up (or coming up):
+// the running daemon was started from its server, account and secrets.
+func errIfInUse(profile, verb string) error {
+	if st, busy := engine.ProfileInUse(profile); busy {
+		return fmt.Errorf("cannot %s profile %q while it is %s — run `vpn disconnect` first", verb, profile, strings.ToLower(string(st.Phase)))
+	}
+	return nil
+}
+
+// cmdProfileEdit changes a profile's host, default-account username or tunnel
+// mode without touching the stored shared secret or password: the password is
+// moved to the new username inside Keychain instead of being asked for again.
+func cmdProfileEdit(args []string) error {
+	fs := newFlagSet("profile edit")
+	server := fs.String("server", "", "new VPN server host or IP")
+	user := fs.String("user", "", "new username for the default account (its password is kept)")
+	fullTunnel := fs.Bool("full-tunnel", true, "route all traffic through the VPN")
+	setPSK := fs.Bool("set-psk", false, "also replace the shared secret (read from stdin / prompted)")
+	if err := fs.Parse(flagsFirst(args, map[string]bool{"--server": true, "--user": true})); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: vpn profile edit <name> [--server host] [--user account] [--full-tunnel=bool] [--set-psk]")
+	}
+	name := fs.Arg(0)
+	ftSet := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "full-tunnel" {
+			ftSet = true
+		}
+	})
+	*server, *user = strings.TrimSpace(*server), strings.TrimSpace(*user)
+	if *server == "" && *user == "" && !ftSet && !*setPSK {
+		return fmt.Errorf("nothing to change — pass --server, --user, --full-tunnel and/or --set-psk")
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	p, ok := cfg.Profiles[name]
+	if !ok {
+		return fmt.Errorf("unknown profile %q", name)
+	}
+	if err := errIfInUse(name, "edit"); err != nil {
+		return err
+	}
+
+	if *setPSK {
+		v, err := secretinput.Prompt("IPsec pre-shared key (PSK)")
+		if err != nil {
+			return err
+		}
+		if err := keychain.SetPSK(name, v); err != nil {
+			return err
+		}
+	}
+	if *server != "" {
+		p.Server = *server
+	}
+	if ftSet {
+		p.FullTunnel = *fullTunnel
+	}
+	if *user != "" && *user != p.DefaultAccount {
+		if err := renameDefaultAccount(name, p, *user); err != nil {
+			return err
+		}
+	}
+	if err := cfg.Save(); err != nil {
+		return err
+	}
+	fmt.Printf("Profile %q updated (server=%s, account=%s); stored secrets kept.\n", name, p.Server, p.DefaultAccount)
+	return nil
+}
+
+// renameDefaultAccount points the profile's default account at newUser and
+// carries the stored password across. With no account yet there is nothing to
+// carry, so the name is just recorded (connect then asks for `account add`).
+// Config is only saved by the caller, after Keychain has the new entry.
+func renameDefaultAccount(profile string, p *config.Profile, newUser string) error {
+	old := p.DefaultAccount
+	if _, exists := p.Accounts[newUser]; !exists && old != "" && keychain.HasPassword(profile, old) {
+		pw, err := keychain.GetPassword(profile, old)
+		if err != nil {
+			return fmt.Errorf("read the stored password of %q: %w", old, err)
+		}
+		if err := keychain.SetPassword(profile, newUser, pw); err != nil {
+			return err
+		}
+	}
+	if p.Accounts == nil {
+		p.Accounts = map[string]*config.Account{}
+	}
+	if _, exists := p.Accounts[newUser]; !exists {
+		p.Accounts[newUser] = &config.Account{Username: newUser}
+		if old != "" {
+			// The old name was renamed, not kept alongside.
+			delete(p.Accounts, old)
+			_ = keychain.DeletePassword(profile, old)
+		}
+	}
+	p.DefaultAccount = newUser
 	return nil
 }
 
@@ -196,6 +310,9 @@ func cmdProfileAdd(args []string) error {
 	name := fs.Arg(0)
 	if *server == "" {
 		return fmt.Errorf("--server is required")
+	}
+	if err := errIfInUse(name, "change"); err != nil {
+		return err
 	}
 	if *psk == "" {
 		v, err := secretinput.Prompt("IPsec pre-shared key (PSK)")
@@ -393,6 +510,9 @@ func cmdProfileRemove(args []string) error {
 	if !ok {
 		return fmt.Errorf("unknown profile %q", args[0])
 	}
+	if err := errIfInUse(args[0], "remove"); err != nil {
+		return err
+	}
 	for acct := range p.Accounts {
 		_ = keychain.DeletePassword(args[0], acct)
 	}
@@ -443,6 +563,9 @@ func cmdAccountAdd(args []string) error {
 		return fmt.Errorf("usage: vpn account add <profile> <username> [--default]")
 	}
 	profileName, username := fs.Arg(0), fs.Arg(1)
+	if err := errIfInUse(profileName, "change"); err != nil {
+		return err
+	}
 
 	cfg, err := config.Load()
 	if err != nil {

@@ -1174,6 +1174,22 @@ func AlreadyServing(profile, account string) (*state.State, bool) {
 	return nil, false
 }
 
+// ProfileInUse reports whether a live daemon is connected (or connecting, or
+// reconnecting) through profile. Editing or deleting such a profile would pull
+// the server address, account or secrets out from under the running tunnel, so
+// callers refuse until it is disconnected. A stale state file whose daemon is
+// gone does not count.
+func ProfileInUse(profile string) (*state.State, bool) {
+	st, err := state.Load()
+	if err != nil || st.PID <= 0 || !processAlive(st.PID) || st.Profile != profile {
+		return nil, false
+	}
+	if st.Phase == state.PhaseConnected || st.Phase == state.PhaseConnecting {
+		return st, true
+	}
+	return nil, false
+}
+
 // PrepareNewConnect tears down any previous connect/connected session
 // before a new one starts. `connect` calls this itself while holding
 // WithConnectLock (see cli.cmdConnect), before forking its daemon, so two
