@@ -1,9 +1,9 @@
 import { site } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
-import { LanguageSwitcher } from "./LanguageSwitcher";
+import { LanguageMenu } from "./LanguageMenu";
 
-/** Translucent sticky bar: brand, language switcher, download. */
+/** Translucent sticky bar: brand, language menu, download. */
 export function Header({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   return (
     <header className="header">
@@ -14,7 +14,7 @@ export function Header({ locale, dict }: { locale: Locale; dict: Dictionary }) {
           <span>{site.name}</span>
         </a>
         <div className="header__actions">
-          <LanguageSwitcher locale={locale} label={dict.header.languageLabel} />
+          <LanguageMenu locale={locale} label={dict.header.languageLabel} direction="down" />
           <a className="button button--primary button--compact" href={site.downloadUrl}>
             {dict.header.download}
           </a>

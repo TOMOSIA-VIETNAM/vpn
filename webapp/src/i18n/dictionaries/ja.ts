@@ -26,7 +26,6 @@ const ja: Dictionary = {
       soundOff: "ミュート",
       turnOnSound: "音声をオン",
       playWithSound: "音声付きで再生",
-      about: "{seconds}秒の動画・ナレーション付き",
     },
   },
   stats: {
@@ -136,6 +135,7 @@ const ja: Dictionary = {
     title: "どこで働いても、つながったまま。",
     body: "ダウンロードしてスイッチを入れたら、あとは仕事に戻るだけ。",
   },
+  backToTop: "ページの先頭へ",
   footer: {
     tagline: "社内 VPN を、スイッチひとつで。",
     github: "GitHub",

@@ -44,15 +44,13 @@ export interface Dictionary {
     video: {
       pause: string;
       play: string;
-      /** Accessible names of the corner sound toggle. */
+      /** Accessible names of the corner sound toggle, once sound was on. */
       soundOn: string;
       soundOff: string;
-      /** The big button over the muted, playing video. */
+      /** Label the sound button opens to while the video plays muted. */
       turnOnSound: string;
-      /** The same button with reduced motion, when nothing plays yet. */
+      /** Its label under reduced motion, when nothing plays yet. */
       playWithSound: string;
-      /** Under the big button; {seconds} is the video's length, from its metadata. */
-      about: string;
     };
   };
   /** Facts band under the hero; the numbers come from the config. */
@@ -124,6 +122,8 @@ export interface Dictionary {
     title: string;
     body: string;
   };
+  /** Floating button that scrolls back to the top of the page. */
+  backToTop: string;
   footer: {
     tagline: string;
     github: string;

@@ -59,10 +59,9 @@
     0 24px 48px -12px light-dark(rgba(40, 50, 100, 0.22), rgba(0, 0, 0, 0.6)),
     0 60px 120px -30px light-dark(rgba(40, 50, 100, 0.3), rgba(0, 0, 0, 0.7));
 
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "Helvetica Neue", Arial,
-    sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", "Helvetica Neue",
-    Arial, sans-serif;
+  /* --font, --font-display and the tracking and leading tokens (--display-*,
+     --heading-*, --body-leading) are set per locale on <html>, from
+     localeInfo[locale].typography in src/i18n/locales.ts. */
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   --container: 1120px;
@@ -108,7 +107,7 @@ body {
   color: var(--label);
   font-family: var(--font);
   font-size: 17px;
-  line-height: 1.55;
+  line-height: var(--body-leading);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-wrap: break-word;
@@ -116,9 +115,6 @@ body {
 }
 
 body:lang(ja) {
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
-    "Yu Gothic", Meiryo, system-ui, sans-serif;
-  line-height: 1.75;
   line-break: strict;
 }
 
@@ -197,6 +193,11 @@ a:hover {
     radial-gradient(70% 70% at 100% 100%, color-mix(in srgb, var(--field-peach) 70%, transparent), transparent 72%),
     radial-gradient(60% 60% at 100% 0%, color-mix(in srgb, var(--field-lilac) 60%, transparent), transparent 72%),
     var(--field-base);
+}
+
+/* A headline word split out by SplitText stays whole: "Wi-Fi" never breaks at its hyphen. */
+.split__word {
+  white-space: nowrap;
 }
 
 /* Reveal and parallax (see components/motion/). Everything here is inside
@@ -462,35 +463,105 @@ a:hover {
   }
 }
 
-/* Language switcher, drawn as a macOS segmented control */
+/* Language menu: a globe button and a small menu like a macOS pop-up menu. */
 
-.lang {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--fill);
+.lang-menu {
+  position: relative;
 }
 
-.lang__option {
-  min-width: 40px;
-  padding: 3px 10px;
-  border-radius: 6px;
+.lang-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
   color: var(--label);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 22px;
-  text-align: center;
+  cursor: pointer;
+  list-style: none;
   transition: background-color 180ms ease;
 }
 
-.lang__option:hover {
-  text-decoration: none;
+.lang-menu__button::-webkit-details-marker {
+  display: none;
+}
+
+.lang-menu__button:hover,
+.lang-menu[open] .lang-menu__button {
   background: var(--fill);
 }
 
-.lang__option[aria-current="page"] {
-  background: var(--card);
-  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 2px rgba(0, 0, 0, 0.12);
+.lang-menu__chevron {
+  color: var(--label-secondary);
+  transition: transform 200ms ease;
+}
+
+.lang-menu[open] .lang-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.lang-menu__list {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 180px;
+  padding: 5px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(30px);
+  backdrop-filter: saturate(1.8) blur(30px);
+  box-shadow: var(--shadow-panel);
+}
+
+.lang-menu--down .lang-menu__list {
+  top: calc(100% + 6px);
+}
+
+.lang-menu--up .lang-menu__list {
+  bottom: calc(100% + 6px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lang-menu[open] .lang-menu__list {
+    animation: menu-in 160ms ease-out;
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.lang-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px 0 8px;
+  border-radius: 6px;
+  color: var(--label);
+  font-size: 14px;
+}
+
+.lang-menu__item:hover,
+.lang-menu__item:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  text-decoration: none;
+  outline: none;
+}
+
+.lang-menu__check {
+  visibility: hidden;
+}
+
+.lang-menu__item[aria-checked="true"] .lang-menu__check {
+  visibility: visible;
 }
 
 /* Hero: centred text on the wallpaper, running up under the translucent header,
@@ -505,9 +576,9 @@ a:hover {
 .hero__title {
   font-family: var(--font-display);
   font-size: clamp(40px, 5.8vw, 84px);
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
   text-wrap: balance;
 }
 
@@ -518,7 +589,7 @@ a:hover {
 
 .hero__title-lead {
   color: var(--label-secondary);
-  font-weight: 600;
+  font-weight: calc(var(--display-weight) - 100);
 }
 
 .hero__lead {
@@ -615,126 +686,17 @@ a:hover {
   cursor: pointer;
 }
 
-/* Sound prompt: a dark frosted pill centred over the video, readable over light
-   and dark frames alike, with a length line under it. */
-.sound-prompt {
+/* A very thin, quiet line along the bottom edge of the picture: how far it has played. */
+.window__progress {
   position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: 0 50%;
   pointer-events: none;
-  opacity: 0;
-  transform: scale(0.94);
-  transition:
-    opacity 500ms ease,
-    transform 600ms var(--ease-out);
-}
-
-.sound-prompt.is-shown {
-  opacity: 1;
-  transform: none;
-}
-
-.sound-prompt__button {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 62px;
-  padding: 0 30px 0 24px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 980px;
-  background: rgba(18, 18, 22, 0.62);
-  -webkit-backdrop-filter: saturate(1.4) blur(20px);
-  backdrop-filter: saturate(1.4) blur(20px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-  color: #ffffff;
-  font: inherit;
-  font-size: 20px;
-  font-weight: 600;
-  cursor: pointer;
-  pointer-events: auto;
-  transition:
-    background-color 180ms ease,
-    transform 180ms ease;
-}
-
-.sound-prompt:not(.is-shown) .sound-prompt__button {
-  pointer-events: none;
-}
-
-.sound-prompt__button:hover {
-  background: rgba(18, 18, 22, 0.78);
-}
-
-.sound-prompt__button:active {
-  transform: scale(0.97);
-}
-
-.sound-prompt__bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 14px;
-  margin-right: 4px;
-}
-
-.sound-prompt__bars span {
-  width: 3px;
-  height: 100%;
-  border-radius: 1.5px;
-  background: currentColor;
-  transform-origin: 50% 100%;
-  transform: scaleY(0.5);
-}
-
-.sound-prompt__about {
-  padding: 3px 10px;
-  border-radius: 980px;
-  background: rgba(18, 18, 22, 0.66);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Two gentle pulses once it is shown, then rest; the bars keep a slow beat.
-   Neither under reduced motion (.is-calm) or with prefers-reduced-motion. */
-@media (prefers-reduced-motion: no-preference) {
-  .sound-prompt.is-shown:not(.is-calm) .sound-prompt__button {
-    animation: prompt-pulse 1100ms ease-in-out 700ms 2;
-  }
-
-  .sound-prompt:not(.is-calm) .sound-prompt__bars span {
-    animation: prompt-bar 1100ms ease-in-out infinite alternate;
-  }
-
-  .sound-prompt:not(.is-calm) .sound-prompt__bars span:nth-child(2) {
-    animation-delay: -400ms;
-  }
-
-  .sound-prompt:not(.is-calm) .sound-prompt__bars span:nth-child(3) {
-    animation-delay: -750ms;
-  }
-}
-
-@keyframes prompt-pulse {
-  50% {
-    transform: scale(1.06);
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34), 0 0 0 6px rgba(255, 255, 255, 0.14);
-  }
-}
-
-@keyframes prompt-bar {
-  from {
-    transform: scaleY(0.35);
-  }
-  to {
-    transform: scaleY(1);
-  }
 }
 
 .window__controls {
@@ -773,6 +735,110 @@ a:hover {
 .video-button[aria-pressed="true"] {
   background: #ffffff;
   color: #000000;
+}
+
+/* The sound button while the video plays muted: speaker with tiny equalizer
+   bars; it opens into a pill with its label (timed once, on hover of the
+   picture, on focus), with two soft rings the first time. */
+.sound-button {
+  position: relative;
+  gap: 0;
+  padding: 0 14px;
+}
+
+.sound-button__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 10px;
+  margin-left: 3px;
+}
+
+.sound-button__bars span {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: 50% 100%;
+  transform: scaleY(0.55);
+}
+
+.sound-button__label {
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  white-space: nowrap;
+  transition:
+    max-width 500ms var(--ease-out),
+    margin 500ms var(--ease-out),
+    opacity 300ms ease,
+    transform 500ms var(--ease-out);
+}
+
+.sound-button.is-open .sound-button__label,
+.window__screen:hover .sound-button.is-inviting .sound-button__label,
+.sound-button.is-inviting:focus-visible .sound-button__label {
+  max-width: 14em;
+  margin-left: 8px;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s, 0s, 120ms, 0s;
+}
+
+.sound-button::before,
+.sound-button::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: inherit;
+  /* A dark hairline too, so the ring also shows over light frames. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span {
+    animation: sound-bar 900ms ease-in-out infinite alternate;
+  }
+
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span:nth-child(2) {
+    animation-delay: -350ms;
+  }
+
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span:nth-child(3) {
+    animation-delay: -650ms;
+  }
+
+  .sound-button.is-rippling::before {
+    animation: sound-ripple 1400ms ease-out 250ms 1;
+  }
+
+  .sound-button.is-rippling::after {
+    animation: sound-ripple 1400ms ease-out 700ms 1;
+  }
+}
+
+@keyframes sound-bar {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes sound-ripple {
+  from {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35, 1.7);
+  }
 }
 
 /* Facts panel: frosted glass over the end of the hero's wallpaper. Numbers in
@@ -837,8 +903,8 @@ a:hover {
 .stats__word {
   font-size: 30px;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
 }
 
 .stats__line {
@@ -973,9 +1039,9 @@ a:hover {
 .section__title {
   font-family: var(--font-display);
   font-size: clamp(34px, 5vw, 60px);
-  font-weight: 700;
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
   text-wrap: balance;
 }
 
@@ -997,13 +1063,10 @@ a:hover {
   font-size: 14px;
 }
 
-/* Japanese: no negative tracking, and headlines break between phrases, not inside words. */
+/* Japanese headlines break between phrases, not inside words. */
 :lang(ja) .hero__title,
 :lang(ja) .section__title,
-:lang(ja) .cta__title,
-:lang(ja) .stats__value {
-  letter-spacing: 0;
-  line-height: 1.25;
+:lang(ja) .cta__title {
   word-break: auto-phrase;
 }
 
@@ -1304,9 +1367,9 @@ a:hover {
   margin-top: 16px;
   font-family: var(--font-display);
   font-size: clamp(26px, 3vw, 34px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-weight: var(--display-weight);
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
 }
 
 .story__copy {
@@ -1734,8 +1797,8 @@ a:hover {
   margin-top: 18px;
   font-size: 22px;
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
   text-wrap: balance;
 }
 
@@ -1961,6 +2024,185 @@ a:hover {
   white-space: nowrap;
 }
 
+/* Feature tile demos. A tile RevealObserver held back (.is-pending) rises in when
+   it scrolls into view, then its visual plays once: the switch flips on and the
+   public IP types in, the banners slide in in turn, the alert cards stack up, the
+   kill switch flips, the Wi-Fi glyph pulses, the Keychain rows slide in. Only
+   opacity, transform, translate and clip-path change, so nothing reflows; without
+   motion every tile shows its final state. */
+@media (prefers-reduced-motion: no-preference) {
+  .tile[data-reveal] {
+    --demo: calc(350ms + var(--i, 0) * 90ms);
+  }
+
+  /* Transitions only on the way in: entering the pending state is instant. */
+  .tile[data-reveal]:not(.is-pending) {
+    transition:
+      opacity 800ms ease,
+      transform 900ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  .tile.is-pending {
+    opacity: 0;
+    transform: translateY(32px) scale(0.97);
+  }
+
+  /* Menu bar: the Office switch flips on, its dot turns green, the IP card opens
+     and its digits type in. */
+  .tile--menuBar[data-reveal]:not(.is-pending) .switch,
+  .tile--killSwitch[data-reveal]:not(.is-pending) .switch {
+    transition: background-color 250ms ease calc(var(--demo) + 400ms);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .switch__knob,
+  .tile--killSwitch[data-reveal]:not(.is-pending) .switch__knob {
+    transition: transform 350ms var(--ease-spring) calc(var(--demo) + 400ms);
+  }
+
+  .tile--menuBar.is-pending .switch.is-on,
+  .tile--killSwitch.is-pending .switch.is-on {
+    background: var(--switch-off);
+  }
+
+  .tile--menuBar.is-pending .switch.is-on .switch__knob,
+  .tile--killSwitch.is-pending .switch.is-on .switch__knob {
+    transform: none;
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .status-dot {
+    transition: background-color 300ms ease calc(var(--demo) + 800ms);
+  }
+
+  .tile--menuBar.is-pending .status-dot--ok {
+    background: var(--gray-dot);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .popover__card {
+    transition:
+      opacity 400ms ease calc(var(--demo) + 900ms),
+      transform 500ms var(--ease-out) calc(var(--demo) + 900ms);
+  }
+
+  .tile--menuBar.is-pending .popover__card {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .popover__card-value {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 700ms steps(12, end) calc(var(--demo) + 1200ms);
+  }
+
+  .tile--menuBar.is-pending .popover__card-value {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  /* Reconnect: lost, reconnecting, back, one after another. */
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > * {
+    transition:
+      opacity 500ms ease,
+      translate 700ms var(--ease-out);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(1) {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(2) {
+    transition-delay: calc(var(--demo) + 700ms);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(3) {
+    transition-delay: calc(var(--demo) + 1300ms);
+  }
+
+  .tile--reconnect.is-pending .timeline > * {
+    opacity: 0;
+    translate: 40px 0;
+  }
+
+  .tile--reconnect.is-pending .timeline__status {
+    translate: 0 8px;
+  }
+
+  /* Errors: the cards stack up, the front one last. */
+  .tile--errors[data-reveal]:not(.is-pending) .deck > * {
+    transition:
+      opacity 450ms ease,
+      translate 650ms var(--ease-out);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(1) {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(2) {
+    transition-delay: calc(var(--demo) + 300ms);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(3) {
+    transition-delay: calc(var(--demo) + 500ms);
+  }
+
+  .tile--errors.is-pending .deck > * {
+    opacity: 0;
+    translate: 0 28px;
+  }
+
+  /* Waiting for the network: the glyph pulses twice, the status fades in. */
+  .tile--network:not(.is-pending) .waiting__glyph {
+    animation: wifi-pulse 1100ms ease-in-out calc(var(--demo) + 200ms) 2;
+  }
+
+  .tile--network[data-reveal]:not(.is-pending) .waiting__status,
+  .tile--network[data-reveal]:not(.is-pending) .waiting__detail {
+    transition: opacity 500ms ease calc(var(--demo) + 500ms);
+  }
+
+  .tile--network.is-pending .waiting__status,
+  .tile--network.is-pending .waiting__detail {
+    opacity: 0;
+  }
+
+  /* Keychain: the lock settles, the items slide in. */
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__lock,
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li {
+    transition:
+      opacity 450ms ease,
+      translate 650ms var(--ease-out);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__lock {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li:nth-child(1) {
+    transition-delay: calc(var(--demo) + 400ms);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li:nth-child(2) {
+    transition-delay: calc(var(--demo) + 600ms);
+  }
+
+  .tile--keychain.is-pending .keychain__lock {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+
+  .tile--keychain.is-pending .keychain__items li {
+    opacity: 0;
+    translate: 32px 0;
+  }
+}
+
+@keyframes wifi-pulse {
+  50% {
+    opacity: 0.55;
+    transform: scale(1.12);
+  }
+}
+
 /* Screenshots: two windows, one per appearance, overlapping on the wallpaper. */
 
 .shots__stage {
@@ -2036,7 +2278,8 @@ a:hover {
   margin-top: 20px;
   font-size: 21px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
 }
 
 .install__body {
@@ -2139,9 +2382,9 @@ a:hover {
   margin-top: 36px;
   font-family: var(--font-display);
   font-size: clamp(36px, 5.4vw, 64px);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
   text-wrap: balance;
 }
 
@@ -2158,6 +2401,61 @@ a:hover {
 .cta .download__requirements {
   color: var(--label);
   opacity: 0.72;
+}
+
+/* Back to top: frosted round button, clear of the home indicator and notch. */
+
+.back-to-top {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px);
+  backdrop-filter: saturate(1.8) blur(20px);
+  box-shadow: var(--shadow-panel);
+  color: var(--label);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition:
+    opacity 300ms ease,
+    transform 400ms var(--ease-out),
+    visibility 0s linear 300ms,
+    background-color 180ms ease;
+}
+
+.back-to-top.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 300ms ease,
+    transform 400ms var(--ease-out),
+    background-color 180ms ease;
+}
+
+.back-to-top:hover {
+  background: var(--card);
+}
+
+.back-to-top:focus-visible {
+  border-radius: 50%;
+}
+
+@media (min-width: 1000px) {
+  .back-to-top {
+    right: calc(28px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Footer */
@@ -2195,7 +2493,7 @@ a:hover {
   gap: 8px 24px;
 }
 
-.footer .lang {
+.footer .lang-menu {
   justify-self: start;
 }
 
@@ -2352,19 +2650,8 @@ a:hover {
     gap: 6px;
   }
 
-  .sound-prompt {
-    gap: 6px;
-  }
-
-  .sound-prompt__button {
-    min-height: 44px;
-    padding: 0 18px 0 15px;
-    gap: 8px;
-    font-size: 15px;
-  }
-
-  .sound-prompt__about {
-    font-size: 11px;
+  .sound-button__label {
+    font-size: 13px;
   }
 
   .stats__item {
@@ -2442,6 +2729,12 @@ a:hover {
 
   .footer__links {
     grid-row: auto;
+  }
+
+  /* The footer's menu button sits at the left edge here: open to the right. */
+  .footer .lang-menu__list {
+    right: auto;
+    left: 0;
   }
 }
 

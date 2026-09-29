@@ -24,7 +24,6 @@ const vi: Dictionary = {
       soundOff: "Tắt tiếng",
       turnOnSound: "Bật tiếng",
       playWithSound: "Phát video có tiếng",
-      about: "Video {seconds} giây · có thuyết minh",
     },
   },
   stats: {
@@ -134,6 +133,7 @@ const vi: Dictionary = {
     title: "Kết nối ổn định, dù bạn làm việc ở đâu.",
     body: "Tải về, gạt công tắc, rồi yên tâm quay lại với công việc.",
   },
+  backToTop: "Lên đầu trang",
   footer: {
     tagline: "VPN công ty, chỉ cách bạn một công tắc.",
     github: "GitHub",

@@ -100,7 +100,11 @@ const visuals: Record<FeatureKey, ReactNode> = {
   ),
 };
 
-/** Features as a bento grid; every tile has an icon, a plain-language line and a visual. */
+/**
+ * Features as a bento grid; every tile has an icon, a plain-language line and a
+ * visual. With motion, a tile below the fold rises in when it scrolls into view
+ * and its piece of the app plays once (globals.css, "Feature tile demos").
+ */
 export function Features({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.features;
   return (
@@ -119,11 +123,12 @@ export function Features({ locale, dict }: { locale: Locale; dict: Dictionary })
             {t.lead}
           </p>
         </div>
-        <ul className="bento" data-reveal>
+        {/* Each tile reveals on its own as it scrolls in, then plays its demo once. */}
+        <ul className="bento">
           {tiles.map(({ key, icon, color }, i) => {
             const feature = t.items[key];
             return (
-              <li key={key} className={`tile tile--${key} tile--${color}`} data-item style={stagger(i)}>
+              <li key={key} className={`tile tile--${key} tile--${color}`} data-reveal style={stagger(i % 3)}>
                 <div className="tile__text">
                   <IconTile name={icon} color={color} />
                   <h3 className="tile__title">{feature.title}</h3>

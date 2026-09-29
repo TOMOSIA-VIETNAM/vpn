@@ -1,7 +1,7 @@
 import { site } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
 import type { Locale } from "@/i18n/locales";
-import { LanguageSwitcher } from "./LanguageSwitcher";
+import { LanguageMenu } from "./LanguageMenu";
 
 export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   return (
@@ -20,7 +20,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
           <a href={site.releasesUrl}>{dict.footer.releases}</a>
           <a href={site.contributingUrl}>{dict.footer.developers}</a>
         </nav>
-        <LanguageSwitcher locale={locale} label={dict.header.languageLabel} />
+        <LanguageMenu locale={locale} label={dict.header.languageLabel} direction="up" />
         <p className="footer__copyright">
           © {new Date().getFullYear()} {site.company}
         </p>

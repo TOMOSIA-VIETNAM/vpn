@@ -27,7 +27,7 @@ export function SplitText({ text, byWord, start = 0 }: SplitTextProps) {
         /^\s+$/.test(part) || part === "" ? (
           part
         ) : (
-          <span key={i} className="split__piece" data-item style={stagger(index++)}>
+          <span key={i} className="split__piece split__word" data-item style={stagger(index++)}>
             {part}
           </span>
         ),

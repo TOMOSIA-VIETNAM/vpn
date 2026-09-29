@@ -41,11 +41,11 @@ export type ScreenshotKey = keyof typeof screenshots;
 /**
  * Promo video editions, copied from ../assets/videos/promo/web into public/videos.
  * Each edition is a set of files named <name>.mp4 (H.264), <name>.webm (VP9),
- * <name>-mobile.mp4 (720p) and <name>-poster.jpg. A locale without its own
- * edition shows the fallback locale's; add a line here when one is published.
+ * <name>-mobile.mp4 (720p) and <name>-poster.jpg. Every locale has its own
+ * edition (narration and on-screen text in its language); a new locale fails
+ * the type check until its line is added.
  */
-const promoEditions = { vi: "promo-vi" } satisfies Partial<Record<Locale, string>>;
-const promoFallback: keyof typeof promoEditions = "vi";
+const promoEditions: Record<Locale, string> = { en: "promo-en", vi: "promo-vi", ja: "promo-ja" };
 
 export const promoVideoSize = { width: 1920, height: 1080 } as const;
 
@@ -61,7 +61,7 @@ export const promoVideoTypes = {
 } as const;
 
 export function promoVideo(locale: Locale) {
-  const name = promoEditions[locale as keyof typeof promoEditions] ?? promoEditions[promoFallback];
+  const name = promoEditions[locale];
   return {
     mp4: `/videos/${name}.mp4`,
     webm: `/videos/${name}.webm`,

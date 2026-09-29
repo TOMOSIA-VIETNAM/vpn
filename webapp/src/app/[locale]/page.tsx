@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { BackToTop } from "@/components/BackToTop";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Parallax } from "@/components/motion/Parallax";
@@ -38,6 +39,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <Cta dict={dict} />
       </main>
       <Footer locale={locale} dict={dict} />
+      <BackToTop label={dict.backToTop} />
       <RevealObserver />
       <Parallax />
     </>

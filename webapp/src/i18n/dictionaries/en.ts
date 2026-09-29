@@ -24,7 +24,6 @@ const en: Dictionary = {
       soundOff: "Mute",
       turnOnSound: "Turn on sound",
       playWithSound: "Play with sound",
-      about: "{seconds}-second video · with narration",
     },
   },
   stats: {
@@ -134,6 +133,7 @@ const en: Dictionary = {
     title: "Stay connected, wherever you work.",
     body: "Download it, flip the switch and get back to work.",
   },
+  backToTop: "Back to top",
   footer: {
     tagline: "The company VPN, one switch away.",
     github: "GitHub",

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { site, screenshots, siteUrl } from "@/config/site";
 import { getDictionary } from "@/i18n";
-import { defaultLocale, isLocale, localeInfo, locales } from "@/i18n/locales";
+import { beVietnamPro } from "@/fonts";
+import { defaultLocale, isLocale, localeInfo, locales, typographyStyle } from "@/i18n/locales";
 import "../globals.css";
 
 interface LocaleParams {
@@ -60,7 +61,7 @@ export default async function LocaleLayout({ children, params }: LocaleParams & 
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   return (
-    <html lang={localeInfo[locale].htmlLang}>
+    <html lang={localeInfo[locale].htmlLang} className={beVietnamPro.variable} style={typographyStyle(locale)}>
       <body>{children}</body>
     </html>
   );
