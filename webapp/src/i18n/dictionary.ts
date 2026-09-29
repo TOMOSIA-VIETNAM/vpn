@@ -44,8 +44,15 @@ export interface Dictionary {
     video: {
       pause: string;
       play: string;
+      /** Accessible names of the corner sound toggle. */
       soundOn: string;
       soundOff: string;
+      /** The big button over the muted, playing video. */
+      turnOnSound: string;
+      /** The same button with reduced motion, when nothing plays yet. */
+      playWithSound: string;
+      /** Under the big button; {seconds} is the video's length, from its metadata. */
+      about: string;
     };
   };
   /** Facts band under the hero; the numbers come from the config. */

@@ -610,6 +610,133 @@ a:hover {
   object-fit: cover;
 }
 
+/* The picture is clickable: sound on the first time, then play/pause. */
+.window__screen {
+  cursor: pointer;
+}
+
+/* Sound prompt: a dark frosted pill centred over the video, readable over light
+   and dark frames alike, with a length line under it. */
+.sound-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.94);
+  transition:
+    opacity 500ms ease,
+    transform 600ms var(--ease-out);
+}
+
+.sound-prompt.is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+.sound-prompt__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 0 30px 0 24px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 980px;
+  background: rgba(18, 18, 22, 0.62);
+  -webkit-backdrop-filter: saturate(1.4) blur(20px);
+  backdrop-filter: saturate(1.4) blur(20px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.sound-prompt:not(.is-shown) .sound-prompt__button {
+  pointer-events: none;
+}
+
+.sound-prompt__button:hover {
+  background: rgba(18, 18, 22, 0.78);
+}
+
+.sound-prompt__button:active {
+  transform: scale(0.97);
+}
+
+.sound-prompt__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  margin-right: 4px;
+}
+
+.sound-prompt__bars span {
+  width: 3px;
+  height: 100%;
+  border-radius: 1.5px;
+  background: currentColor;
+  transform-origin: 50% 100%;
+  transform: scaleY(0.5);
+}
+
+.sound-prompt__about {
+  padding: 3px 10px;
+  border-radius: 980px;
+  background: rgba(18, 18, 22, 0.66);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Two gentle pulses once it is shown, then rest; the bars keep a slow beat.
+   Neither under reduced motion (.is-calm) or with prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .sound-prompt.is-shown:not(.is-calm) .sound-prompt__button {
+    animation: prompt-pulse 1100ms ease-in-out 700ms 2;
+  }
+
+  .sound-prompt:not(.is-calm) .sound-prompt__bars span {
+    animation: prompt-bar 1100ms ease-in-out infinite alternate;
+  }
+
+  .sound-prompt:not(.is-calm) .sound-prompt__bars span:nth-child(2) {
+    animation-delay: -400ms;
+  }
+
+  .sound-prompt:not(.is-calm) .sound-prompt__bars span:nth-child(3) {
+    animation-delay: -750ms;
+  }
+}
+
+@keyframes prompt-pulse {
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.34), 0 0 0 6px rgba(255, 255, 255, 0.14);
+  }
+}
+
+@keyframes prompt-bar {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 .window__controls {
   position: absolute;
   right: 16px;
@@ -2225,9 +2352,19 @@ a:hover {
     gap: 6px;
   }
 
-  .video-button--label {
-    padding: 0 12px;
-    font-size: 13px;
+  .sound-prompt {
+    gap: 6px;
+  }
+
+  .sound-prompt__button {
+    min-height: 44px;
+    padding: 0 18px 0 15px;
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .sound-prompt__about {
+    font-size: 11px;
   }
 
   .stats__item {

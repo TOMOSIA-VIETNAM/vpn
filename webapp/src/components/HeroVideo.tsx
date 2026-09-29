@@ -2,13 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mobileVideoQuery, promoVideoSize, promoVideoTypes, site } from "@/config/site";
+import { format } from "@/i18n/format";
 import type { Dictionary } from "@/i18n/dictionary";
 import { motionAllowed } from "./motion/motion";
 
 interface HeroVideoProps {
   sources: { mp4: string; webm: string; mobileMp4: string; poster: string };
   labels: Dictionary["hero"]["video"];
+  /** BCP 47 language of the page, for the duration's number format. */
+  lang: string;
 }
+
+/**
+ * The big "turn on sound" button over the video: waiting (not shown yet), shown,
+ * or done (sound was turned on once; the corner control takes over from then).
+ */
+type SoundPrompt = "waiting" | "shown" | "done";
+
+// How long the muted video plays in view before the sound prompt appears.
+const PROMPT_DELAY_MS = 1500;
 
 /**
  * Starts the video and reports whether it plays. A refused start (an autoplay
@@ -43,22 +55,32 @@ const MAX_GROWTH = 1.4;
 /**
  * The promo video in a macOS window frame under the hero text. Muted and looping,
  * started by script when at least a fifth of it is on screen (also at load), and
- * paused when it leaves. With reduced motion (or no JavaScript) only the poster
- * shows until the play button is pressed. Controls: pause/play and sound on/off.
+ * paused when it leaves; it resumes on return if it was playing. With reduced
+ * motion (or no JavaScript) only the poster shows until something is pressed.
+ *
+ * Browsers only autoplay muted, so a large "turn on sound" button appears over
+ * the picture a moment after the muted video starts (at once, as "play with
+ * sound", under reduced motion). It, or a click anywhere on the picture, restarts
+ * the video from the beginning with sound; after that it is gone for good and the
+ * corner controls (pause/play, sound on/off) take over.
  *
  * With motion allowed, the frame scales up toward the full viewport width as the
  * page scrolls, reaching it when its top meets the header. Only transform changes;
  * the stage below it is given the room the scaled frame needs (--grow-room), so it
  * never covers the next section.
  */
-export function HeroVideo({ sources, labels }: HeroVideoProps) {
+export function HeroVideo({ sources, labels, lang }: HeroVideoProps) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
-  // Set when the visitor pauses, so scrolling back does not restart the video.
-  const pausedByUser = useRef(false);
+  const [prompt, setPrompt] = useState<SoundPrompt>("waiting");
+  const [seconds, setSeconds] = useState<number | null>(null);
+  const [calm, setCalm] = useState(false);
+  // Whether the video should play while it is on screen: on for autoplay, then
+  // whatever the visitor chose last (play, pause, sound on).
+  const wanted = useRef(false);
 
   useEffect(() => {
     const el = video.current;
@@ -67,16 +89,40 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
     // since hydration does not reapply attributes.
     el.muted = true;
     el.playsInline = true;
+    const autoplay = motionAllowed();
+    wanted.current = autoplay;
+
+    let promptTimer = 0;
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onVolume = () => setMuted(el.muted);
+    const onMetadata = () => {
+      if (Number.isFinite(el.duration)) setSeconds(Math.round(el.duration));
+    };
+    // The prompt appears once the muted video has played for a moment.
+    const onPlaying = () => {
+      if (promptTimer || !el.muted) return;
+      promptTimer = window.setTimeout(() => setPrompt((p) => (p === "waiting" ? "shown" : p)), PROMPT_DELAY_MS);
+    };
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
+    el.addEventListener("volumechange", onVolume);
+    el.addEventListener("loadedmetadata", onMetadata);
+    el.addEventListener("playing", onPlaying);
+    if (el.readyState >= 1) onMetadata();
 
-    // Reduced motion: no autoplay; the play button still works.
-    const autoplay = motionAllowed();
+    // Reduced motion: nothing plays by itself, so the prompt (as "play with
+    // sound") shows at once and stays still.
+    const initial = window.setTimeout(() => {
+      if (!autoplay) {
+        setCalm(true);
+        setPrompt("shown");
+      }
+    }, 0);
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && autoplay && !pausedByUser.current) void startPlayback(el, "autoplay");
+        if (entry.isIntersecting && wanted.current && el.paused) void startPlayback(el, "in view");
         if (!entry.isIntersecting && !el.paused) el.pause();
       },
       { threshold: 0.2 },
@@ -84,10 +130,26 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
     observer.observe(el);
     return () => {
       observer.disconnect();
+      window.clearTimeout(promptTimer);
+      window.clearTimeout(initial);
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
+      el.removeEventListener("volumechange", onVolume);
+      el.removeEventListener("loadedmetadata", onMetadata);
+      el.removeEventListener("playing", onPlaying);
     };
   }, []);
+
+  /** Sound on for the first time: from the start, with sound. */
+  function playWithSound() {
+    const el = video.current;
+    if (!el) return;
+    setPrompt("done");
+    wanted.current = true;
+    el.currentTime = 0;
+    el.muted = false;
+    void startPlayback(el, "sound on");
+  }
 
   useEffect(() => {
     const box = frame.current;
@@ -137,10 +199,10 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
     const el = video.current;
     if (!el) return;
     if (el.paused) {
-      pausedByUser.current = false;
+      wanted.current = true;
       void startPlayback(el, "play button");
     } else {
-      pausedByUser.current = true;
+      wanted.current = false;
       el.pause();
     }
   }
@@ -148,15 +210,25 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
   function toggleSound() {
     const el = video.current;
     if (!el) return;
+    if (el.muted && prompt !== "done") {
+      playWithSound();
+      return;
+    }
     el.muted = !el.muted;
-    setMuted(el.muted);
     if (!el.muted && el.paused) {
-      pausedByUser.current = false;
-      void startPlayback(el, "sound button").then((ok) => {
-        if (!ok) setMuted(el.muted);
-      });
+      wanted.current = true;
+      void startPlayback(el, "sound button");
     }
   }
+
+  /** A click anywhere on the picture: sound on the first time, then play/pause. */
+  function onScreenClick() {
+    if (prompt !== "done" && video.current?.muted) playWithSound();
+    else togglePlay();
+  }
+
+  const aboutText =
+    seconds === null ? null : format(labels.about, { seconds: new Intl.NumberFormat(lang).format(seconds) });
 
   return (
     <div className="hero__stage" ref={stage}>
@@ -169,7 +241,9 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
           </span>
           <span className="window__title">{site.name}</span>
         </div>
-        <div className="window__screen">
+        {/* The whole picture is a pointer target for the prompt's action; the
+            prompt and the corner controls are the keyboard route. */}
+        <div className="window__screen" onClick={onScreenClick}>
           <video
             ref={video}
             className="window__video"
@@ -187,7 +261,37 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
             <source src={sources.webm} type={promoVideoTypes.webm} />
             <source src={sources.mp4} type={promoVideoTypes.mp4} />
           </video>
-          <div className="window__controls">
+          {prompt !== "done" && (
+            <div className={`sound-prompt ${prompt === "shown" ? "is-shown" : ""} ${calm ? "is-calm" : ""}`}>
+              <button
+                type="button"
+                className="sound-prompt__button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  playWithSound();
+                }}
+                tabIndex={prompt === "shown" ? 0 : -1}
+                aria-hidden={prompt === "shown" ? undefined : true}
+                aria-describedby={aboutText ? "sound-prompt-about" : undefined}
+              >
+                <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">
+                  <path d="M2.5 6v4h2.6L8.5 13V3L5.1 6z" fill="currentColor" />
+                </svg>
+                <span className="sound-prompt__bars" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                {calm ? labels.playWithSound : labels.turnOnSound}
+              </button>
+              {aboutText && (
+                <p id="sound-prompt-about" className="sound-prompt__about">
+                  {aboutText}
+                </p>
+              )}
+            </div>
+          )}
+          <div className="window__controls" onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
               className="video-button"
@@ -210,9 +314,10 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
             </button>
             <button
               type="button"
-              className="video-button video-button--label"
+              className="video-button"
               onClick={toggleSound}
               aria-pressed={!muted}
+              aria-label={muted ? labels.soundOn : labels.soundOff}
             >
               <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
                 <path d="M2.5 6v4h2.6L8.5 13V3L5.1 6z" fill="currentColor" />
@@ -228,7 +333,6 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
                   />
                 )}
               </svg>
-              {muted ? labels.soundOn : labels.soundOff}
             </button>
           </div>
         </div>

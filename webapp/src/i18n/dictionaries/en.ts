@@ -22,6 +22,9 @@ const en: Dictionary = {
       play: "Play video",
       soundOn: "Watch with sound",
       soundOff: "Mute",
+      turnOnSound: "Turn on sound",
+      playWithSound: "Play with sound",
+      about: "{seconds}-second video · with narration",
     },
   },
   stats: {

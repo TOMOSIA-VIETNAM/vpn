@@ -10,7 +10,5 @@ export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale];
 }
 
-/** Fills `{name}` placeholders, e.g. `format("macOS {version}+", { version: "12" })`. */
-export function format(template: string, values: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
-}
+// Client components import it from ./format, which does not pull in every dictionary.
+export { format } from "./format";

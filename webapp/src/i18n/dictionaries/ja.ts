@@ -24,6 +24,9 @@ const ja: Dictionary = {
       play: "動画を再生",
       soundOn: "音声付きで見る",
       soundOff: "ミュート",
+      turnOnSound: "音声をオン",
+      playWithSound: "音声付きで再生",
+      about: "{seconds}秒の動画・ナレーション付き",
     },
   },
   stats: {

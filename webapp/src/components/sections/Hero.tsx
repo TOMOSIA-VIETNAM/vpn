@@ -1,7 +1,7 @@
 import { preload } from "react-dom";
 import { promoVideo } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
-import type { Locale } from "@/i18n/locales";
+import { localeInfo, type Locale } from "@/i18n/locales";
 import { DownloadButton } from "../DownloadButton";
 import { HeroVideo } from "../HeroVideo";
 
@@ -25,7 +25,7 @@ export function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
         <p className="hero__lead">{t.lead}</p>
         <DownloadButton dict={dict} />
       </div>
-      <HeroVideo sources={video} labels={t.video} />
+      <HeroVideo sources={video} labels={t.video} lang={localeInfo[locale].htmlLang} />
     </section>
   );
 }

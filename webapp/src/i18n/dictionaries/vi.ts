@@ -22,6 +22,9 @@ const vi: Dictionary = {
       play: "Phát video",
       soundOn: "Xem có tiếng",
       soundOff: "Tắt tiếng",
+      turnOnSound: "Bật tiếng",
+      playWithSound: "Phát video có tiếng",
+      about: "Video {seconds} giây · có thuyết minh",
     },
   },
   stats: {
