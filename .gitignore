@@ -20,3 +20,4 @@ webapp/next-env.d.ts
 webapp/*.tsbuildinfo
 # The landing page's build scripts are source, unlike the local scripts/ ignored above.
 !webapp/scripts/
+.vercel
