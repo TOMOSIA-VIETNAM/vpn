@@ -12,13 +12,15 @@ TOMOSIA VPN is two programs:
 | `vpn` CLI and connection engine (IKEv1, ESP, L2TP, PPP), in Go | `cmd/vpn`, `internal/` | `/usr/local/bin/vpn`, setuid root |
 | Menu bar app, in SwiftUI (one file) | `main.swift` | `/Applications/TOMOSIA-VPN.app` |
 
-The app never talks to the network itself. It runs `vpn` commands and reads the
-files the CLI writes:
+The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
+files the CLI writes. Its only network request is the public IP shown while
+connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
+`main.swift`).
 
 | File | Written by | Holds |
 |---|---|---|
 | `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, verbose flag |
-| `/var/run/vpn/state.json` | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), IP, failure stage and detail |
+| `/var/run/vpn/state.json` | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
 | `/var/log/vpn.log` | CLI and daemon | Log (`vpn logs`) |
 | macOS Keychain | CLI | Passwords and pre-shared keys |
 

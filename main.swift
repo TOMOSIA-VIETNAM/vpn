@@ -66,7 +66,6 @@ struct CLIState: Codable {
     var server: String?
     var pid: Int?
     var tun_device: String?
-    var local_ip: String?
     var fail_stage: String?
     var fail_detail: String?
     var updated_at: String?
@@ -135,7 +134,11 @@ final class VPNManager: ObservableObject {
     @Published var isConnected: Bool = false
     @Published var isConnecting: Bool = false
     @Published var currentPhase: String = "DISCONNECTED"
-    @Published var currentIP: String = ""
+    /// This Mac's address as the internet sees it, looked up while connected (see
+    /// refreshPublicIP). Empty until the first lookup answers.
+    @Published var publicIP: String = ""
+    private var publicIPCheckedAt: Date?
+    private var publicIPLookup: URLSessionDataTask?
     @Published var errorMessage: String?
     @Published var activeAlert: VPNAlertInfo?
     /// Feedback for profile edits/deletes; clears itself after a few seconds.
@@ -198,6 +201,7 @@ final class VPNManager: ObservableObject {
                     // Refresh now instead of on the next (slow) poll tick: the wording of a
                     // reconnect depends on whether there is a network at all.
                     vpn.syncFromDisk()
+                    vpn.refreshPublicIP()
                 }
             }
         }
@@ -224,6 +228,41 @@ final class VPNManager: ObservableObject {
         popoverVisible = visible
         syncFromDisk()
         startPolling()
+        if visible && isConnected { refreshPublicIP(maxAge: 60) }
+    }
+
+    /// Asks Cloudflare's trace endpoint which address our traffic leaves from: the VPN
+    /// server's with "Send all traffic", the local network's otherwise. Skipped when the
+    /// last answer is younger than `maxAge`; a failed lookup is retried once.
+    func refreshPublicIP(maxAge: TimeInterval = 0, retry: Bool = true) {
+        guard isConnected else { return }
+        if let at = publicIPCheckedAt, Date().timeIntervalSince(at) < maxAge, !publicIP.isEmpty { return }
+        publicIPLookup?.cancel()
+        var request = URLRequest(url: URL(string: "https://1.1.1.1/cdn-cgi/trace")!, timeoutInterval: 6)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let task = URLSession(configuration: .ephemeral).dataTask(with: request) { data, _, error in
+            let ip = data.flatMap { String(data: $0, encoding: .utf8) }?
+                .split(separator: "\n")
+                .first { $0.hasPrefix("ip=") }
+                .map { String($0.dropFirst(3)) }
+            let cancelled = (error as? URLError)?.code == .cancelled
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    let vpn = VPNManager.shared
+                    guard vpn.isConnected, !cancelled else { return }
+                    if let ip {
+                        vpn.update(\.publicIP, ip)
+                        vpn.publicIPCheckedAt = Date()
+                    } else if retry {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            MainActor.assumeIsolated { VPNManager.shared.refreshPublicIP(retry: false) }
+                        }
+                    }
+                }
+            }
+        }
+        publicIPLookup = task
+        task.resume()
     }
 
     private func pollInterval() -> TimeInterval {
@@ -295,7 +334,6 @@ final class VPNManager: ObservableObject {
         // 1. Read State (/var/run/vpn/state.json)
         var activeProf: String?
         var phase = "DISCONNECTED"
-        var localIP = ""
         var failStage = ""
         var failDetail = ""
         var updatedAt: Date?
@@ -316,7 +354,6 @@ final class VPNManager: ObservableObject {
                 daemonGone = true
             }
             activeProf = st.profile
-            localIP = st.local_ip ?? ""
             failStage = st.fail_stage ?? ""
             failDetail = st.fail_detail ?? ""
             updatedAt = Self.parseDate(st.updated_at)
@@ -401,7 +438,11 @@ final class VPNManager: ObservableObject {
         update(\.isConnected, phase == "CONNECTED")
         update(\.isConnecting, phase == "CONNECTING")
         update(\.isDisconnecting, pendingIntent?.phase == "DISCONNECTED")
-        update(\.currentIP, localIP)
+        if phase != "CONNECTED" {
+            publicIPLookup?.cancel()
+            update(\.publicIP, "")
+            publicIPCheckedAt = nil
+        }
 
         if oldPhase != phase {
             noteLinkChange(from: oldPhase, to: phase, profile: activeProf ?? activeProfileName)
@@ -458,6 +499,8 @@ final class VPNManager: ObservableObject {
                 ConnectionNotifier.post(title: "VPN reconnected", body: "Protected via \(title) again.")
             }
             update(\.connectionLost, false)
+            // Routes and DNS have just changed; the address the internet sees follows them.
+            refreshPublicIP()
         }
     }
 
@@ -1360,7 +1403,7 @@ struct ConnectionDetails: View {
 
     var body: some View {
         HStack {
-            item("IP address", ip)
+            item("Public IP", ip.isEmpty ? "Checking…" : ip)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
@@ -1553,8 +1596,8 @@ struct MenuBarPopupView: View {
             .padding(.top, 14)
             .padding(.bottom, 12)
 
-            if state == .connected && !vpn.currentIP.isEmpty {
-                ConnectionDetails(ip: vpn.currentIP)
+            if state == .connected {
+                ConnectionDetails(ip: vpn.publicIP)
                     .padding(.horizontal, Theme.inset)
                     .padding(.bottom, 12)
                     .transition(.opacity)
