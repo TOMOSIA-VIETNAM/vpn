@@ -21,7 +21,9 @@ const vi: Dictionary = {
   },
   problem: {
     title: "VPN có sẵn của macOS ngắt mà không nói lý do.",
-    body: "Trình L2TP trong System Settings → VPN hay rớt khi đi qua tường lửa của Wi-Fi văn phòng và nơi công cộng, rồi hiện cùng một thông báo cho mọi lỗi: sai mật khẩu, cổng bị chặn hay mất mạng.",
+    context:
+      "VPN công ty chạy L2TP/IPsec với shared secret, một giao thức đã cũ. VPN có sẵn của macOS chạy giao thức này không ổn định, còn nhiều app VPN khác lại cần chứng chỉ hoặc giao thức riêng.",
+    body: "Trong System Settings → VPN, kết nối hay rớt khi đi qua tường lửa của Wi-Fi văn phòng và nơi công cộng, rồi hiện cùng một thông báo cho mọi lỗi: sai mật khẩu, cổng bị chặn hay mất mạng.",
     builtInLabel: "VPN có sẵn của macOS",
     builtInCaption: "Một thông báo cho mọi loại lỗi.",
     appLabel: "TOMOSIA VPN",

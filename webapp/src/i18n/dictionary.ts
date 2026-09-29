@@ -29,6 +29,8 @@ export interface Dictionary {
   };
   problem: {
     title: string;
+    /** Why the problem exists: the protocol the company VPN uses. */
+    context: string;
     body: string;
     builtInLabel: string;
     builtInCaption: string;

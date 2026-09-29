@@ -389,6 +389,10 @@ a:hover {
   line-height: 1.55;
 }
 
+.section__body + .section__body {
+  margin-top: 12px;
+}
+
 /* Japanese: no negative tracking, and headlines break between phrases, not inside words. */
 :lang(ja) .hero__title,
 :lang(ja) .section__title,

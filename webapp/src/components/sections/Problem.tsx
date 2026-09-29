@@ -10,6 +10,7 @@ export function Problem({ dict }: { dict: Dictionary }) {
           <h2 id="why-title" className="section__title">
             {t.title}
           </h2>
+          <p className="section__body">{t.context}</p>
           <p className="section__body">{t.body}</p>
         </div>
 

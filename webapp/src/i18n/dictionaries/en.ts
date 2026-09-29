@@ -21,7 +21,9 @@ const en: Dictionary = {
   },
   problem: {
     title: "The built-in VPN gives up without saying why.",
-    body: "The L2TP client in System Settings → VPN drops behind office and public Wi-Fi firewalls, then shows the same message whatever went wrong: a wrong password, a blocked port or no network at all.",
+    context:
+      "The company VPN runs L2TP/IPsec with a shared secret, an older protocol. The VPN built into macOS handles it unreliably, and many other VPN apps need their own certificates or protocol instead.",
+    body: "In System Settings → VPN, the connection drops behind office and public Wi-Fi firewalls, then shows the same message whatever went wrong: a wrong password, a blocked port or no network at all.",
     builtInLabel: "macOS built-in VPN",
     builtInCaption: "One message for every failure.",
     appLabel: "TOMOSIA VPN",
