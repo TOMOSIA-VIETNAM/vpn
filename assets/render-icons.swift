@@ -68,20 +68,20 @@ func drawMark(in rect: NSRect, style: MarkStyle, color: NSColor) {
         shield.stroke()
         letter.stroke()
         // Circled "!" at the lower right, cut out from the mark so it stays legible.
-        let c = NSPoint(x: 47, y: 47)
+        let c = NSPoint(x: 45, y: 45)
         NSGraphicsContext.current?.compositingOperation = .destinationOut
-        NSBezierPath(ovalIn: NSRect(x: c.x - 17, y: c.y - 17, width: 34, height: 34)).fill()
+        NSBezierPath(ovalIn: NSRect(x: c.x - 20.5, y: c.y - 20.5, width: 41, height: 41)).fill()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
-        let ring = NSBezierPath(ovalIn: NSRect(x: c.x - 12.5, y: c.y - 12.5, width: 25, height: 25))
-        ring.lineWidth = 4
+        let ring = NSBezierPath(ovalIn: NSRect(x: c.x - 15.5, y: c.y - 15.5, width: 31, height: 31))
+        ring.lineWidth = 4.5
         ring.stroke()
         let bar = NSBezierPath()
-        bar.move(to: NSPoint(x: c.x, y: c.y - 6.5))
-        bar.line(to: NSPoint(x: c.x, y: c.y + 1.5))
-        bar.lineWidth = 4
+        bar.move(to: NSPoint(x: c.x, y: c.y - 8.5))
+        bar.line(to: NSPoint(x: c.x, y: c.y + 2))
+        bar.lineWidth = 4.5
         bar.lineCapStyle = .round
         bar.stroke()
-        NSBezierPath(ovalIn: NSRect(x: c.x - 2.3, y: c.y + 4.5, width: 4.6, height: 4.6)).fill()
+        NSBezierPath(ovalIn: NSRect(x: c.x - 2.7, y: c.y + 5.5, width: 5.4, height: 5.4)).fill()
     case .solid:
         shield.fill()
         shield.stroke()

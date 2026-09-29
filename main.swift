@@ -195,8 +195,9 @@ final class VPNManager: ObservableObject {
                 MainActor.assumeIsolated {
                     let vpn = VPNManager.shared
                     vpn.update(\.networkOnline, online)
-                    // Back online: refresh now instead of on the next (slow) poll tick.
-                    if online { vpn.syncFromDisk() }
+                    // Refresh now instead of on the next (slow) poll tick: the wording of a
+                    // reconnect depends on whether there is a network at all.
+                    vpn.syncFromDisk()
                 }
             }
         }
@@ -386,10 +387,13 @@ final class VPNManager: ObservableObject {
             repairedStaleDaemon = false
         }
         let fullTunnelActive = profiles.first(where: { $0.name == activeProf })?.isFullTunnel ?? true
+        let lostWhat = !networkOnline
+            ? "No network — the VPN reconnects once this Mac is back online."
+            : "Connection lost — reconnecting."
         update(\.reconnectNote, (reconnecting && phase == "CONNECTING")
             ? (killSwitch && fullTunnelActive
-                ? "Connection lost — reconnecting. Internet is blocked (kill switch) until it is back."
-                : "Connection lost — reconnecting. Traffic is NOT protected until it is back.")
+                ? "\(lostWhat) Internet is blocked (kill switch) until it is back."
+                : "\(lostWhat) Traffic is NOT protected until it is back.")
             : nil)
         update(\.isReconnecting, reconnecting && phase == "CONNECTING")
         let oldPhase = currentPhase
@@ -431,8 +435,7 @@ final class VPNManager: ObservableObject {
     }
 
     /// Makes a connection that drops on its own visible: an alert card when nothing else
-    /// explains it, the status item error badge, and a system notification while the app's UI is
-    /// closed. Changes the user makes in this app go through beginIntent, which moves
+    /// explains it, the status item error badge, and a system notification. Changes the user makes in this app go through beginIntent, which moves
     /// currentPhase itself, so they never reach here as CONNECTED → something else.
     private func noteLinkChange(from old: String, to new: String, profile: String?) {
         let title = profiles.first(where: { $0.name == profile })?.title ?? profile ?? "VPN"
@@ -446,19 +449,15 @@ final class VPNManager: ObservableObject {
                     detail: ""
                 ))
             }
-            if !popoverVisible {
-                let body = new == "CONNECTING"
-                    ? (reconnectNote ?? "Reconnecting to \(title)…")
-                    : (activeAlert?.message ?? "Your traffic is no longer protected.")
-                ConnectionNotifier.post(title: "VPN connection lost", body: body)
-            }
+            let body = new == "CONNECTING"
+                ? (reconnectNote ?? "Reconnecting to \(title)…")
+                : (activeAlert?.message ?? "Your traffic is no longer protected.")
+            ConnectionNotifier.post(title: "VPN connection lost", body: body)
         } else if new == "CONNECTED" {
-            if connectionLost && !popoverVisible {
+            if connectionLost {
                 ConnectionNotifier.post(title: "VPN reconnected", body: "Protected via \(title) again.")
             }
             update(\.connectionLost, false)
-            // Asked on the first successful connection, when the reason for it is obvious.
-            ConnectionNotifier.requestAuthorization()
         }
     }
 
@@ -926,9 +925,35 @@ enum ConnectionNotifier {
     /// UNUserNotificationCenter needs an app bundle; a bare swiftc build has none and would crash.
     static var available: Bool { Bundle.main.bundleIdentifier != nil }
 
-    static func requestAuthorization() {
+    static func requestAuthorization(_ done: (@MainActor () -> Void)? = nil) {
         guard available else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { done?() } }
+        }
+    }
+
+    enum Permission { case allowed, notAsked, denied }
+
+    static func permission(_ done: @escaping @MainActor (Permission) -> Void) {
+        guard available else { return }
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let value: Permission
+            switch settings.authorizationStatus {
+            case .notDetermined: value = .notAsked
+            case .denied: value = .denied
+            default: value = .allowed
+            }
+            DispatchQueue.main.async { MainActor.assumeIsolated { done(value) } }
+        }
+    }
+
+    /// This app's page in System Settings → Notifications.
+    static func openSystemSettings() {
+        let id = Bundle.main.bundleIdentifier ?? ""
+        let pane = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)")
+        let legacy = URL(string: "x-apple.systempreferences:com.apple.preference.notifications")
+        if let pane, NSWorkspace.shared.open(pane) { return }
+        if let legacy { NSWorkspace.shared.open(legacy) }
     }
 
     /// Reuses one identifier, so a newer status replaces the previous banner instead of stacking.
@@ -1320,7 +1345,10 @@ struct ProfileCardRow: View {
 
     private func subtitle(for state: LinkState) -> String {
         if state == .connecting {
-            return vpn.isReconnecting ? "Reconnecting to \(profile.server)…" : "Connecting to \(profile.server)…"
+            if vpn.isReconnecting {
+                return vpn.networkOnline ? "Reconnecting to \(profile.server)…" : "Waiting for network"
+            }
+            return "Connecting to \(profile.server)…"
         }
         return profile.username.isEmpty ? profile.server : "\(profile.server) · \(profile.username)"
     }
@@ -1455,6 +1483,7 @@ struct MenuBarPopupView: View {
     private var headerStatus: String {
         if vpn.isDisconnecting { return "Disconnecting…" }
         if vpn.linkState == .idle && vpn.connectionLost { return "Connection Lost" }
+        if vpn.isReconnecting && !vpn.networkOnline { return "Waiting for Network…" }
         if vpn.linkState == .idle && vpn.activeAlert != nil { return "Connection Failed" }
         return Theme.statusText(for: vpn.linkState, reconnecting: vpn.isReconnecting)
     }
@@ -1690,6 +1719,11 @@ struct SettingCard<Control: View>: View {
 struct SettingsSheet: View {
     @Binding var isPresented: Bool
     @ObservedObject var vpn = VPNManager.shared
+    @State private var notifications: ConnectionNotifier.Permission?
+
+    private func refreshNotifications() {
+        ConnectionNotifier.permission { notifications = $0 }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1729,6 +1763,24 @@ struct SettingsSheet: View {
                     .labelsHidden()
             }
 
+            SettingCard(
+                title: "Notifications",
+                detail: "Alerts when the VPN drops or reconnects, even while this window is closed."
+            ) {
+                switch notifications {
+                case .allowed:
+                    Text("On").font(.system(size: 12)).foregroundColor(Theme.secondaryText)
+                case .notAsked:
+                    Button("Turn On") { ConnectionNotifier.requestAuthorization(refreshNotifications) }
+                        .controlSize(.small)
+                case .denied:
+                    Button("Open Settings…") { ConnectionNotifier.openSystemSettings() }
+                        .controlSize(.small)
+                case nil:
+                    EmptyView()
+                }
+            }
+
             HStack {
                 Spacer()
                 Button("Done") { isPresented = false }
@@ -1740,6 +1792,10 @@ struct SettingsSheet: View {
         }
         .padding(20)
         .frame(width: 380)
+        .onAppear(perform: refreshNotifications)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshNotifications()
+        }
     }
 }
 
@@ -2002,6 +2058,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
         if ConnectionNotifier.available {
             UNUserNotificationCenter.current().delegate = self
+            // Asked once at launch; macOS shows the prompt only the first time.
+            ConnectionNotifier.requestAuthorization()
         }
         MainActor.assumeIsolated {
             updateStatusIcon()
