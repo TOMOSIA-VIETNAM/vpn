@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# TMS VPN Complete Uninstaller Script
+# TOMOSIA VPN Complete Uninstaller Script
 # Removes CLI engine, Menu Bar App, runtime state, configuration and the
 # PSK/password entries in Keychain.
 #
@@ -22,7 +22,7 @@ if [ "$(id -u)" = 0 ]; then
 fi
 
 echo "=================================================="
-echo "🗑️  UNINSTALLING TMS VPN (CLI & MENU BAR APP)"
+echo "🗑️  UNINSTALLING TOMOSIA VPN (CLI & MENU BAR APP)"
 echo "=================================================="
 
 echo "⏹️ [1/3] Quitting Menu Bar UI..."
@@ -55,5 +55,5 @@ else
 fi
 
 echo "=================================================="
-echo "✅ TMS VPN has been completely uninstalled!"
+echo "✅ TOMOSIA VPN has been completely uninstalled!"
 echo "=================================================="

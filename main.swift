@@ -15,7 +15,7 @@ enum AppBranding {
     // outside a bundle (e.g. a bare swiftc build), so the footer omits it.
     static let version: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     /// The current year, read from the system clock each launch.
-    static let copyright: String = "© \(Calendar.current.component(.year, from: Date())) TMS VPN Client"
+    static let copyright: String = "© \(Calendar.current.component(.year, from: Date())) TOMOSIA VIET NAM"
 }
 
 // MARK: - Models for CLI Config and State
@@ -1358,7 +1358,7 @@ struct MenuBarPopupView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("TMS VPN")
+                        Text("TOMOSIA VPN")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
                         StatusDot(
@@ -1543,7 +1543,7 @@ struct MenuBarPopupView: View {
                         .foregroundColor(Color.gray.opacity(0.65))
                         .lineLimit(1)
                 }
-                .help(AppBranding.version.map { "TMS VPN Client \($0)" } ?? "TMS VPN Client")
+                .help(AppBranding.version.map { "TOMOSIA VPN \($0)" } ?? "TOMOSIA VPN")
 
                 Spacer()
 
@@ -1996,13 +1996,13 @@ enum CLIInstaller {
     private static func promptAndInstall(bundled: String, missing: Bool) {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = missing ? "Finish setting up TMS VPN" : "Update the TMS VPN network helper"
-        alert.informativeText = "TMS VPN needs its network helper (\(installPath)) to open VPN tunnels. Installing it needs your administrator password — macOS will ask for it next."
+        alert.messageText = missing ? "Finish setting up TOMOSIA VPN" : "Update the TOMOSIA VPN network helper"
+        alert.informativeText = "TOMOSIA VPN needs its network helper (\(installPath)) to open VPN tunnels. Installing it needs your administrator password — macOS will ask for it next."
         alert.addButton(withTitle: missing ? "Install" : "Update")
         alert.addButton(withTitle: "Not Now")
         guard alert.runModal() == .alertFirstButtonReturn else {
             MainActor.assumeIsolated {
-                VPNManager.shared.showNotice(.error, "The network helper isn't installed, so VPN can't connect yet. Relaunch TMS VPN to set it up.")
+                VPNManager.shared.showNotice(.error, "The network helper isn't installed, so VPN can't connect yet. Relaunch TOMOSIA VPN to set it up.")
             }
             return
         }
@@ -2146,7 +2146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if mainWindow == nil {
             let controller = NSHostingController(rootView: MenuBarPopupView(listHeight: 380))
             let window = NSWindow(contentViewController: controller)
-            window.title = "TMS VPN"
+            window.title = "TOMOSIA VPN"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.appearance = NSAppearance(named: .darkAqua)
             window.isReleasedWhenClosed = false

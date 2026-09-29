@@ -197,7 +197,7 @@ func (t *connectTarget) checkSecretsStored() error {
 }
 
 func (t *connectTarget) errNoPSK(cause error) error {
-	msg := fmt.Sprintf("no PSK stored for profile %q — add it in the TMS VPN menu bar app or run `vpn profile add`", t.profileName)
+	msg := fmt.Sprintf("no PSK stored for profile %q — add it in the TOMOSIA VPN menu bar app or run `vpn profile add`", t.profileName)
 	if cause != nil {
 		return fmt.Errorf("%s: %w", msg, cause)
 	}

@@ -225,7 +225,7 @@ func (c *Config) Profile(name string) (string, *Profile, error) {
 		name = c.ActiveProfile
 	}
 	if name == "" {
-		return "", nil, fmt.Errorf("no VPN profile selected — add one in the TMS VPN menu bar app or pass --profile")
+		return "", nil, fmt.Errorf("no VPN profile selected — add one in the TOMOSIA VPN menu bar app or pass --profile")
 	}
 	p, ok := c.Profiles[name]
 	if !ok {

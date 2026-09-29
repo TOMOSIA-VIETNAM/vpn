@@ -484,7 +484,7 @@ func cmdProfileList(args []string) error {
 	}
 	names := cfg.ProfileNames()
 	if len(names) == 0 {
-		fmt.Println("No profiles yet — add one in the TMS VPN menu bar app or with `vpn profile add`.")
+		fmt.Println("No profiles yet — add one in the TOMOSIA VPN menu bar app or with `vpn profile add`.")
 		return nil
 	}
 	for _, n := range names {

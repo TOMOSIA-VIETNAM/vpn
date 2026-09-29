@@ -64,7 +64,7 @@ verify_sha256() {
 }
 
 echo "=================================================="
-echo "🛡️  INSTALLING TMS VPN (CLI & MENU BAR UI, $ARCH)"
+echo "🛡️  INSTALLING TOMOSIA VPN (CLI & MENU BAR UI, $ARCH)"
 echo "=================================================="
 
 curl -fsSL -o "$DOWNLOAD/SHA256SUMS" "$BASE_URL/SHA256SUMS"
@@ -93,7 +93,7 @@ echo "  -> CLI Installed: $INSTALL_PATH ($("$INSTALL_PATH" version))"
 # --- Step 2: Install Menu Bar UI (prebuilt universal app) ---
 # Runs as this user, not setuid, so verifying in the user's own download
 # directory is enough here.
-echo "🎨 [2/2] Installing TMS VPN Menu Bar UI..."
+echo "🎨 [2/2] Installing TOMOSIA VPN Menu Bar UI..."
 if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
   verify_sha256 "$DOWNLOAD/$APP_ASSET" "$APP_ASSET"
   rm -rf "$APP_DIR"
@@ -107,7 +107,7 @@ else
 fi
 
 echo "=================================================="
-echo "🎉 SUCCESS: TMS VPN Engine & Menu Bar UI Installed!"
+echo "🎉 SUCCESS: TOMOSIA VPN Engine & Menu Bar UI Installed!"
 echo "👉 Menu Bar App: $APP_DIR"
 echo "👉 CLI Engine: $INSTALL_PATH"
 echo "=================================================="
