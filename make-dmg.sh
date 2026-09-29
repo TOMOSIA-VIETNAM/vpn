@@ -24,11 +24,14 @@ if [[ ! -d "$BUILD_DIR/$APP_NAME" ]]; then
 fi
 
 STAGE="$(mktemp -d -t tmsvpn-dmg)"
-RW="$(mktemp -u -t tmsvpn-rw).dmg"
+# A private directory holds the scratch image: `mktemp -u` only invents a name, which
+# someone else could claim (or symlink) before hdiutil writes to it.
+WORK="$(mktemp -d -t tmsvpn-work)"
+RW="$WORK/rw.dmg"
 MOUNT=""
 cleanup() {
     [[ -n "$MOUNT" ]] && hdiutil detach "$MOUNT" -quiet -force 2>/dev/null || true
-    rm -rf "$STAGE" "$RW"
+    rm -rf "$STAGE" "$WORK"
 }
 trap cleanup EXIT
 

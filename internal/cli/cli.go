@@ -166,27 +166,26 @@ func cmdProfileRename(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: vpn profile rename <name> [display name]")
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
 	key := args[0]
-	p, ok := cfg.Profiles[key]
-	if !ok {
-		return fmt.Errorf("unknown VPN profile %q", key)
-	}
-	if err := errIfInUse(key, "rename"); err != nil {
-		return err
-	}
-	p.DisplayName = strings.TrimSpace(strings.Join(args[1:], " "))
-	if p.DisplayName == key {
-		p.DisplayName = ""
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	fmt.Printf("Profile %q is now shown as %q.\n", key, p.Label(key))
-	return nil
+	return changeProfile(key, "rename", func() error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+		p, ok := cfg.Profiles[key]
+		if !ok {
+			return fmt.Errorf("unknown VPN profile %q", key)
+		}
+		p.DisplayName = strings.TrimSpace(strings.Join(args[1:], " "))
+		if p.DisplayName == key {
+			p.DisplayName = ""
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Printf("Profile %q is now shown as %q.\n", key, p.Label(key))
+		return nil
+	})
 }
 
 // errIfInUse refuses a change to a profile whose tunnel is up (or coming up):
@@ -196,6 +195,22 @@ func errIfInUse(profile, verb string) error {
 		return fmt.Errorf("cannot %s profile %q while it is %s — run `vpn disconnect` first", verb, profile, strings.ToLower(string(st.Phase)))
 	}
 	return nil
+}
+
+// changeProfile runs fn — which loads the config, mutates it and saves — under
+// the connect lock, after re-checking the profile is idle. Checking alone would
+// leave a window: a `vpn connect` starting right after the check could read the
+// server, account and secrets fn is still rewriting or deleting. A connect
+// reads all of them before it releases the lock (see ClaimNewConnect), so
+// holding the lock here closes that window. Prompts for secrets belong BEFORE
+// this call: nobody should hold up connects while typing.
+func changeProfile(profile, verb string, fn func() error) error {
+	return engine.WithConnectLockIfAvailable(func() error {
+		if err := errIfInUse(profile, verb); err != nil {
+			return err
+		}
+		return fn()
+	})
 }
 
 // cmdProfileEdit changes a profile's host, default-account username or tunnel
@@ -225,43 +240,49 @@ func cmdProfileEdit(args []string) error {
 		return fmt.Errorf("nothing to change — pass --server, --user, --full-tunnel and/or --set-psk")
 	}
 
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	p, ok := cfg.Profiles[name]
-	if !ok {
-		return fmt.Errorf("unknown profile %q", name)
-	}
-	if err := errIfInUse(name, "edit"); err != nil {
-		return err
-	}
-
+	newPSK := ""
 	if *setPSK {
+		if err := errIfInUse(name, "edit"); err != nil { // fail fast, before asking for a secret
+			return err
+		}
 		v, err := secretinput.Prompt("IPsec pre-shared key (PSK)")
 		if err != nil {
 			return err
 		}
-		if err := keychain.SetPSK(name, v); err != nil {
+		newPSK = v
+	}
+
+	return changeProfile(name, "edit", func() error {
+		cfg, err := config.Load()
+		if err != nil {
 			return err
 		}
-	}
-	if *server != "" {
-		p.Server = *server
-	}
-	if ftSet {
-		p.FullTunnel = *fullTunnel
-	}
-	if *user != "" && *user != p.DefaultAccount {
-		if err := renameDefaultAccount(name, p, *user); err != nil {
+		p, ok := cfg.Profiles[name]
+		if !ok {
+			return fmt.Errorf("unknown profile %q", name)
+		}
+		if *setPSK {
+			if err := keychain.SetPSK(name, newPSK); err != nil {
+				return err
+			}
+		}
+		if *server != "" {
+			p.Server = *server
+		}
+		if ftSet {
+			p.FullTunnel = *fullTunnel
+		}
+		if *user != "" && *user != p.DefaultAccount {
+			if err := renameDefaultAccount(name, p, *user); err != nil {
+				return err
+			}
+		}
+		if err := cfg.Save(); err != nil {
 			return err
 		}
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	fmt.Printf("Profile %q updated (server=%s, account=%s); stored secrets kept.\n", name, p.Server, p.DefaultAccount)
-	return nil
+		fmt.Printf("Profile %q updated (server=%s, account=%s); stored secrets kept.\n", name, p.Server, p.DefaultAccount)
+		return nil
+	})
 }
 
 // renameDefaultAccount points the profile's default account at newUser and
@@ -311,7 +332,7 @@ func cmdProfileAdd(args []string) error {
 	if *server == "" {
 		return fmt.Errorf("--server is required")
 	}
-	if err := errIfInUse(name, "change"); err != nil {
+	if err := errIfInUse(name, "change"); err != nil { // fail fast, before asking for a secret
 		return err
 	}
 	if *psk == "" {
@@ -322,28 +343,30 @@ func cmdProfileAdd(args []string) error {
 		*psk = v
 	}
 
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	updated := cfg.AddProfile(name, &config.Profile{
-		Server:     *server,
-		ServerID:   *serverID,
-		MTU:        *mtu,
-		FullTunnel: *fullTunnel,
+	return changeProfile(name, "change", func() error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+		updated := cfg.AddProfile(name, &config.Profile{
+			Server:     *server,
+			ServerID:   *serverID,
+			MTU:        *mtu,
+			FullTunnel: *fullTunnel,
+		})
+		if err := keychain.SetPSK(name, *psk); err != nil {
+			return err
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		verb := "added"
+		if updated {
+			verb = "updated (accounts kept)"
+		}
+		fmt.Printf("Profile %q %s (server=%s).\n", name, verb, *server)
+		return nil
 	})
-	if err := keychain.SetPSK(name, *psk); err != nil {
-		return err
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	verb := "added"
-	if updated {
-		verb = "updated (accounts kept)"
-	}
-	fmt.Printf("Profile %q %s (server=%s).\n", name, verb, *server)
-	return nil
 }
 
 // cmdMTU shows or sets the one tunnel MTU shared by every profile.
@@ -502,40 +525,40 @@ func cmdProfileRemove(args []string) error {
 	if len(args) != 1 {
 		return fmt.Errorf("usage: vpn profile remove <name>")
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	p, ok := cfg.Profiles[args[0]]
-	if !ok {
-		return fmt.Errorf("unknown profile %q", args[0])
-	}
-	if err := errIfInUse(args[0], "remove"); err != nil {
-		return err
-	}
-	for acct := range p.Accounts {
-		_ = keychain.DeletePassword(args[0], acct)
-	}
-	_ = keychain.DeletePSK(args[0])
-	delete(cfg.Profiles, args[0])
-	if cfg.ActiveProfile == args[0] {
-		// Fall back to another remaining profile (alphabetically first, so
-		// the choice is stable/predictable) rather than leaving no default
-		// — otherwise a bare `vpn connect` would start failing right after
-		// removing whichever profile happened to be active.
-		cfg.ActiveProfile = ""
-		if names := cfg.ProfileNames(); len(names) > 0 {
-			cfg.ActiveProfile = names[0]
+	name := args[0]
+	return changeProfile(name, "remove", func() error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
 		}
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	fmt.Printf("Profile %q removed.\n", args[0])
-	if cfg.ActiveProfile != "" {
-		fmt.Printf("Active profile is now %q.\n", cfg.ActiveProfile)
-	}
-	return nil
+		p, ok := cfg.Profiles[name]
+		if !ok {
+			return fmt.Errorf("unknown profile %q", name)
+		}
+		for acct := range p.Accounts {
+			_ = keychain.DeletePassword(name, acct)
+		}
+		_ = keychain.DeletePSK(name)
+		delete(cfg.Profiles, name)
+		if cfg.ActiveProfile == name {
+			// Fall back to another remaining profile (alphabetically first, so
+			// the choice is stable/predictable) rather than leaving no default
+			// — otherwise a bare `vpn connect` would start failing right after
+			// removing whichever profile happened to be active.
+			cfg.ActiveProfile = ""
+			if names := cfg.ProfileNames(); len(names) > 0 {
+				cfg.ActiveProfile = names[0]
+			}
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Printf("Profile %q removed.\n", name)
+		if cfg.ActiveProfile != "" {
+			fmt.Printf("Active profile is now %q.\n", cfg.ActiveProfile)
+		}
+		return nil
+	})
 }
 
 // --- account ---
@@ -563,16 +586,14 @@ func cmdAccountAdd(args []string) error {
 		return fmt.Errorf("usage: vpn account add <profile> <username> [--default]")
 	}
 	profileName, username := fs.Arg(0), fs.Arg(1)
-	if err := errIfInUse(profileName, "change"); err != nil {
-		return err
-	}
 
-	cfg, err := config.Load()
-	if err != nil {
+	// Fail on an unknown profile before asking for a password.
+	if cfg, err := config.Load(); err != nil {
+		return err
+	} else if _, _, err := cfg.Profile(profileName); err != nil {
 		return err
 	}
-	_, p, err := cfg.Profile(profileName)
-	if err != nil {
+	if err := errIfInUse(profileName, "change"); err != nil { // fail fast, before asking for a secret
 		return err
 	}
 	if *password == "" {
@@ -582,21 +603,32 @@ func cmdAccountAdd(args []string) error {
 		}
 		*password = v
 	}
-	if p.Accounts == nil {
-		p.Accounts = map[string]*config.Account{}
-	}
-	p.Accounts[username] = &config.Account{Username: username}
-	if *makeDefault || p.DefaultAccount == "" {
-		p.DefaultAccount = username
-	}
-	if err := keychain.SetPassword(profileName, username, *password); err != nil {
-		return err
-	}
-	if err := cfg.Save(); err != nil {
-		return err
-	}
-	fmt.Printf("Account %q added to profile %q.\n", username, profileName)
-	return nil
+
+	return changeProfile(profileName, "change", func() error {
+		cfg, err := config.Load()
+		if err != nil {
+			return err
+		}
+		_, p, err := cfg.Profile(profileName)
+		if err != nil {
+			return err
+		}
+		if p.Accounts == nil {
+			p.Accounts = map[string]*config.Account{}
+		}
+		p.Accounts[username] = &config.Account{Username: username}
+		if *makeDefault || p.DefaultAccount == "" {
+			p.DefaultAccount = username
+		}
+		if err := keychain.SetPassword(profileName, username, *password); err != nil {
+			return err
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Printf("Account %q added to profile %q.\n", username, profileName)
+		return nil
+	})
 }
 
 // --- diagnose ---

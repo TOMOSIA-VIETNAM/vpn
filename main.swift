@@ -809,11 +809,15 @@ final class VPNManager: ObservableObject {
         } catch {
             return (false, "the vpn command-line tool is not installed")
         }
+        // Written on its own queue: this thread drains stderr below, and a child that
+        // fills the stderr pipe before it has read stdin would otherwise deadlock both.
         if let secret = secret {
-            if !secret.isEmpty {
-                input.fileHandleForWriting.write(Data((secret + "\n").utf8))
+            DispatchQueue.global(qos: .userInitiated).async {
+                if !secret.isEmpty {
+                    input.fileHandleForWriting.write(Data((secret + "\n").utf8))
+                }
+                try? input.fileHandleForWriting.close()
             }
-            try? input.fileHandleForWriting.close()
         }
         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()

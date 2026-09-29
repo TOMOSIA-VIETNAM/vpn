@@ -1113,6 +1113,23 @@ func WithConnectLock(fn func() error) error {
 	if err != nil {
 		return fmt.Errorf("open connect lock: %w", err)
 	}
+	return runLocked(f, fn)
+}
+
+// WithConnectLockIfAvailable is WithConnectLock for changes that must not
+// interleave with a connect starting (editing or removing a profile), but that
+// also have to keep working where the lock file cannot be opened: without root
+// (a non-setuid build) no connect can be running either, so there is nothing
+// to serialize against and fn simply runs.
+func WithConnectLockIfAvailable(fn func() error) error {
+	f, err := openLockFile()
+	if err != nil {
+		return fn()
+	}
+	return runLocked(f, fn)
+}
+
+func runLocked(f *os.File, fn func() error) error {
 	defer f.Close()
 	// flock, not privilege.Elevate's mutex: this needs to serialize across
 	// separate `vpn` processes, which an in-process mutex cannot do. Once
