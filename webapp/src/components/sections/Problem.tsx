@@ -1,21 +1,32 @@
 import { appAlerts, builtInAlert } from "@/config/app-ui";
 import type { Dictionary } from "@/i18n/dictionary";
+import { localeInfo, type Locale } from "@/i18n/locales";
+import { SplitText, splitCount } from "../motion/SplitText";
+import { stagger } from "../motion/stagger";
 
-export function Problem({ dict }: { dict: Dictionary }) {
+/** Dark band contrasting the built-in client's one message with the app's alerts. */
+export function Problem({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.problem;
+  const byWord = localeInfo[locale].splitWords;
+  const afterTitle = splitCount(t.title, byWord);
+
   return (
-    <section id="why" className="section section--grouped" aria-labelledby="why-title">
+    <section id="why" className="section band" aria-labelledby="why-title">
       <div className="container">
-        <div className="section__intro">
-          <h2 id="why-title" className="section__title">
-            {t.title}
+        <div className="section__intro" data-reveal>
+          <h2 id="why-title" className="section__title split">
+            <SplitText text={t.title} byWord={byWord} />
           </h2>
-          <p className="section__body">{t.context}</p>
-          <p className="section__body">{t.body}</p>
+          <p className="section__body" data-item style={stagger(afterTitle)}>
+            {t.context}
+          </p>
+          <p className="section__body" data-item style={stagger(afterTitle + 1)}>
+            {t.body}
+          </p>
         </div>
 
-        <div className="compare">
-          <figure className="compare__side">
+        <div className="compare" data-reveal>
+          <figure className="compare__side" data-item style={stagger(0)}>
             <figcaption className="compare__label">
               <strong>{t.builtInLabel}</strong>
               <span>{t.builtInCaption}</span>
@@ -29,13 +40,13 @@ export function Problem({ dict }: { dict: Dictionary }) {
           </figure>
 
           <figure className="compare__side">
-            <figcaption className="compare__label">
+            <figcaption className="compare__label" data-item style={stagger(1)}>
               <strong>{t.appLabel}</strong>
               <span>{t.appCaption}</span>
             </figcaption>
             <ul className="alerts" lang="en">
-              {appAlerts.map((alert) => (
-                <li key={alert.title} className="alerts__item">
+              {appAlerts.map((alert, i) => (
+                <li key={alert.title} className="alerts__item" data-item style={stagger(i + 2)}>
                   <span className={`status-dot status-dot--${alert.tone}`} aria-hidden="true" />
                   <div className="alerts__text">
                     <p className="alerts__title">{alert.title}</p>

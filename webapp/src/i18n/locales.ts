@@ -7,10 +7,22 @@ export type Locale = (typeof locales)[number];
 /** `/` always sends visitors here; there is no browser-language detection. */
 export const defaultLocale: Locale = "en";
 
-export const localeInfo: Record<Locale, { label: string; htmlLang: string; ogLocale: string }> = {
-  en: { label: "English", htmlLang: "en", ogLocale: "en_US" },
-  vi: { label: "Tiếng Việt", htmlLang: "vi", ogLocale: "vi_VN" },
-  ja: { label: "日本語", htmlLang: "ja", ogLocale: "ja_JP" },
+export interface LocaleInfo {
+  label: string;
+  htmlLang: string;
+  ogLocale: string;
+  /**
+   * Whether headlines animate word by word. Off for scripts without spaces between
+   * words (Japanese): splitting them would stop the browser breaking lines between
+   * phrases, so the whole headline animates as one piece instead.
+   */
+  splitWords: boolean;
+}
+
+export const localeInfo: Record<Locale, LocaleInfo> = {
+  en: { label: "English", htmlLang: "en", ogLocale: "en_US", splitWords: true },
+  vi: { label: "Tiếng Việt", htmlLang: "vi", ogLocale: "vi_VN", splitWords: true },
+  ja: { label: "日本語", htmlLang: "ja", ogLocale: "ja_JP", splitWords: false },
 };
 
 export function isLocale(value: string): value is Locale {

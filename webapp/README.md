@@ -27,8 +27,10 @@ the default "Include files outside the Root Directory" setting.
 | `src/i18n/dictionary.ts` | The `Dictionary` type every locale must satisfy |
 | `src/i18n/locales.ts` | Locale list, default locale, `<html lang>` and Open Graph locale |
 | `src/config/site.ts` | Download URL, repository links, uninstall command, minimum macOS, screenshot sizes |
-| `src/config/app-ui.ts` | Text quoted from the app's English UI (alerts, notifications) |
+| `src/config/app-ui.ts` | Text quoted from the app's English UI (alerts, notifications, popover states) and the demo data |
 | `src/components/sections/` | Page sections; `src/app/[locale]/page.tsx` lists them in order |
+| `src/components/motion/` | Reveal animations: boot script, `RevealObserver`, `SplitText` |
+| `src/components/PopoverDemo.tsx` | Working replica of the menu bar popover in the hero |
 | `src/app/globals.css` | Design tokens (macOS system colors, light and dark) and all styles |
 
 Dictionary strings accept `**bold**`, `[[App UI label]]` (kept English and on one
@@ -36,6 +38,19 @@ line) and `{dmg}` (the download link).
 
 `/` has no content: it sends visitors to `/en` with a meta refresh. The language
 switcher keeps the section being read (`/vi#features`).
+
+## Motion
+
+No animation library: CSS transitions plus one IntersectionObserver.
+
+- A block marked `data-reveal` animates its `data-item` children into place, in the
+  order of their `--i` (set with `stagger(n)`), the first time it scrolls into view.
+- Headlines use `SplitText`, word by word where the locale has `splitWords`.
+- The hero popover plays a connect, drop and reconnect once on load, with the app's
+  notifications; its switches work.
+- An inline script sets `html.motion` before first paint only when
+  `prefers-reduced-motion` is off. Without it (reduced motion, no JavaScript) every
+  element renders in its final state and the popover shows "Connected".
 
 ## Add a locale
 

@@ -1,29 +1,48 @@
 /* Design tokens follow the macOS system palette, so the site looks like the app:
    neutral grays, system green / orange / red for status, system blue for actions.
-   Dark values are the macOS dark-appearance variants of the same colors. */
+   Each color is light-dark(light value, dark value): it follows the viewer's
+   appearance. Browsers resolve light-dark() where the token is declared, so the
+   tokens are declared again on .band, whose `color-scheme: dark` gives it the dark
+   values in either appearance. */
 :root {
   color-scheme: light dark;
+}
 
-  --bg: #ffffff;
-  --bg-grouped: #f5f5f7;
-  --surface: #ffffff;
-  --fill: rgba(120, 120, 128, 0.12);
-  --label: #1d1d1f;
-  --label-secondary: #6e6e73;
-  --separator: rgba(0, 0, 0, 0.12);
+:root,
+.band {
+  --bg: light-dark(#ffffff, #000000);
+  --bg-grouped: light-dark(#f5f5f7, #1c1c1e);
+  --surface: light-dark(#ffffff, #2c2c2e);
+  --fill: light-dark(rgba(120, 120, 128, 0.12), rgba(120, 120, 128, 0.24));
+  --label: light-dark(#1d1d1f, #f5f5f7);
+  --label-secondary: light-dark(#6e6e73, #98989d);
+  --separator: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.14));
 
-  --accent: #007aff;
-  --accent-pressed: #0062cc;
-  --link: #0066cc;
+  --accent: light-dark(#007aff, #0a84ff);
+  --accent-hover: light-dark(#0062cc, #409cff);
+  --link: light-dark(#0066cc, #2997ff);
   --on-accent: #ffffff;
-  --focus-ring: rgba(0, 122, 255, 0.5);
+  --focus-ring: light-dark(rgba(0, 122, 255, 0.5), rgba(10, 132, 255, 0.6));
 
-  --green: #34c759;
-  --orange: #ff9500;
-  --red: #ff3b30;
+  --green: light-dark(#34c759, #30d158);
+  --orange: light-dark(#ff9500, #ff9f0a);
+  --red: light-dark(#ff3b30, #ff453a);
+  --gray-dot: light-dark(#aeaeb2, #636366);
 
-  --menubar: rgba(246, 246, 246, 0.94);
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+  /* App surfaces: popover, notification banners, switches, the desktop behind them. */
+  --popover: light-dark(#ececea, #2a2a2c);
+  --popover-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.07));
+  --notification: light-dark(rgba(248, 248, 248, 0.98), rgba(52, 52, 54, 0.98));
+  --switch-off: light-dark(#d1d1d6, #4a4a4d);
+  --menubar: light-dark(rgba(250, 250, 250, 0.82), rgba(28, 28, 30, 0.82));
+  --desk-1: light-dark(#dfe6f0, #1b2230);
+  --desk-2: light-dark(#eceef3, #15171c);
+  --desk-3: light-dark(#e3ebe8, #1a1f1f);
+  --texture: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.07));
+
+  --shadow-panel: 0 0 0 1px light-dark(rgba(0, 0, 0, 0.04), rgba(255, 255, 255, 0.07)),
+    0 1px 2px light-dark(rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.4)),
+    0 12px 32px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.5));
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "Helvetica Neue", Arial,
     sans-serif;
@@ -32,32 +51,14 @@
   --container: 1120px;
   --gutter: 24px;
   --header-height: 56px;
+  --radius-tile: 22px;
   --radius-panel: 14px;
-  --radius-control: 8px;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --bg-grouped: #1c1c1e;
-    --surface: #2c2c2e;
-    --fill: rgba(120, 120, 128, 0.24);
-    --label: #f5f5f7;
-    --label-secondary: #98989d;
-    --separator: rgba(255, 255, 255, 0.14);
-
-    --accent: #0a84ff;
-    --accent-pressed: #409cff;
-    --link: #2997ff;
-    --focus-ring: rgba(10, 132, 255, 0.6);
-
-    --green: #30d158;
-    --orange: #ff9f0a;
-    --red: #ff453a;
-
-    --menubar: rgba(44, 44, 46, 0.94);
-    --shadow-panel: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.5);
-  }
+  /* Motion: one easing for entrances, durations by distance travelled. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --reveal-duration: 900ms;
+  --reveal-step: 70ms;
 }
 
 @media (max-width: 480px) {
@@ -145,6 +146,73 @@ a:hover {
   padding-inline: var(--gutter);
 }
 
+/* Reveal animation. Only active under html.motion (see components/motion/motion.ts):
+   a [data-reveal] block's [data-item] children rise into place one after another,
+   ordered by --i, once the block is marked .is-in. Headline pieces also lose a blur. */
+
+.motion [data-reveal] [data-item] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity var(--reveal-duration) var(--ease-out),
+    transform var(--reveal-duration) var(--ease-out),
+    filter var(--reveal-duration) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * var(--reveal-step));
+}
+
+.motion [data-reveal] .split__piece {
+  display: inline-block;
+  transform: translateY(0.45em);
+  filter: blur(10px);
+}
+
+.motion [data-reveal].is-in [data-item] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Status dots */
+
+.status-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 300ms ease;
+}
+
+.status-dot--idle {
+  background: var(--gray-dot);
+}
+
+.status-dot--ok {
+  background: var(--green);
+}
+
+.status-dot--warning {
+  background: var(--orange);
+}
+
+.status-dot--error {
+  background: var(--red);
+}
+
+/* The halo the app draws around a dot while it connects. */
+.motion .status-dot.is-pulsing {
+  animation: dot-pulse 1.2s ease-out infinite;
+}
+
+@keyframes dot-pulse {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
 /* Buttons: the macOS push-button shapes */
 
 .button {
@@ -155,10 +223,17 @@ a:hover {
   font: inherit;
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
 .button:hover {
   text-decoration: none;
+}
+
+.button:active {
+  transform: scale(0.97);
 }
 
 /* Large text (19px semibold) keeps white-on-blue readable at the system accent colors. */
@@ -174,7 +249,7 @@ a:hover {
 }
 
 .button--primary:hover {
-  background: var(--accent-pressed);
+  background: var(--accent-hover);
 }
 
 .button--small {
@@ -186,6 +261,51 @@ a:hover {
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 0 0 0.5px var(--separator), 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+
+.download__requirements {
+  margin-top: 12px;
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+/* Switch, drawn like the app's ConnectSwitch */
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  background: var(--switch-off);
+  cursor: pointer;
+  transition: background-color 250ms ease;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 300ms var(--ease-spring);
+}
+
+.switch[aria-checked="true"] {
+  background: var(--accent);
+}
+
+.switch[aria-checked="true"] .switch__knob {
+  transform: translateX(16px);
+}
+
+.switch--static {
+  cursor: default;
 }
 
 /* Header */
@@ -268,10 +388,12 @@ a:hover {
   font-weight: 500;
   line-height: 20px;
   text-align: center;
+  transition: background-color 180ms ease;
 }
 
 .lang__option:hover {
   text-decoration: none;
+  background: var(--fill);
 }
 
 .lang__option[aria-current="page"] {
@@ -282,21 +404,35 @@ a:hover {
 /* Hero */
 
 .hero {
-  padding-block: 88px 96px;
+  position: relative;
+  overflow: hidden;
+  padding-block: 88px 104px;
+}
+
+/* A faint dot grid behind the hero, fading out from the desktop side. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--texture) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 80% at 75% 40%, #000 0%, transparent 75%);
+  pointer-events: none;
 }
 
 .hero__inner {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
   align-items: center;
   gap: 56px;
 }
 
 .hero__title {
-  font-size: clamp(44px, 6.4vw, 76px);
+  font-size: clamp(44px, 6.2vw, 76px);
   font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -0.03em;
+  line-height: 1.03;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
@@ -312,62 +448,289 @@ a:hover {
   margin-top: 36px;
 }
 
-.download__requirements {
-  margin-top: 12px;
-  color: var(--label-secondary);
-  font-size: 14px;
-}
-
-/* A slice of a Mac desktop with the popover open under its status item. */
+/* A slice of a Mac desktop: wallpaper-like soft field, menu bar, popover, banners. */
 .desk {
   --menubar-height: 26px;
-  --popover-width: 460px;
-  --desk-padding: 28px;
   position: relative;
   overflow: hidden;
-  width: min(calc(var(--popover-width) + 2 * var(--desk-padding)), 100%);
-  padding: 0 var(--desk-padding) 4px;
-  border-radius: 18px;
-  background: var(--bg-grouped);
+  min-height: 440px;
+  padding: 0 0 28px;
+  border-radius: 20px;
+  background: linear-gradient(155deg, var(--desk-1) 0%, var(--desk-2) 55%, var(--desk-3) 100%);
   box-shadow: inset 0 0 0 1px var(--separator);
 }
 
 .desk__menubar {
+  display: flex;
+  justify-content: flex-end;
   height: var(--menubar-height);
-  margin-inline: calc(-1 * var(--desk-padding));
+  padding-right: calc(50% - 15px);
   background: var(--menubar);
   border-bottom: 1px solid var(--separator);
 }
 
-.desk__popover {
-  position: relative;
-  width: 100%;
-}
-
-/* The status item sits on the menu bar, centred over the popover's arrow. */
+/* The status item sits centred over the popover's arrow. */
 .desk__status-item {
-  position: absolute;
-  top: calc(-1 * var(--menubar-height));
-  left: 50%;
   display: grid;
   place-items: center;
   width: 30px;
   height: calc(var(--menubar-height) - 4px);
   margin-top: 2px;
-  transform: translateX(-50%);
   border-radius: 5px;
   background: var(--fill);
   color: var(--label);
 }
 
+/* Popover replica (sizes follow the app at 1x) */
+
+.popover {
+  position: relative;
+  width: min(340px, calc(100% - 24px));
+  margin: 12px auto 0;
+  border-radius: 12px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.popover::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 3px 0 0 0;
+  background: var(--popover);
+}
+
+.popover__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+.popover__logo {
+  border-radius: 8px;
+}
+
+.popover__name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.popover__status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  margin-top: 2px;
+}
+
+.popover__status-word {
+  font-weight: 500;
+}
+
+.popover__status-detail {
+  color: var(--label-secondary);
+}
+
+/* The tunnel card opens while connected; rows animate from 0fr so nothing jumps. */
+.popover__tunnel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 500ms var(--ease-out);
+}
+
+.popover__tunnel.is-open {
+  grid-template-rows: 1fr;
+}
+
+.popover__tunnel-inner {
+  overflow: hidden;
+}
+
+.popover__card {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--popover-card);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 400ms ease 150ms,
+    transform 500ms var(--ease-out) 150ms;
+}
+
+.popover__tunnel.is-open .popover__card {
+  opacity: 1;
+  transform: none;
+}
+
+.popover__card-label {
+  color: var(--label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.popover__card-value {
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.popover__section {
+  padding: 12px 16px 12px;
+  border-top: 1px solid var(--separator);
+}
+
+.popover__section-title {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--label-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.popover__plus {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.popover__profiles {
+  display: grid;
+  gap: 6px;
+}
+
+.popover__profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 12px;
+  border-radius: 10px;
+  background: var(--popover-card);
+}
+
+.popover__profile-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.popover__profile-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.popover__profile-sub {
+  overflow: hidden;
+  color: var(--label-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover__more {
+  color: var(--label-secondary);
+  letter-spacing: -1px;
+}
+
+.popover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--separator);
+  color: var(--label-secondary);
+  font-size: 11px;
+}
+
+.popover__footer-icons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Notification banners, top right of the desktop, newest on top. */
+.notices {
+  position: absolute;
+  top: calc(var(--menubar-height) + 10px);
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  width: min(300px, calc(100% - 20px));
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px 12px 11px;
+  border-radius: 16px;
+  background: var(--notification);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.notification__icon {
+  flex: none;
+  border-radius: 7px;
+}
+
+.notification__title {
+  font-weight: 600;
+}
+
+.notification__body {
+  margin-top: 1px;
+}
+
+.notices__item {
+  animation: notice-in 550ms var(--ease-out) both;
+}
+
+.notices__item.is-leaving {
+  animation: notice-out 300ms ease-in both;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 16px));
+  }
+}
+
+@keyframes notice-out {
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
 /* Sections */
 
 .section {
-  padding-block: 104px;
+  padding-block: 112px;
 }
 
 .section--grouped {
   background: var(--bg-grouped);
+}
+
+/* A dark band in either appearance: every token below takes its dark value. */
+.band {
+  color-scheme: dark;
+  background: var(--bg-grouped);
+  color: var(--label);
 }
 
 .section__intro {
@@ -375,10 +738,10 @@ a:hover {
 }
 
 .section__title {
-  font-size: clamp(32px, 4.2vw, 48px);
+  font-size: clamp(34px, 4.6vw, 56px);
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.022em;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
@@ -407,8 +770,8 @@ a:hover {
 .compare {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 32px;
-  margin-top: 56px;
+  gap: 40px;
+  margin-top: 64px;
   align-items: start;
 }
 
@@ -454,9 +817,8 @@ a:hover {
 }
 
 .alerts {
-  border-radius: var(--radius-panel);
-  background: var(--surface);
-  box-shadow: var(--shadow-panel);
+  display: grid;
+  gap: 8px;
 }
 
 .alerts__item {
@@ -465,10 +827,9 @@ a:hover {
   align-items: start;
   gap: 12px;
   padding: 14px 16px;
-}
-
-.alerts__item + .alerts__item {
-  border-top: 1px solid var(--separator);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .alerts__item .status-dot {
@@ -497,102 +858,235 @@ a:hover {
   white-space: nowrap;
 }
 
-.status-dot {
-  display: inline-block;
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.motion [data-reveal]:not(.is-in) .alerts__item[data-item] {
+  transform: translateX(32px);
 }
 
-.status-dot--ok {
-  background: var(--green);
-}
-
-.status-dot--warning {
-  background: var(--orange);
-}
-
-.status-dot--error {
-  background: var(--red);
-}
+/* Features: bento grid. Tiles 1 and 6 are wide, tile 2 is tall. */
 
 .ui-label {
   white-space: nowrap;
 }
 
-/* Features */
-
-.features {
+.bento {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 40px;
-  row-gap: 48px;
+  grid-auto-rows: minmax(250px, auto);
+  gap: 16px;
   margin-top: 56px;
 }
 
-.feature {
-  padding-top: 20px;
-  border-top: 1px solid var(--separator);
+.tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  overflow: hidden;
+  padding: 28px;
+  border-radius: var(--radius-tile);
+  background: var(--bg-grouped);
 }
 
-.feature__title {
-  font-size: 19px;
+.tile--menuBar,
+.tile--keychain {
+  grid-column: span 2;
+}
+
+.tile--reconnect {
+  grid-row: span 2;
+}
+
+.tile__title {
+  font-size: 21px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
-.feature__body {
+.tile__body {
+  max-width: 34em;
   margin-top: 8px;
   color: var(--label-secondary);
   font-size: 16px;
 }
 
-.feature__marks {
-  display: flex;
-  gap: 14px;
-  margin-top: 16px;
+.tile__menubar {
+  display: inline-flex;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.tile__menubar-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 40px;
+  border-radius: 7px;
   color: var(--label);
 }
 
-.feature__notes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+.tile__menubar-item + .tile__menubar-item {
+  border-left: 1px solid var(--separator);
+  border-radius: 0;
 }
 
-.note {
-  display: inline-flex;
-  align-items: center;
+.tile__menubar-item .status-dot {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  width: 6px;
+  height: 6px;
+}
+
+.tile__notices {
+  display: grid;
+  gap: 10px;
+}
+
+.motion [data-reveal] .tile__notice {
+  opacity: 0;
+  transform: translateX(48px);
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 800ms var(--ease-out);
+  transition-delay: calc(400ms + var(--i, 0) * 450ms);
+}
+
+.motion [data-reveal].is-in .tile__notice {
+  opacity: 1;
+  transform: none;
+}
+
+.tile__alerts {
+  display: grid;
   gap: 8px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: var(--bg-grouped);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tile__alerts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tile__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tile__kill-switch {
+  background: var(--accent);
+}
+
+.tile__kill-switch .switch__knob {
+  transform: translateX(16px);
+}
+
+/* With motion the kill switch starts off and flips on once the tile is revealed. */
+.motion [data-reveal] .tile__kill-switch {
+  background: var(--switch-off);
+  transition: background-color 250ms ease 900ms;
+}
+
+.motion [data-reveal] .tile__kill-switch .switch__knob {
+  transform: none;
+  transition: transform 350ms var(--ease-spring) 900ms;
+}
+
+.motion [data-reveal].is-in .tile__kill-switch {
+  background: var(--accent);
+}
+
+.motion [data-reveal].is-in .tile__kill-switch .switch__knob {
+  transform: translateX(16px);
+}
+
+.tile__ip {
+  display: flex;
+  flex-direction: column;
+}
+
+.tile__ip-label {
+  color: var(--label-secondary);
   font-size: 13px;
   font-weight: 500;
 }
 
-/* Screenshots */
+.tile__ip-value {
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile__keychain {
+  display: grid;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tile__keychain li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.tile__keychain svg {
+  flex: none;
+  color: var(--label-secondary);
+}
+
+/* Screenshots: caption pinned beside its screenshot while it scrolls past. */
 
 .screens {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 40px;
-  margin-top: 48px;
-  align-items: end;
+  gap: 72px;
+  margin-top: 56px;
 }
 
-.screens__item img {
+.screens__item {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
+  gap: 48px;
+}
+
+.screens__item:nth-child(even) .screens__caption {
+  order: 2;
+}
+
+.screens__caption {
+  position: sticky;
+  top: calc(var(--header-height) + 64px);
+  padding-top: 48px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.screens__shot img {
   margin-inline: auto;
-}
-
-.screens__item figcaption {
-  max-width: 30em;
-  margin: 8px auto 0;
-  color: var(--label-secondary);
-  font-size: 15px;
-  text-align: center;
 }
 
 /* Install and uninstall */
@@ -641,12 +1135,19 @@ a:hover {
   font-size: 15px;
 }
 
-.setup__install .setup__note {
+.setup__install .setup__note,
+.setup__download {
   padding-left: 48px;
 }
 
+.setup__download {
+  margin-top: 28px;
+}
+
 .setup__uninstall {
-  padding-top: 8px;
+  padding: 32px;
+  border-radius: var(--radius-tile);
+  background: var(--bg-grouped);
 }
 
 .setup__subtitle {
@@ -663,9 +1164,9 @@ a:hover {
   gap: 12px;
   margin-top: 20px;
   padding: 14px 14px 14px 16px;
-  border-radius: 10px;
-  background: var(--bg-grouped);
-  box-shadow: inset 0 0 0 1px var(--separator);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .command__code {
@@ -706,7 +1207,7 @@ a:hover {
 
 @media (max-width: 960px) {
   .hero {
-    padding-block: 56px 72px;
+    padding-block: 56px 80px;
   }
 
   .hero__inner,
@@ -720,11 +1221,32 @@ a:hover {
   }
 
   .desk {
+    width: 100%;
+    max-width: 540px;
     margin-inline: auto;
   }
 
-  .features {
+  .bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile--reconnect {
+    grid-row: auto;
+  }
+
+  .screens__item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .screens__item:nth-child(even) .screens__caption {
+    order: 0;
+  }
+
+  .screens__caption {
+    position: static;
+    padding-top: 0;
+    font-size: 21px;
   }
 
   .setup {
@@ -734,7 +1256,7 @@ a:hover {
 
 @media (max-width: 640px) {
   .section {
-    padding-block: 72px;
+    padding-block: 80px;
   }
 
   .hero__lead {
@@ -742,22 +1264,23 @@ a:hover {
   }
 
   .compare,
-  .features,
+  .bento,
   .screens {
     margin-top: 40px;
   }
 
-  .features,
-  .screens {
+  .bento {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
   }
 
-  .features {
-    row-gap: 36px;
+  .tile--menuBar,
+  .tile--keychain {
+    grid-column: auto;
   }
 
-  .desk {
-    --desk-padding: 12px;
+  .tile {
+    padding: 24px;
   }
 
   .mac-alert {
@@ -776,10 +1299,22 @@ a:hover {
   .steps__item {
     font-size: 17px;
   }
+
+  .setup__uninstall {
+    padding: 24px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

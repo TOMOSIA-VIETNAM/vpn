@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { motionBootScript } from "@/components/motion/motion";
 import { site, screenshots, siteUrl } from "@/config/site";
 import { getDictionary } from "@/i18n";
 import { defaultLocale, isLocale, localeInfo, locales } from "@/i18n/locales";
@@ -60,7 +61,11 @@ export default async function LocaleLayout({ children, params }: LocaleParams & 
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   return (
-    <html lang={localeInfo[locale].htmlLang}>
+    // The boot script may add the motion class before React hydrates.
+    <html lang={localeInfo[locale].htmlLang} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: motionBootScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

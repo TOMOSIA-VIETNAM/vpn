@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { RevealObserver } from "@/components/motion/RevealObserver";
 import { Features } from "@/components/sections/Features";
 import { Hero } from "@/components/sections/Hero";
 import { Install } from "@/components/sections/Install";
@@ -21,13 +22,14 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
     <>
       <Header locale={locale} dict={dict} />
       <main>
-        <Hero dict={dict} />
-        <Problem dict={dict} />
-        <Features dict={dict} />
-        <Screens dict={dict} />
+        <Hero locale={locale} dict={dict} />
+        <Problem locale={locale} dict={dict} />
+        <Features locale={locale} dict={dict} />
+        <Screens locale={locale} dict={dict} />
         <Install dict={dict} />
       </main>
       <Footer dict={dict} />
+      <RevealObserver />
     </>
   );
 }
