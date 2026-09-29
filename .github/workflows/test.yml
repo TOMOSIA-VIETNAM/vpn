@@ -1,9 +1,9 @@
 name: test
 
-# Gate for every change: formatting, vet, the full test suite and an app
-# build. Runs on macOS because the tree includes darwin-only packages (utun,
-# routing), and is reused by release.yml so nothing is published without
-# passing it.
+# Gate for every change: formatting, vet, the full test suite, an app
+# build and a build of the landing page. The Go and app jobs run on macOS
+# because the tree includes darwin-only packages (utun, routing). Reused by
+# release.yml so nothing is published without passing it.
 on:
   push:
     branches: [main]
@@ -67,3 +67,24 @@ jobs:
           name: TOMOSIA-VPN-app
           path: TOMOSIA-VPN.app.zip
           retention-days: 7
+
+  # The landing page in webapp/ must build as a static export and pass lint and
+  # the type check. Uses the Node.js preinstalled on the runner.
+  webapp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint and type check
+        run: npm run lint
