@@ -1,6 +1,6 @@
 {
   "release": "TOMOSIA VPN promo",
-  "source": "README.md, README.en.md, README.ja.md, assets/screenshots/",
+  "source": "README.md, README.vi.md, README.ja.md, assets/screenshots/",
   "voice": {
     "model": "gemini-3.1-flash-tts-preview",
     "voice": "Orus",
