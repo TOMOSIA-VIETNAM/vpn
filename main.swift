@@ -10,6 +10,10 @@ enum AppBranding {
         guard let path = Bundle.main.path(forResource: "Logo", ofType: "png") else { return nil }
         return NSImage(contentsOfFile: path)
     }()
+
+    // Stamped into Info.plist by build.sh from the release tag; nil when run
+    // outside a bundle (e.g. a bare swiftc build), so the footer omits it.
+    static let version: String? = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
 }
 
 // MARK: - Models for CLI Config and State
@@ -1266,7 +1270,7 @@ struct MenuBarPopupView: View {
 
             // Footer bar: settings (MTU, logging, kill switch) open in a sheet like the profile form.
             HStack {
-                Text("TMS VPN Client")
+                Text(AppBranding.version.map { "TMS VPN Client v\($0)" } ?? "TMS VPN Client")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color.gray.opacity(0.7))
 
