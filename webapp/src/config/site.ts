@@ -49,6 +49,17 @@ const promoFallback: keyof typeof promoEditions = "vi";
 
 export const promoVideoSize = { width: 1920, height: 1080 } as const;
 
+/**
+ * MIME types with codecs of the encodes assets/videos/promo/scripts/encode-web.sh
+ * writes (VP9 + Opus; H.264 High 5.0 or Main 3.1 + AAC-LC). With the codecs named,
+ * a browser skips a file it cannot decode instead of stalling on it.
+ */
+export const promoVideoTypes = {
+  webm: 'video/webm; codecs="vp9, opus"',
+  mp4: 'video/mp4; codecs="avc1.640032, mp4a.40.2"',
+  mobileMp4: 'video/mp4; codecs="avc1.4d401f, mp4a.40.2"',
+} as const;
+
 export function promoVideo(locale: Locale) {
   const name = promoEditions[locale as keyof typeof promoEditions] ?? promoEditions[promoFallback];
   return {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { mobileVideoQuery, promoVideoSize, site } from "@/config/site";
+import { mobileVideoQuery, promoVideoSize, promoVideoTypes, site } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
 import { motionAllowed } from "./motion/motion";
 
@@ -10,13 +10,41 @@ interface HeroVideoProps {
   labels: Dictionary["hero"]["video"];
 }
 
+/**
+ * Starts the video and reports whether it plays. A refused start (an autoplay
+ * policy, or a source the browser cannot decode) is logged with its reason; a
+ * refused start with sound is retried muted, which every browser allows.
+ */
+async function startPlayback(el: HTMLVideoElement, reason: string): Promise<boolean> {
+  try {
+    await el.play();
+    return true;
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : String(error);
+    // AbortError: a pause() came in before playback began; not a failure.
+    if (name === "AbortError") return false;
+    console.warn(`Promo video did not start (${reason}): ${name}`, el.error ?? "");
+    if (name === "NotAllowedError" && !el.muted) {
+      el.muted = true;
+      try {
+        await el.play();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
 // How much wider than its resting size the frame may grow while scrolling, at most.
 const MAX_GROWTH = 1.4;
 
 /**
  * The promo video in a macOS window frame under the hero text. Muted and looping,
- * started by script so that with reduced motion (or no JavaScript) only the poster
- * shows; paused while off screen. Controls: pause/play and sound on/off.
+ * started by script when at least a fifth of it is on screen (also at load), and
+ * paused when it leaves. With reduced motion (or no JavaScript) only the poster
+ * shows until the play button is pressed. Controls: pause/play and sound on/off.
  *
  * With motion allowed, the frame scales up toward the full viewport width as the
  * page scrolls, reaching it when its top meets the header. Only transform changes;
@@ -35,16 +63,24 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
   useEffect(() => {
     const el = video.current;
     if (!el) return;
+    // Browsers only autoplay a muted inline video; set both as properties too,
+    // since hydration does not reapply attributes.
+    el.muted = true;
+    el.playsInline = true;
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
 
-    if (!motionAllowed()) pausedByUser.current = true;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !pausedByUser.current) el.play().catch(() => {});
-      if (!entry.isIntersecting) el.pause();
-    });
+    // Reduced motion: no autoplay; the play button still works.
+    const autoplay = motionAllowed();
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && autoplay && !pausedByUser.current) void startPlayback(el, "autoplay");
+        if (!entry.isIntersecting && !el.paused) el.pause();
+      },
+      { threshold: 0.2 },
+    );
     observer.observe(el);
     return () => {
       observer.disconnect();
@@ -102,7 +138,7 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
     if (!el) return;
     if (el.paused) {
       pausedByUser.current = false;
-      el.play().catch(() => {});
+      void startPlayback(el, "play button");
     } else {
       pausedByUser.current = true;
       el.pause();
@@ -116,7 +152,9 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
     setMuted(el.muted);
     if (!el.muted && el.paused) {
       pausedByUser.current = false;
-      el.play().catch(() => {});
+      void startPlayback(el, "sound button").then((ok) => {
+        if (!ok) setMuted(el.muted);
+      });
     }
   }
 
@@ -145,9 +183,9 @@ export function HeroVideo({ sources, labels }: HeroVideoProps) {
             aria-hidden="true"
             tabIndex={-1}
           >
-            <source src={sources.mobileMp4} type="video/mp4" media={mobileVideoQuery} />
-            <source src={sources.webm} type="video/webm" />
-            <source src={sources.mp4} type="video/mp4" />
+            <source src={sources.mobileMp4} type={promoVideoTypes.mobileMp4} media={mobileVideoQuery} />
+            <source src={sources.webm} type={promoVideoTypes.webm} />
+            <source src={sources.mp4} type={promoVideoTypes.mp4} />
           </video>
           <div className="window__controls">
             <button

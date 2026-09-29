@@ -648,68 +648,149 @@ a:hover {
   color: #000000;
 }
 
-/* Stats band */
+/* Facts panel: frosted glass over the end of the hero's wallpaper. Numbers in
+   the text color; the icon tile and the accent line carry the color. */
 
 .stats {
-  padding-block: 72px;
-  border-bottom: 1px solid var(--separator);
+  padding-bottom: clamp(64px, 8vw, 104px);
 }
 
-.stats__list {
+.stats__panel {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 32px 8px;
+  border-radius: var(--radius-tile);
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(24px);
+  backdrop-filter: saturate(1.6) blur(24px);
+  box-shadow:
+    inset 0 0 0 1px light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08)),
+    0 1px 2px light-dark(rgba(30, 40, 80, 0.06), rgba(0, 0, 0, 0.3)),
+    0 24px 48px -24px light-dark(rgba(30, 40, 80, 0.18), rgba(0, 0, 0, 0.5));
 }
 
 .stats__item {
-  padding: 8px 28px;
+  --tint: var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 28px;
+}
+
+.stats__item + .stats__item {
   border-left: 1px solid var(--separator);
 }
 
-.stats__item:first-child {
-  padding-left: 0;
-  border-left: 0;
+.stats__item--red {
+  --tint: var(--red);
+}
+
+.stats__item--green {
+  --tint: var(--green);
+}
+
+.stats__item--indigo {
+  --tint: var(--indigo);
 }
 
 .stats__value {
   display: flex;
   align-items: flex-end;
-  min-height: 84px;
+  min-height: 82px;
+  margin-top: 12px;
+  color: var(--label);
   font-family: var(--font-display);
-  font-size: 80px;
-  font-weight: 700;
+  font-size: 72px;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
 }
 
 .stats__word {
-  font-size: 32px;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
 }
 
-.stats__item--blue .stats__value {
-  color: var(--blue-text);
-}
-
-.stats__item--red .stats__value {
-  color: var(--red-text);
-}
-
-.stats__item--green .stats__value {
-  color: var(--green-text);
-}
-
-.stats__item--indigo .stats__value {
-  color: var(--indigo-text);
+.stats__line {
+  display: block;
+  width: 36px;
+  height: 2px;
+  margin-top: 16px;
+  border-radius: 1px;
+  background: var(--tint);
+  transform-origin: 0 50%;
 }
 
 .stats__label {
   max-width: 16em;
-  margin-top: 14px;
+  margin-top: 12px;
   color: var(--label-secondary);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.45;
+}
+
+/* Odometer wheels: a strip of digits behind a one-digit window whose top and
+   bottom edges fade, so rolling digits pass under a soft edge. */
+.odometer {
+  --wheel: 1.14em;
+}
+
+.odometer__wheels {
+  display: inline-flex;
+}
+
+.odometer__wheel {
+  display: inline-block;
+  overflow: hidden;
+  height: var(--wheel);
+  line-height: var(--wheel);
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+}
+
+.odometer__strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--to) * -1 * var(--wheel)));
+}
+
+.odometer__strip span {
+  height: var(--wheel);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stats__panel .odometer__strip {
+    transition: transform 1600ms cubic-bezier(0.16, 0.84, 0.24, 1);
+    transition-delay: calc(var(--i, 0) * 140ms);
+  }
+
+  .stats__panel .stats__line {
+    transition: transform 900ms var(--ease-out);
+    transition-delay: calc(500ms + var(--i, 0) * 140ms);
+  }
+
+  .stats__panel .stats__word {
+    transition:
+      opacity 900ms ease,
+      transform 1000ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 140ms);
+  }
+
+  .stats__panel.is-pending .odometer__strip {
+    transform: translateY(0);
+  }
+
+  .stats__panel.is-pending .stats__line {
+    transform: scaleX(0);
+  }
+
+  .stats__panel.is-pending .stats__word {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
 }
 
 /* Sections */
@@ -1065,7 +1146,7 @@ a:hover {
 }
 
 .story__body.is-live .story__step[data-active="false"] .story__text {
-  opacity: 0.38;
+  opacity: 0.32;
 }
 
 .story__number {
@@ -1073,10 +1154,15 @@ a:hover {
   place-items: center;
   width: 36px;
   height: 36px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   background: var(--fill);
+  color: var(--label);
+  font: inherit;
   font-size: 16px;
   font-weight: 700;
+  cursor: pointer;
   transition:
     background-color 300ms ease,
     color 300ms ease;
@@ -1112,9 +1198,44 @@ a:hover {
   align-self: start;
 }
 
+.story__stack {
+  display: grid;
+}
+
+/* One desk per step, stacked; the active one fades in over the others. */
 .story__desk {
   --popover-left: 28px;
+  grid-area: 1 / 1;
   min-height: 540px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 450ms ease,
+    visibility 0s linear 450ms;
+}
+
+.story__desk.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 450ms ease;
+}
+
+/* The banner slides in when its step becomes active. */
+.story__desk .desk__notice {
+  animation: none;
+  opacity: 0;
+  transform: translateX(calc(100% + 16px));
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
+.story__desk.is-active .desk__notice {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 500ms ease 250ms,
+    transform 600ms var(--ease-out) 250ms;
 }
 
 /* On the wide desk the popover sits left, under its status item, so the
@@ -1136,21 +1257,33 @@ a:hover {
 .story__progress {
   display: flex;
   justify-content: center;
-  gap: 6px;
-  margin-top: 18px;
+  gap: 2px;
+  margin-top: 14px;
 }
 
-.story__progress span {
+.story__dot {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.story__dot::before {
+  content: "";
   width: 8px;
   height: 8px;
   border-radius: 4px;
-  background: var(--fill);
+  background: color-mix(in srgb, var(--label-secondary) 40%, transparent);
   transition:
     width 400ms var(--ease-out),
     background-color 300ms ease;
 }
 
-.story__progress span[data-active="true"] {
+.story__dot[aria-current="step"]::before {
   width: 28px;
   background: var(--accent);
 }
@@ -2016,13 +2149,13 @@ a:hover {
 }
 
 @media (max-width: 800px) {
-  .stats__list {
+  .stats__panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 40px;
+    row-gap: 32px;
+    padding: 28px 4px;
   }
 
   .stats__item:nth-child(3) {
-    padding-left: 0;
     border-left: 0;
   }
 
@@ -2097,21 +2230,17 @@ a:hover {
     font-size: 13px;
   }
 
-  .stats {
-    padding-block: 56px;
-  }
-
   .stats__item {
     padding: 4px 16px;
   }
 
   .stats__value {
-    min-height: 60px;
-    font-size: 60px;
+    min-height: 56px;
+    font-size: 56px;
   }
 
   .stats__word {
-    font-size: 22px;
+    font-size: 21px;
   }
 
   .stats__label {

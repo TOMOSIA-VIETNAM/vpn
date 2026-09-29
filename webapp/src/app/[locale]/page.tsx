@@ -25,8 +25,11 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
     <>
       <Header locale={locale} dict={dict} />
       <main>
-        <Hero locale={locale} dict={dict} />
-        <Stats dict={dict} />
+        {/* The wallpaper field runs behind the hero and the facts panel under it. */}
+        <div className="field">
+          <Hero locale={locale} dict={dict} />
+          <Stats dict={dict} />
+        </div>
         <Problem locale={locale} dict={dict} />
         <Story locale={locale} dict={dict} />
         <Features locale={locale} dict={dict} />

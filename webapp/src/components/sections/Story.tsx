@@ -30,7 +30,7 @@ export function Story({ locale, dict }: { locale: Locale; dict: Dictionary }) {
             <SplitText text={t.title} byWord={localeInfo[locale].splitWords} start={1} />
           </h2>
         </div>
-        <StoryScroller steps={t.steps} states={states} year={new Date().getFullYear()} />
+        <StoryScroller steps={t.steps} states={states} navLabel={t.title} year={new Date().getFullYear()} />
       </div>
     </section>
   );

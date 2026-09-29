@@ -88,6 +88,13 @@ const paths = {
       <circle cx="8.2" cy="6.8" r=".6" fill="currentColor" />
     </>
   ),
+  chip: (
+    <>
+      <rect x="6" y="6" width="12" height="12" rx="2.5" />
+      <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+      <path d="M9.5 3v3M14.5 3v3M9.5 18v3M14.5 18v3M3 9.5h3M3 14.5h3M18 9.5h3M18 14.5h3" />
+    </>
+  ),
   chevron: <path d="M9.5 6l6 6-6 6" />,
 } satisfies Record<string, ReactNode>;
 

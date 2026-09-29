@@ -6,7 +6,8 @@ import { DownloadButton } from "../DownloadButton";
 import { HeroVideo } from "../HeroVideo";
 
 /**
- * Centred headline on the wallpaper field, then the promo video in a window frame.
+ * Centred headline, then the promo video in a window frame; the page puts both on
+ * the wallpaper field.
  * It is on screen at load, so nothing in it waits for a reveal: text and poster
  * are complete on first paint.
  */
@@ -16,7 +17,7 @@ export function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const t = dict.hero;
 
   return (
-    <section className="hero field" aria-labelledby="hero-title">
+    <section className="hero" aria-labelledby="hero-title">
       <div className="container hero__inner">
         <h1 id="hero-title" className="hero__title">
           <span className="hero__title-lead">{t.titleLead}</span> <span className="hero__title-strong">{t.titleStrong}</span>
