@@ -1,0 +1,63 @@
+{
+  "vi": {
+    "text": "vi",
+    "say": "vi_say",
+    "language": "vi",
+    "whisper": "small",
+    "tagsOnly": true,
+    "model": "gemini-3.1-flash-tts-preview",
+    "ttsVoice": "Orus",
+    "style": "A calm, confident Vietnamese product narrator: warm, clear, measured pace, natural Northern Vietnamese diction, like an Apple product film. Slightly tense and concerned in the opening problem lines, then relieved and assured once the product appears.",
+    "outroStyle": "The same narrator, warmer and a little slower: a quiet, confident promise.",
+    "vo": "assets/audio/vo-vi",
+    "align": "data/align-vi",
+    "lines": "data/vo-lines.vi.json",
+    "envelope": "data/vo-envelope.vi.json",
+    "mix": "assets/audio/mix-vi.m4a",
+    "arrangement": "data/music-arrangement.vi.json",
+    "musicDb": -5,
+    "tempo": 1.08,
+    "duration": 57,
+    "anchors": {
+      "s01-hook": {
+        "scene": 0,
+        "lines": [
+          2
+        ]
+      },
+      "s02-pain": {
+        "scene": 8
+      },
+      "s03-why": {
+        "scene": 20,
+        "lines": [
+          null,
+          33.4
+        ]
+      },
+      "s04-reveal": {
+        "scene": 44,
+        "lines": [
+          [
+            44,
+            0.35
+          ],
+          null
+        ]
+      },
+      "s05-reconnect": {
+        "scene": 58
+      },
+      "s06-errors": {
+        "scene": 70
+      },
+      "s07-outro": {
+        "scene": 86,
+        "lines": [
+          87,
+          95
+        ]
+      }
+    }
+  }
+}

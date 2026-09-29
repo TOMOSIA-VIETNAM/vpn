@@ -1,0 +1,12 @@
+[
+  { "sfx": "ding", "scene": "s01-hook", "word": "drop", "vol": 0.35 },
+  { "sfx": "click", "scene": "s02-pain", "word": "failed", "vol": 0.25 },
+  { "sfx": "riser", "beat": 40, "vol": 0.22 },
+  { "sfx": "click", "scene": "s04-reveal", "word": "switch", "vol": 0.4 },
+  { "sfx": "pop", "scene": "s05-reconnect", "word": "flaky", "vol": 0.25 },
+  { "sfx": "ding", "scene": "s05-reconnect", "word": "notify", "vol": 0.35 },
+  { "sfx": "click", "scene": "s06-errors", "word": "password", "vol": 0.2 },
+  { "sfx": "click", "scene": "s06-errors", "word": "secret", "vol": 0.2 },
+  { "sfx": "click", "scene": "s06-errors", "word": "udp", "vol": 0.2 },
+  { "sfx": "click", "scene": "s07-outro", "word": "download", "vol": 0.3 }
+]

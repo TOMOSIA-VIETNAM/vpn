@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<!--
+  TOMOSIA VPN promo video (HyperFrames 0.7.99 + GSAP).
+  `node scripts/build-timeline.mjs --voice=vi --caption=vi` injects window.TIMING, the durations and the mix.
+  Look: native macOS, quiet. Dark scenes for the problem, light scenes once the app appears.
+  App screenshots and the brand mark are the real assets from the repo (assets/screenshots, assets/logo.png).
+-->
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>TOMOSIA VPN</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("assets/fonts/Inter.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+      @font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/JetBrainsMono-Medium.ttf") format("truetype"); font-weight: 500; font-display: block; }
+      :root {
+        --dark: #1c1c1e; --dark-2: #2c2c2e; --dark-3: #3a3a3c; --dark-ink: #f5f5f7; --dark-mute: #98989d;
+        --light: #f5f5f7; --light-2: #ffffff; --ink: #1d1d1f; --mute: #6e6e73; --hair: rgba(0, 0, 0, 0.08);
+        --green: #34c759; --orange: #ff9f0a; --red: #ff3b30; --blue: #007aff;
+      }
+      * { box-sizing: border-box; font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
+      html, body { margin: 0; background: var(--dark); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--dark); color: var(--dark-ink); font-family: "Inter", sans-serif; }
+      .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+      .abs { position: absolute; }
+      .scene { opacity: 0; visibility: hidden; }
+      .hl { white-space: nowrap; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; padding-top: 0.3em; margin-top: -0.3em; }
+      .hl .w { display: inline-block; }
+      .label, .chip { white-space: nowrap; }
+      #bg-light { background: var(--light); opacity: 0; }
+      #flash { background: #fff; opacity: 0; pointer-events: none; }
+      #fade { background: #000; opacity: 1; pointer-events: none; }
+
+      /* macOS menu bar */
+      .menubar { left: 0; top: 0; width: 1920px; height: 44px; display: flex; align-items: center; justify-content: flex-end; gap: 30px; padding-right: 30px; font: 500 21px/1 "Inter"; }
+      .menubar.dark { background: rgba(44, 44, 46, 0.92); color: #f5f5f7; }
+      .menubar.light { background: rgba(255, 255, 255, 0.78); color: #1d1d1f; border-bottom: 1px solid var(--hair); }
+      .mb-icon { position: relative; width: 24px; height: 24px; }
+      .mb-icon img { position: absolute; left: 0; top: 0; width: 24px; height: 24px; }
+      
+      /* macOS window */
+      .win { border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+      .win-bar { height: 52px; display: flex; align-items: center; gap: 10px; padding-left: 20px; background: #323234; color: var(--dark-mute); font: 600 20px/1 "Inter"; }
+      .dot3 { width: 14px; height: 14px; border-radius: 50%; }
+      .win-title { flex: 1; text-align: center; margin-right: 90px; }
+
+      /* call window */
+      .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #1a1a1a; }
+      .tile { position: relative; height: 300px; border-radius: 14px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; }
+      .avatar { width: 124px; height: 124px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 600 52px/1 "Inter"; color: #fff; }
+      .tile-name { position: absolute; left: 16px; bottom: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); font: 500 20px/1 "Inter"; color: #fff; }
+      .call-bar { height: 86px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 22px; }
+      .call-btn { width: 56px; height: 56px; border-radius: 50%; background: #3a3a3c; }
+      .call-btn.end { background: var(--red); width: 76px; border-radius: 28px; }
+      #freeze { background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; }
+      .pill { padding: 14px 26px; border-radius: 999px; background: rgba(28, 28, 30, 0.9); font: 600 26px/1 "Inter"; color: #fff; display: flex; align-items: center; gap: 14px; }
+      .spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; }
+
+      /* notification banner */
+      .notif { width: 560px; border-radius: 22px; padding: 18px 22px; display: flex; gap: 16px; align-items: flex-start; }
+      .notif.dark { background: rgba(58, 58, 60, 0.97); color: #f5f5f7; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+      .notif.light { background: rgba(255, 255, 255, 0.97); color: #1d1d1f; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--hair); }
+      .notif img, .notif .n-icon { width: 58px; height: 58px; border-radius: 13px; flex: none; }
+      .n-icon { background: #636366; display: flex; align-items: center; justify-content: center; }
+      .n-app { font: 500 17px/1.2 "Inter"; opacity: 0.6; display: flex; justify-content: space-between; }
+      .n-title { font: 700 23px/1.3 "Inter"; margin-top: 4px; }
+      .n-body { font: 400 21px/1.35 "Inter"; opacity: 0.8; }
+      .n-text { flex: 1; }
+
+      /* system settings mock */
+      .settings { display: flex; height: 588px; background: #262628; }
+      .side { width: 280px; background: #2c2c2e; padding: 22px 14px; font: 500 22px/1 "Inter"; color: #d1d1d6; }
+      .side div { padding: 13px 16px; border-radius: 10px; }
+      .side .sel { background: var(--blue); color: #fff; }
+      .pane { flex: 1; padding: 34px 40px; }
+      .pane-title { font: 700 32px/1 "Inter"; color: #f5f5f7; margin-bottom: 30px; }
+      .row { border-radius: 14px; background: #333335; padding: 24px 26px; display: flex; align-items: center; gap: 18px; }
+      .row-main { flex: 1; }
+      .row-name { font: 600 25px/1.2 "Inter"; color: #f5f5f7; }
+      .row-sub { font: 400 20px/1.3 "Inter"; color: var(--dark-mute); margin-top: 4px; }
+      .status-red { font: 600 22px/1 "Inter"; color: var(--red); display: flex; align-items: center; gap: 10px; }
+      .toggle { width: 60px; height: 34px; border-radius: 17px; background: #48484a; position: relative; }
+      .toggle::after { content: ""; position: absolute; left: 3px; top: 3px; width: 28px; height: 28px; border-radius: 50%; background: #e5e5ea; }
+      .row-note { margin-top: 22px; font: 400 21px/1.3 "Inter"; color: #636366; padding-left: 4px; }
+
+      /* cards */
+      .card { border-radius: 24px; padding: 34px 36px; }
+      .card.dark { background: var(--dark-2); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07); }
+      .card.light { background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); }
+      .c-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 26px; }
+      .c-title { font: 700 44px/1.2 "Inter"; letter-spacing: -0.02em; white-space: nowrap; }
+      .c-sub { font: 600 36px/1.25 "Inter"; margin-top: 8px; white-space: nowrap; }
+      .chip { font: 500 40px/1 "JetBrains Mono"; padding: 18px 30px; border-radius: 999px; background: var(--dark-3); color: #f5f5f7; }
+
+      /* error cards (app strings, English as in the app) */
+      .err-title { font: 700 31px/1.2 "Inter"; color: var(--ink); white-space: nowrap; }
+      .err-msg { font: 400 24px/1.4 "Inter"; color: var(--mute); margin-top: 10px; height: 102px; }
+      .btn { display: inline-block; margin-top: 22px; padding: 12px 24px; border-radius: 10px; background: #0068da; color: #fff; font: 600 22px/1 "Inter"; white-space: nowrap; }
+
+      /* status widget */
+      .status-card { display: flex; align-items: center; gap: 22px; }
+      .s-dot { width: 26px; height: 26px; border-radius: 50%; flex: none; }
+      .s-main { font: 700 48px/1.15 "Inter"; letter-spacing: -0.02em; white-space: nowrap; }
+      .s-sub { font: 500 28px/1.3 "Inter"; color: var(--mute); margin-top: 6px; white-space: nowrap; }
+      .stack { position: relative; width: 520px; height: 140px; }
+      .stack > div { position: absolute; left: 0; top: 0; }
+
+      .feat { display: flex; align-items: center; gap: 22px; padding: 26px 36px; border-radius: 22px; background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); font: 600 40px/1 "Inter"; white-space: nowrap; }
+      .dl { display: inline-flex; align-items: center; gap: 14px; padding: 22px 44px; border-radius: 16px; background: var(--blue); color: #fff; font: 600 38px/1 "Inter"; white-space: nowrap; }
+      .meta { font: 500 30px/1.3 "Inter"; color: var(--mute); white-space: nowrap; }
+      .url { font: 500 26px/1 "JetBrains Mono"; color: var(--mute); white-space: nowrap; }
+
+      #cursor { width: 38px; height: 50px; }
+
+      /* karaoke captions: bottom band only */
+      .cap { position: absolute; left: 0; width: 1920px; bottom: 40px; display: flex; justify-content: center; }
+      .cap-box { max-width: 1500px; padding: 12px 30px; border-radius: 18px; background: rgba(28, 28, 30, 0.78); font: 600 42px/1.3 "Inter"; text-align: center; color: #fff; }
+      .cw { color: rgba(255, 255, 255, 0.62); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="57" data-width="1920" data-height="1080">
+      <div id="bg-light" class="layer"></div>
+      <div id="pulse" class="layer">
+        <div id="stage" class="layer">
+
+          <!-- s01: the call freezes, the VPN drops -->
+          <section id="sc01" class="scene layer">
+            <div class="abs menubar dark">
+              <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#f5f5f7" stroke-width="2.4" stroke-linecap="round" /></svg>
+              <span>Mon 10:02</span>
+            </div>
+            <div id="call" class="abs win" style="left: 330px; top: 130px; width: 1260px">
+              <div class="win-bar"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">Weekly sync</div></div>
+              <div style="position: relative">
+                <div class="tiles">
+                  <div class="tile"><div class="avatar" style="background: #5e5ce6">A</div><div class="tile-name">Alice</div></div>
+                  <div class="tile"><div class="avatar" style="background: #30b0c7">B</div><div class="tile-name">Bảo</div></div>
+                  <div class="tile"><div class="avatar" style="background: #ac8e68">C</div><div class="tile-name">Chi</div></div>
+                  <div class="tile"><div class="avatar" style="background: #8e8e93">D</div><div class="tile-name">Dũng</div></div>
+                </div>
+                <div class="call-bar"><div class="call-btn"></div><div class="call-btn"></div><div class="call-btn end"></div></div>
+                <div id="freeze" class="abs" style="left: 0; top: 0; right: 0; bottom: 0; opacity: 0">
+                  <div class="pill"><div id="spin1" class="spin"></div><span>Reconnecting…</span></div>
+                </div>
+              </div>
+            </div>
+            <div id="n-lost" class="abs notif dark" style="right: 28px; top: 62px">
+              <div class="n-icon"><svg width="30" height="34" viewBox="0 0 30 34"><rect x="3" y="14" width="24" height="18" rx="4" fill="#e5e5ea" /><path d="M8,14 V10 a7,7 0 0 1 14,0 V14" fill="none" stroke="#e5e5ea" stroke-width="3.4" /></svg></div>
+              <div class="n-text"><div class="n-app"><span>VPN</span><span>now</span></div><div class="n-title">VPN Disconnected</div><div class="n-body">The connection to the server was lost.</div></div>
+            </div>
+          </section>
+
+          <!-- s02: settings say "Connection failed" and nothing else -->
+          <section id="sc02" class="scene layer" data-manual-intro>
+            <div class="abs hl" style="left: 130px; top: 450px; font-size: 96px" data-fit-width="560">What went wrong?</div>
+            <div id="set-win" class="abs win" style="left: 760px; top: 220px; width: 1040px">
+              <div class="win-bar"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">VPN</div></div>
+              <div class="settings">
+                <div class="side"><div>Wi-Fi</div><div>Bluetooth</div><div>Network</div><div class="sel">VPN</div><div>Notifications</div></div>
+                <div class="pane">
+                  <div class="pane-title">VPN</div>
+                  <div class="row">
+                    <div class="row-main"><div class="row-name">Office VPN</div><div class="row-sub">L2TP over IPsec</div></div>
+                    <div id="failed" class="status-red"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="#ff3b30" /><path d="M11,5.5 V12.5 M11,15.6 V16.4" stroke="#fff" stroke-width="2.6" stroke-linecap="round" /></svg><span>Connection failed</span></div>
+                    <div class="toggle"></div>
+                  </div>
+                  <div id="nodetail" class="row-note">No details.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- s03: an old protocol that no tool at hand handles well -->
+          <section id="sc03" class="scene layer" data-manual-intro>
+            <div id="proto" class="abs" style="left: 0; width: 1920px; top: 150px; display: flex; justify-content: center"><div class="chip">L2TP/IPsec</div></div>
+            <div class="abs" style="left: 0; width: 1920px; top: 290px; text-align: center"><div id="h03" class="hl" style="display: inline-block; font-size: 76px" data-fit-width="1680">Old protocol. No tool that fits.</div></div>
+            <div id="card-builtin" class="abs card dark" style="left: 290px; top: 490px; width: 640px">
+              <div class="c-icon" style="background: rgba(255, 159, 10, 0.16)"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M17,4 L31,29 H3 Z" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-linejoin="round" /><path d="M17,13 V20 M17,24 V24.6" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round" /></svg></div>
+              <div class="c-title">Built-in VPN</div>
+              <div class="c-sub" style="color: var(--orange)">keeps dropping</div>
+            </div>
+            <div id="card-cert" class="abs card dark" style="left: 990px; top: 490px; width: 640px">
+              <div class="c-icon" style="background: rgba(255, 159, 10, 0.16)"><svg width="34" height="34" viewBox="0 0 34 34"><rect x="4" y="5" width="26" height="19" rx="3" fill="none" stroke="#ff9f0a" stroke-width="3" /><circle cx="17" cy="24" r="5" fill="#2c2c2e" stroke="#ff9f0a" stroke-width="3" /><path d="M13.5,28 L12.5,32 L17,30.5 L21.5,32 L20.5,28" fill="none" stroke="#ff9f0a" stroke-width="2.4" stroke-linejoin="round" /></svg></div>
+              <div class="c-title">Other apps</div>
+              <div class="c-sub" style="color: var(--orange)">need certificates</div>
+            </div>
+          </section>
+
+          <!-- s04: TOMOSIA VPN, one switch in the menu bar -->
+          <section id="sc04" class="scene layer" data-manual-intro>
+            <div class="abs menubar light">
+              <div class="mb-icon"><img id="mb4-idle" src="assets/images/menubar-idle@2x.png" alt=""><img id="mb4-on" src="assets/images/menubar-connected@2x.png" alt="" style="opacity: 0"></div>
+              <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
+              <span>Mon 10:04</span>
+            </div>
+            <div id="brand" class="abs" style="left: 0; top: 0; width: 1920px; height: 1080px">
+              <img id="logo4" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 832px; top: 250px; width: 256px; height: 256px; border-radius: 56px">
+              <div id="name4" class="abs label" style="left: 0; width: 1920px; top: 560px; text-align: center; font: 700 96px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
+            </div>
+            <div class="abs" style="left: 140px; top: 470px"><div id="h04" class="hl" style="font-size: 96px; color: var(--ink)" data-fit-width="780">One switch. Done.</div></div>
+            <div id="pop4" class="abs" style="left: 1000px; top: 50px; width: 824px; height: 736px">
+              <img src="assets/images/popover-light.png" alt="" style="position: absolute; left: 0; top: 0; width: 824px; height: 736px">
+              <!-- "not connected" patches over the real screenshot, lifted when the switch is flipped -->
+              <div id="off-status" class="abs" style="left: 176px; top: 88px; width: 390px; height: 38px; background: rgb(220, 221, 217); display: flex; align-items: center; gap: 10px; padding-left: 4px">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #a1a1a6"></div><span style="font: 500 22px/1 Inter; color: #1d1d1f">Not Connected</span>
+              </div>
+              <div id="off-ip" class="abs" style="left: 120px; top: 190px; width: 300px; height: 38px; background: rgb(211, 212, 208); font: 600 24px/38px Inter; color: #8e8e93; padding-left: 4px">—</div>
+              <div id="off-switch" class="abs" style="left: 574px; top: 368px; width: 76px; height: 48px; background: url(assets/images/popover-light.png) -574px -480px / 824px 736px"></div>
+              <div id="off-dot" class="abs" style="left: 120px; top: 381px; width: 22px; height: 22px; background: url(assets/images/popover-light.png) -120px -493px / 824px 736px"></div>
+            </div>
+            <svg id="cursor" class="abs" viewBox="0 0 38 50" style="left: 1500px; top: 700px"><path d="M3,2 L3,40 L12,31 L18,46 L25,43 L19,28 L32,28 Z" fill="#000" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" /></svg>
+          </section>
+
+          <!-- s05: drops and reconnects on its own, with notifications -->
+          <section id="sc05" class="scene layer">
+            <div class="abs menubar light">
+              <div class="mb-icon"><img id="mb5-on" src="assets/images/menubar-connected@2x.png" alt=""><img id="mb5-lost" src="assets/images/menubar-lost@2x.png" alt="" style="opacity: 0"><img id="mb5-back" src="assets/images/menubar-connected@2x.png" alt="" style="opacity: 0"></div>
+              <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
+              <span>Mon 10:31</span>
+            </div>
+            <div class="abs" style="left: 140px; top: 380px"><div class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="800">Reconnects on its own</div></div>
+            <div id="sub05" class="abs label" style="left: 140px; top: 510px; font: 500 40px/1.3 Inter; color: var(--mute)">and tells you when you're back</div>
+            <div id="status5" class="abs card light" style="left: 140px; top: 640px; width: 700px; padding: 30px 36px">
+              <div class="stack" style="height: 110px" data-layout-allow-overlap>
+                <div id="st-lost" class="status-card"><div id="st-dot" class="s-dot" style="background: var(--orange)"></div><div><div class="s-main">Reconnecting…</div><div class="s-sub">Reconnecting to Office…</div></div></div>
+                <div id="st-back" class="status-card" style="opacity: 0"><div class="s-dot" style="background: var(--green)"></div><div><div class="s-main">Connected</div><div class="s-sub">Protected via Office</div></div></div>
+              </div>
+            </div>
+            <div id="n5-lost" class="abs notif light" style="right: 28px; top: 62px">
+              <img src="assets/images/logo.png" alt="">
+              <div class="n-text"><div class="n-app"><span>TOMOSIA VPN</span><span>now</span></div><div class="n-title">VPN connection lost</div><div class="n-body">Reconnecting to Office…</div></div>
+            </div>
+            <div id="n5-back" class="abs notif light" style="right: 28px; top: 62px">
+              <img src="assets/images/logo.png" alt="">
+              <div class="n-text"><div class="n-app"><span>TOMOSIA VPN</span><span>now</span></div><div class="n-title">VPN reconnected</div><div class="n-body">Protected via Office again.</div></div>
+            </div>
+          </section>
+
+          <!-- s06: errors that say what is wrong, with the fix one click away -->
+          <section id="sc06" class="scene layer">
+            <div class="abs" style="left: 140px; top: 150px"><div class="hl" style="font-size: 88px; color: var(--ink)" data-fit-width="1640">Clear errors, fixed fast</div></div>
+            <div id="e1" class="abs card light" style="left: 140px; top: 380px; width: 520px">
+              <div class="c-icon" style="background: rgba(255, 59, 48, 0.12)"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
+              <div class="err-title">Authentication Failed</div>
+              <div class="err-msg">Wrong account name or password.</div>
+              <div class="btn">Update Password</div>
+            </div>
+            <div id="e2" class="abs card light" style="left: 700px; top: 380px; width: 520px">
+              <div class="c-icon" style="background: rgba(255, 59, 48, 0.12)"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
+              <div class="err-title">IKE Handshake Failed</div>
+              <div class="err-msg">Check the shared secret.</div>
+              <div class="btn">Try Again</div>
+            </div>
+            <div id="e3" class="abs card light" style="left: 1260px; top: 380px; width: 520px">
+              <div class="c-icon" style="background: rgba(255, 159, 10, 0.14)"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M17,4 L31,29 H3 Z" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-linejoin="round" /><path d="M17,13 V20 M17,24 V24.6" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round" /></svg></div>
+              <div class="err-title">Server Not Responding</div>
+              <div class="err-msg">This network may be blocking VPN traffic (UDP 500/4500).</div>
+              <div class="btn">Try Again</div>
+            </div>
+          </section>
+
+          <!-- s07: safety features, then the download -->
+          <section id="sc07" class="scene layer" data-manual-intro>
+            <div id="feats" class="abs" style="left: 0; width: 1920px; top: 400px; display: flex; justify-content: center; gap: 40px">
+              <div id="f-kill" class="feat"><svg width="40" height="44" viewBox="0 0 40 44"><path d="M20,3 L36,9 V21 C36,31 29,38 20,41 C11,38 4,31 4,21 V9 Z" fill="none" stroke="#34c759" stroke-width="3.4" stroke-linejoin="round" /><path d="M13,22 L18,27 L28,16" fill="none" stroke="#34c759" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Kill switch</span></div>
+              <div id="f-key" class="feat"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="15" cy="22" r="9" fill="none" stroke="#007aff" stroke-width="3.4" /><path d="M24,22 H40 M34,22 V29 M40,22 V28" fill="none" stroke="#007aff" stroke-width="3.4" stroke-linecap="round" /></svg><span>Passwords in Keychain</span></div>
+            </div>
+            <div id="end" class="abs" style="left: 0; top: 0; width: 1920px; height: 1080px">
+              <img id="logo7" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 870px; top: 170px; width: 180px; height: 180px; border-radius: 40px">
+              <div id="name7" class="abs label" style="left: 0; width: 1920px; top: 390px; text-align: center; font: 700 92px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
+              <div id="dl7" class="abs" style="left: 0; width: 1920px; top: 550px; display: flex; justify-content: center">
+                <div class="dl"><svg width="30" height="30" viewBox="0 0 30 30"><path d="M15,4 V20 M8,13 L15,20 L22,13 M5,26 H25" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Download</span></div>
+              </div>
+              <div id="meta7" class="abs meta" style="left: 0; width: 1920px; top: 690px; text-align: center">macOS 12+ · Apple Silicon &amp; Intel</div>
+              <div id="url7" class="abs url" style="left: 0; width: 1920px; top: 760px; text-align: center">github.com/TOMOSIA-VIETNAM/vpn</div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div id="flash" class="layer"></div>
+      <div id="captions" class="layer"></div>
+      <div id="fade" class="layer"></div>
+      <audio id="mix" src="assets/audio/mix-vi.m4a" data-start="0" data-duration="57" data-track-index="10" data-volume="1"></audio>
+    </div>
+
+    <script>/*TIMING:BEGIN*/window.TIMING={"duration":57,"fps":30,"beat0":0,"beatLen":0.517241,"kick":[[8,36],[44,58],[58,86]],"drops":[44],"outroBeat":86,"scenes":{"s01-hook":{"start":0,"end":4.138,"lines":[{"on":1.034,"off":2.758,"words":[["~đang",1.034,1.295],["~họp",1.295,1.422],["~thì",1.422,1.549],["vpn",1.875,2.332],["drop",2.332,2.758]]}]},"s02-pain":{"start":4.138,"end":10.345,"lines":[{"on":4.688,"off":7.502,"words":[["~mở",4.688,5.077],["~cài",5.077,5.206],["settings",5.206,5.41],["~ra",5.41,5.653],["~connection",6.376,6.818],["failed",6.818,7.502]]},{"on":8.256,"off":9.218,"words":[["~không",8.256,8.41],["~một",8.41,8.651],["~lời",8.651,8.892],["~giải",8.892,9.095],["why",9.095,9.218]]}]},"s03-why":{"start":10.345,"end":22.759,"lines":[{"on":10.969,"off":15.727,"words":[["~vpn",10.969,11.393],["~công",11.393,11.708],["~ty",11.708,11.949],["~chạy",11.949,13.351],["protocol",13.81,14.28],["~một",14.814,14.93],["~giao",14.93,15.097],["~thức",15.097,15.245],["~đời",15.245,15.449],["old",15.449,15.727]]},{"on":17.276,"off":22.56,"words":[["~vpn",17.276,17.634],["~có",17.634,17.893],["builtin",17.893,18.19],["~của",18.19,18.301],["~mac",18.301,18.393],["~chạy",18.393,18.515],["~chập",18.803,19.19],["~chờn",19.19,19.449],["~với",19.449,19.579],["~nó",19.579,19.853],["~còn",20.56,20.671],["others",20.671,20.875],["~ứng",20.875,21.042],["~dụng",21.042,21.245],["~khác",21.245,21.43],["~lại",21.43,21.671],["~đòi",21.671,21.93],["~chứng",21.93,22.097],["cert",22.097,22.319],["~riêng",22.319,22.56]]}]},"s04-reveal":{"start":22.759,"end":30,"lines":[{"on":23.109,"off":25.639,"words":[["~nên",23.109,23.301],["~chúng",23.301,23.542],["~tôi",23.542,23.764],["~làm",23.764,24.073],["brand",24.31,25.06],["~vpn",25.06,25.639]]},{"on":26.492,"off":28.32,"words":[["~một",26.492,26.603],["~công",26.603,26.82],["switch",26.82,26.993],["~ngay",27.531,27.727],["~trên",27.727,27.894],["~menu",27.894,28.116],["menubar",28.116,28.32]]}]},"s05-reconnect":{"start":30,"end":36.207,"lines":[{"on":30.55,"off":34.748,"words":[["~mạng",30.55,30.976],["~chập",30.976,31.172],["flaky",31.172,31.369],["~ứng",32.286,32.397],["~dụng",32.397,32.624],["~tự",32.624,32.846],["~kết",32.846,32.994],["~nối",32.994,33.18],["reconnect",33.18,33.402],["~và",33.402,33.772],["notify",33.772,34.106],["~khi",34.106,34.291],["~đã",34.291,34.402],["~có",34.402,34.55],["~mạng",34.55,34.748]]}]},"s06-errors":{"start":36.207,"end":44.483,"lines":[{"on":36.831,"off":43.398,"words":[["~lỗi",36.831,37.082],["~thì",37.082,37.304],["~nói",37.304,37.526],["clear",37.526,37.89],["~sai",38.618,38.823],["~mật",38.823,39.063],["password",39.063,39.333],["~sai",39.946,40.193],["~shared",40.193,40.962],["secret",40.962,41.141],["~hay",41.887,42.026],["~mạng",42.026,42.397],["~chặn",42.397,42.619],["~cổng",42.619,42.878],["udp",42.878,43.398]]}]},"s07-outro":{"start":44.483,"end":57,"lines":[{"on":45,"off":48.316,"words":[["~kill",45,45.577],["kill",45.577,45.789],["~mật",46.324,46.617],["~khẩu",46.617,46.832],["~cất",46.832,46.993],["~trong",47.288,47.697],["keychain",47.697,48.316]]},{"on":49.138,"off":54.537,"words":[["brand",49.138,49.92],["~vpn",49.92,50.843],["~tải",51.69,51.81],["download",51.81,52.2],["~cho",52.2,52.4],["~macos",52.4,53.023],["macos",53.368,53.8],["~trở",53.8,54.32],["~lên",54.32,54.537]]}]}},"voice":"vi","captionLang":"vi","strings":{"Weekly sync":"Họp tuần","What went wrong?":"Lỗi gì vậy?","No details.":"Không có chi tiết.","Old protocol. No tool that fits.":"Giao thức cũ. Không công cụ nào vừa.","Built-in VPN":"VPN có sẵn","keeps dropping":"hay rớt","Other apps":"Ứng dụng khác","need certificates":"cần chứng chỉ","One switch. Done.":"Một công tắc. Xong.","Reconnects on its own":"Tự kết nối lại","and tells you when you're back":"và báo khi đã có mạng","Clear errors, fixed fast":"Lỗi rõ ràng, sửa ngay","Passwords in Keychain":"Mật khẩu trong Keychain","Download":"Tải ngay"},"captions":[{"start":0.914,"end":3.258,"words":[["Đang",1.034],["họp",1.295],["thì",1.422],["VPN",1.875],["rớt.",2.332]]},{"start":4.568,"end":8.002,"words":[["Mở",4.688],["cài",5.077],["đặt",5.206],["ra:",5.41],["Connection",6.376],["failed.",6.818]]},{"start":8.136,"end":9.718,"words":[["Không",8.256],["một",8.41],["lời",8.651],["giải",8.892],["thích.",9.095]]},{"start":10.849,"end":14.654,"words":[["VPN",10.969],["công",11.393],["ty",11.708],["chạy",11.949],["L2TP/IPsec,",13.81]]},{"start":14.694,"end":16.227,"words":[["một",14.814],["giao",14.93],["thức",15.097],["đời",15.245],["cũ.",15.449]]},{"start":17.156,"end":19.419,"words":[["VPN",17.276],["có",17.634],["sẵn",17.893],["của",18.19],["Mac",18.301],["chạy",18.393],["chập",18.803],["chờn",19.19],["với",19.449]]},{"start":19.459,"end":21.937,"words":[["nó,",19.579],["còn",20.56],["nhiều",20.671],["ứng",20.875],["dụng",21.042],["khác",21.245],["lại",21.43],["đòi",21.671],["chứng",21.93]]},{"start":21.977,"end":22.949,"words":[["chỉ",22.097],["riêng.",22.319]]},{"start":22.989,"end":26.139,"words":[["Nên",23.109],["chúng",23.301],["tôi",23.542],["làm",23.764],["TOMOSIA",24.31],["VPN.",25.06]]},{"start":26.372,"end":28.82,"words":[["Một",26.492],["công",26.603],["tắc,",26.82],["ngay",27.531],["trên",27.727],["menu",27.894],["bar.",28.116]]},{"start":30.43,"end":32.126,"words":[["Mạng",30.55],["chập",30.976],["chờn?",31.172]]},{"start":32.166,"end":34.131,"words":[["Ứng",32.286],["dụng",32.397],["tự",32.624],["kết",32.846],["nối",32.994],["lại",33.18],["và",33.402],["báo",33.772],["khi",34.106]]},{"start":34.171,"end":35.248,"words":[["đã",34.291],["có",34.402],["mạng.",34.55]]},{"start":36.711,"end":38.458,"words":[["Lỗi",36.831],["thì",37.082],["nói",37.304],["rõ:",37.526]]},{"start":38.498,"end":39.786,"words":[["sai",38.618],["mật",38.823],["khẩu,",39.063]]},{"start":39.826,"end":41.727,"words":[["sai",39.946],["shared",40.193],["secret,",40.962]]},{"start":41.767,"end":43.898,"words":[["hay",41.887],["mạng",42.026],["chặn",42.397],["cổng",42.619],["UDP.",42.878]]},{"start":44.88,"end":48.816,"words":[["Kill",45],["switch.",45.577],["Mật",46.324],["khẩu",46.617],["cất",46.832],["trong",47.288],["Keychain.",47.697]]},{"start":49.018,"end":55.037,"words":[["TOMOSIA",49.138],["VPN.",49.92],["Tải",51.69],["ngay",51.81],["cho",52.2],["macOS",52.4],["12",53.368],["trở",53.8],["lên.",54.32]]}],"sfx":[{"sfx":"ding","vol":0.35,"t":2.332},{"sfx":"click","vol":0.25,"t":6.818},{"sfx":"riser","vol":0.22,"t":20.69},{"sfx":"click","vol":0.4,"t":26.82},{"sfx":"pop","vol":0.25,"t":31.172},{"sfx":"ding","vol":0.35,"t":33.772},{"sfx":"click","vol":0.2,"t":39.063},{"sfx":"click","vol":0.2,"t":40.962},{"sfx":"click","vol":0.2,"t":42.878},{"sfx":"click","vol":0.3,"t":51.81}],"env":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.38,0.76,1,0.99,0.74,0.82,0.73,0.76,0.79,0.58,0.3,0.55,0.85,0.93,1,0.42,0.02,0,0,0,0,0,0,0,0,0.06,0.64,0.82,0.54,0.25,0.66,1,0.71,0.04,0.23,1,0.94,0.86,1,0.81,0.74,0.87,0.82,0.5,0.49,0.56,1,0.74,0.46,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.05,0.75,1,1,1,1,0.75,0.25,0.01,0,0.31,0.7,0.73,0.53,0.63,0.5,0.05,0.01,0.11,0.16,0.35,0.78,0.59,0.48,0.28,0.1,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.22,0.13,0.73,0.82,0.62,0.59,0.61,0.64,0.65,0.16,0.01,0.12,0.22,0.29,0.24,0.69,0.55,0.45,0.33,0.19,0.05,0.02,0.03,0.04,0.04,0.09,0.76,0.73,0.51,0.26,0.08,0.01,0.01,0,0.04,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.03,0.2,0.29,0.33,1,0.91,1,1,1,1,1,0.67,0.02,0.06,0.5,0.66,0.92,0.69,0.5,0.28,0.19,0.28,0.4,0.4,0.23,0.04,0.01,0.1,0.88,0.18,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.33,0.37,0.27,0.95,1,0.75,0.19,0.01,0.5,0.79,0.65,0.79,0.8,0.69,0.7,0.62,0.59,0.31,0.03,0.23,1,0.79,0.67,0.45,0.06,0.61,1,0.83,0.66,0.64,0.49,0.22,0.02,0.01,0.19,0.65,0.5,0.81,0.57,0.21,0,0,0,0,0,0,0.36,0.63,0.7,0.83,0.67,0.31,0.2,0.18,0.23,0.54,0.49,0.54,0.41,0.07,0,0.5,1,0.67,0.12,0,0.22,1,1,0.91,0.56,0.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0.45,0.6,0.76,0.4,0.01,0.25,0.69,0.48,0.28,0.53,0.5,0.34,0.66,0.52,0.23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.21,0.51,0.65,0.26,0.01,0.08,0.34,0.56,0.35,0.09,0.11,0.84,0.19,0,0.14,0.45,0.75,0.47,0.19,0.06,0,0,0.23,0.8,0.63,0.61,0.5,0.24,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.27,0.32,0.8,1,0.62,0.04,0.52,0.83,0.74,0.98,0.91,0.7,0.69,0.73,0.47,0.04,0.19,0.7,1,0.64,0.34,0.36,0.39,0.43,1,0.45,0.69,0.39,0,0.26,1,0.89,0.6,0.67,0.61,0.59,0.55,0.18,0,0,0,0,0,0,0,0.02,0.43,0.67,0.84,0.34,0.14,0.14,0.02,0.26,0.46,0.79,0.13,0.02,0.05,0.33,0.5,0.64,0.89,0.78,0.36,0.29,0.15,0.06,0.61,0.56,0.66,0.53,0.44,0.29,0.23,0.27,0.3,0.14,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.06,0.96,1,0.88,0.88,0.81,0.84,0.97,1,1,0.9,0.61,0.16,0.55,0.78,1,0.57,0.6,0.67,0.16,0.09,0.11,0.13,0.18,0.59,0.73,0.49,0.04,0,0.01,0.08,0.51,0.74,0.44,0.19,0.31,0.49,0.62,0.5,0.34,0.21,0.11,0,0.2,0.3,0.23,0.44,0.51,0.12,0.19,0.19,0.55,0.53,0.21,0.1,0.16,0.25,0.92,1,1,0.7,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.59,1,1,1,1,1,0.85,1,0.61,0.11,0.38,0.45,0.83,0.29,0.29,0.04,0.75,1,1,0.87,0.78,0.41,0.53,0.7,0.59,0.46,0.25,0.14,0.08,0.02,0,0,0,0,0,0,0.01,0,0,0.88,1,1,0.92,1,1,1,1,0.58,0.43,0.6,0.42,0.37,0.38,0.27,0.27,0.73,0.57,0.53,0.48,0.44,0.27,0.08,0.04,0.62,0.69,0.23,0.01,0.25,0.66,0.55,0.5,0.77,0.71,0.5,0.34,0.18,0.04,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.12,0.58,0.71,0.73,0.29,0.03,0.02,0.01,0.76,0.89,0.34,0.21,0.01,0.96,0.5,0.07,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.3,1,1,1,0.9,0.6,0.36,0.04,0.3,0.39,1,0.6,0.6,0.56,0.71,0.6,0.56,0.65,0.84,0.59,0.29,0.5,0.81,0.62,0.38,0.16,0.04,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.06,0.67,0.93,0.96,0.87,0.36,0.09,0.41,0.67,0.33,0.46,0.78,0.75,0.04,0.12,0.53,0.78,1,1,1,0.51,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.74,1,1,1,0.86,0.52,0.81,1,0.11,0.14,0.25,0,0,0.35,1,0.67,0.19,0.07,0,0.47,1,0.56,0.06,1,1,1,1,1,0.88,0.73,0.78,0.73,0.33,0.04,0.03,0,0,0,0,0.01,0.13,0.13,0.13,0.78,0.64,0.28,0.1,0.09,0.09,0.3,0.41,0.28,0.29,0.22,0.37,0.26,0.05,0.06,0.04,0.34,0.72,0.27,0.52,0.34,0.07,0,0.19,0.44,0.36,0.42,0.63,0.71,0.64,0.3,0.07,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.04,0.79,1,1,1,0.55,0.38,0.62,0.8,0.31,0,0,0.08,0.33,0.53,0.27,0.13,0.14,0.16,0.22,0.19,0.33,0.59,0.5,0.37,0.44,0.43,1,0.33,0.48,0.69,0.47,0.23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.04,0.3,0.38,0.46,0.29,0.58,0.7,0.81,0.85,0.86,0.97,1,0.04,0.09,0.07,0.07,0.14,0.79,1,0.68,0.18,0.08,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.17,0.34,0.43,0.74,0.69,0.65,0.65,0.59,0.4,0.22,0.37,0.43,0.57,0.44,0.67,0.81,0.62,0.52,0.31,0.42,0.5,0.23,0.92,0.43,0.24,0.03,0,0.09,0.4,0.23,0.12,0.17,0.51,0.8,1,0.34,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.12,0.24,0.65,0.67,0.6,0.63,0.42,0.38,0.37,0.48,0.63,0.48,0.07,0.01,0.02,0.02,0.26,0.5,0.29,0.03,0.06,0.11,0.02,0.23,1,0.46,0.2,0.12,0.04,0,0.22,0.72,0.73,0.55,0.58,1,1,0.07,0,0.69,0.96,0.82,0.84,0.83,0.41,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.37,1,1,0.94,0.94,0.78,0.64,0.38,0.69,0.83,0.65,0.41,0.82,1,0.83,0.61,0.27,0,0,0,0.01,0,0,0.01,0,0,0,0.01,0.01,0.01,0,0,0,0,0,0,0,0,0.01,0.08,0.46,0.59,0.65,0.87,0.65,0.02,0.02,0.01,0.08,0.03,0.05,0.17,0.15,0.61,0.91,0.84,0.69,0.31,0.1,0.05,0.03,0.01,0.01,0,0,0,0,0,0.19,1,0.82,0.01,0,0,0,0,0.23,0.5,0.84,0.81,0.44,0.42,0.25,0.03,0,0.07,0.71,0.63,0.31,0.04,0.01,0.15,0.31,0.46,0.97,0.74,0.63,0.4,0.25,0.07,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0.99,0.88,1,1,1,1,0.99,0.53,0.56,0.76,0.59,0.44,0.56,0.84,0.87,0.85,0.68,0.74,0.7,0.62,0.48,0.36,0.25,0.1,0.02,0.01,0,0.06,0.2,0.34,0.87,0.83,0.6,0.38,0.01,0.01,0.02,0.66,0.67,0.54,0.72,0.64,0.78,0.6,0.64,0.51,0.3,0.16,0.04,0,0,0,0,0,0,0,0,0.01,0.01,0.02,0.02,0.02,0.02,0.01,0.01,0,0,0,0,0,0,0,0,0.32,1,0.75,0.64,0.41,0.22,0.23,0.26,0.43,0.53,0.52,0.59,0.69,0.84,0.8,0.69,0.47,0.02,0.01,0.4,0.51,0.95,0.74,0.6,0.71,0.73,0.53,0.36,0.04,0,0.06,0.27,0.65,0.51,0.66,0.16,0.07,0.35,0.56,0.66,0.3,0,0,0,0,0.01,0,0,0,0.01,0.02,0.47,0.65,0.59,0.78,0.66,0.58,0.45,0.22,0.07,0.08,0.12,0.14,0.16,0.14,0.5,0.53,0.48,0.51,0.48,0.19,0.03,0.01,0.05,0.17,0.24,0.29,0.17,0.14,0.21,0.3,0.56,0.57,0.6,0.34,0.17,0.03,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};/*TIMING:END*/</script>
+    <script>
+      (() => {
+        const T = window.TIMING;
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines = window.__timelines || {};
+        window.__timelines["main"] = tl;
+
+        // ---------- lookups: every time comes from TIMING, never from wall clock ----------
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+        const SC = T.scenes;
+        const B = (n) => T.beat0 + T.beatLen * n; // time of quarter note n
+        const isKick = (n) => T.kick.some(([a, b]) => n >= a && n < b);
+        const hit = (sid, word, nth) => {
+          const h = SC[sid].lines.flatMap((l) => l.words).filter((w) => w[0] === word)[nth - 1];
+          if (!h) console.warn(`[timing] "${word}" #${nth} missing in ${sid}`);
+          return h;
+        };
+        const W = (sid, word, nth = 1) => (hit(sid, word, nth) || [0, SC[sid].start])[1]; // word onset
+        const LINE = (sid, i) => SC[sid].lines[i].on; // onset of a line's first word
+
+        // ---------- on-screen language: TIMING.strings maps English text nodes to the caption language ----------
+        const LANG = T.captionLang;
+        const STR = T.strings || {};
+        document.documentElement.lang = LANG;
+        const walk = document.createTreeWalker($("#root"), NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walk.nextNode()) nodes.push(walk.currentNode);
+        nodes.forEach((n) => {
+          const k = n.nodeValue.trim();
+          if (k && STR[k] != null) n.nodeValue = n.nodeValue.replace(k, STR[k]);
+        });
+        // headline words become spans for staggered entrances (DOM is built before any tween)
+        $$(".hl").forEach((h) => (h.innerHTML = h.textContent.trim().split(/\s+/).map((w) => `<span class="w">${w}</span>`).join(" ")));
+
+        // one-line text that runs long after translation is scaled down to fit (layout only, first update)
+        const fitText = () =>
+          $$(".hl, .label, .chip, .c-title, .c-sub, .err-title").forEach((el) => {
+            const box = el.offsetParent;
+            if (!box) return;
+            const avail = +el.dataset.fitWidth || (el.style.width ? el.clientWidth : box.clientWidth - el.offsetLeft - 16);
+            let fs = parseFloat(getComputedStyle(el).fontSize);
+            for (let n = 0; el.scrollWidth > avail && n < 40; n++) el.style.fontSize = `${(fs *= 0.95)}px`;
+          });
+        let fitted = false;
+        tl.eventCallback("onUpdate", () => fitted || ((fitted = true), fitText()));
+
+        // ---------- animation vocabulary ----------
+        const rise = (e, t, o = {}) => tl.fromTo(e, { autoAlpha: 0, y: o.y ?? 36 }, { autoAlpha: 1, y: 0, duration: o.d ?? 0.55, ease: o.ease ?? "power3.out", stagger: o.stagger ?? 0, immediateRender: false }, t);
+        const pop = (e, t, o = {}) => tl.fromTo(e, { autoAlpha: 0, scale: o.from ?? 0.85 }, { autoAlpha: 1, scale: 1, duration: o.d ?? 0.5, ease: o.ease ?? "back.out(1.6)", immediateRender: false }, t);
+        const slideIn = (e, t) => tl.fromTo(e, { autoAlpha: 0, x: 620 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: "power3.out", immediateRender: false }, t);
+        const show = (e, t, d = 0.3) => tl.to(e, { autoAlpha: 1, duration: d, ease: "power1.out" }, t);
+        const hide = (e, t, d = 0.3) => tl.to(e, { autoAlpha: 0, duration: d, ease: "power1.in" }, t);
+        const flash = (t, a) => {
+          tl.to("#flash", { opacity: a, duration: 0.03, ease: "none" }, t);
+          tl.to("#flash", { opacity: 0, duration: 0.4, ease: "power2.out" }, t + 0.03);
+        };
+        const intro = (sc, t) => {
+          const ws = $$(".hl .w", sc);
+          if (ws.length) tl.fromTo(ws, { autoAlpha: 0, yPercent: 50 }, { autoAlpha: 1, yPercent: 0, duration: 0.45, ease: "power3.out", stagger: 0.06, immediateRender: false }, t);
+        };
+        const spin = (el, t0, t1) => tl.fromTo(el, { rotation: 0 }, { rotation: 360 * Math.max(1, Math.round((t1 - t0) / 0.8)), duration: t1 - t0, ease: "none", immediateRender: false }, t0);
+
+        // start states of elements revealed later
+        gsap.set(["#n-lost", "#sc02 .hl .w", "#nodetail", "#proto", "#h03 .w", "#card-builtin", "#card-cert", "#h04 .w", "#pop4", "#cursor", "#name4", "#sub05", "#status5", "#n5-lost", "#n5-back", "#sc05 .hl .w", "#sc06 .hl .w", "#e1", "#e2", "#e3", "#f-kill", "#f-key", "#end", "#dl7", "#meta7", "#url7"], { autoAlpha: 0 });
+
+        tl.fromTo("#fade", { opacity: 1 }, { opacity: 0, duration: 0.25 }, 0);
+
+        // ---------- beat reactions: a barely visible pulse on kick downbeats ----------
+        for (let n = 0; B(n) < T.duration && n < T.outroBeat; n++) {
+          if (!isKick(n) || n % 4) continue;
+          tl.to("#pulse", { scale: 1.004, duration: 0.05, ease: "power1.out" }, B(n));
+          tl.to("#pulse", { scale: 1, duration: 0.35, ease: "power2.out" }, B(n) + 0.05);
+        }
+
+        // ---------- scene windows: [selector, scene id, transition in] ----------
+        const WINDOWS = [
+          ["#sc01", "s01-hook", "none"],
+          ["#sc02", "s02-pain", "fade"],
+          ["#sc03", "s03-why", "up"],
+          ["#sc04", "s04-reveal", "zoom"],
+          ["#sc05", "s05-reconnect", "up"],
+          ["#sc06", "s06-errors", "up"],
+          ["#sc07", "s07-outro", "fade"],
+        ];
+        WINDOWS.forEach(([sel, sid, kind], i) => {
+          const sc = $(sel);
+          const t0 = SC[sid].start;
+          const t1 = i < WINDOWS.length - 1 ? SC[WINDOWS[i + 1][1]].start : T.duration;
+          if (kind === "none") tl.set(sc, { autoAlpha: 1 }, t0);
+          else if (kind === "up") tl.fromTo(sc, { autoAlpha: 0, y: 60 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out", immediateRender: false }, t0);
+          else if (kind === "zoom") tl.fromTo(sc, { autoAlpha: 0, scale: 1.06 }, { autoAlpha: 1, scale: 1, duration: 0.7, ease: "expo.out", immediateRender: false }, t0);
+          else if (kind === "fade") tl.fromTo(sc, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: "power1.inOut", immediateRender: false }, t0);
+          if (i < WINDOWS.length - 1) tl.to(sc, { autoAlpha: 0, duration: 0.25, ease: "power2.in" }, t1 - 0.25);
+          if (!sc.hasAttribute("data-manual-intro") && i > 0) intro(sc, t0 + 0.15);
+        });
+        // the product appears: the dark world turns light on the drop
+        T.drops.forEach((n) => flash(B(n), 0.35));
+        tl.to("#bg-light", { opacity: 1, duration: 0.5, ease: "power2.out" }, SC["s04-reveal"].start);
+
+        // ---------- s01: the call freezes on "rớt" ----------
+        {
+          const sid = "s01-hook";
+          const t = W(sid, "drop");
+          tl.to("#freeze", { opacity: 1, duration: 0.25 }, t - 0.1);
+          tl.to("#call .tiles", { filter: "grayscale(1)", duration: 0.25 }, t - 0.1);
+          spin("#spin1", t - 0.1, SC[sid].end);
+          slideIn("#n-lost", t);
+        }
+
+        // ---------- s02: "Connection failed", then the question ----------
+        {
+          const sid = "s02-pain";
+          const t = W(sid, "failed");
+          tl.fromTo("#failed", { x: 0 }, { keyframes: { x: [0, -8, 8, -6, 6, -3, 0] }, duration: 0.45, ease: "none", immediateRender: false }, t);
+          rise("#nodetail", LINE(sid, 1) - 0.1, { y: 12 });
+          intro($("#sc02"), W(sid, "why") - 0.35);
+        }
+
+        // ---------- s03: the protocol, then the two options that do not fit ----------
+        {
+          const sid = "s03-why";
+          pop("#proto", SC[sid].start + 0.3);
+          intro($("#sc03"), W(sid, "old") - 0.3);
+          rise("#card-builtin", W(sid, "builtin") - 0.2);
+          rise("#card-cert", W(sid, "others") - 0.2);
+        }
+
+        // ---------- s04: brand on the drop, then the switch ----------
+        {
+          const sid = "s04-reveal";
+          const t0 = SC[sid].start;
+          pop("#logo4", t0, { from: 0.6, d: 0.8, ease: "expo.out" });
+          rise("#name4", W(sid, "brand") - 0.1, { y: 24 });
+          const t2 = LINE(sid, 1) - 0.4;
+          tl.to("#brand", { autoAlpha: 0, scale: 0.92, duration: 0.35, ease: "power2.in" }, t2 - 0.2);
+          intro($("#sc04"), t2 + 0.1);
+          tl.fromTo("#pop4", { autoAlpha: 0, y: -16, scale: 0.97, transformOrigin: "410px 0px" }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.4, ease: "power3.out", immediateRender: false }, t2);
+          const ts = W(sid, "switch");
+          tl.fromTo("#cursor", { autoAlpha: 0, x: 0, y: 0 }, { autoAlpha: 1, duration: 0.2, immediateRender: false }, t2 + 0.2);
+          tl.to("#cursor", { x: 1612 - 1500, y: 392 + 50 - 700, duration: Math.max(0.5, ts - t2 - 0.45), ease: "power2.inOut" }, t2 + 0.3);
+          tl.to("#cursor", { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1, ease: "power1.inOut" }, ts - 0.1);
+          hide(["#off-switch", "#off-dot", "#off-status", "#off-ip"], ts, 0.2);
+          show("#mb4-on", ts, 0.2);
+          hide("#mb4-idle", ts, 0.2);
+          hide("#cursor", ts + 1.2, 0.3);
+        }
+
+        // ---------- s05: drop, reconnect, both announced ----------
+        {
+          const sid = "s05-reconnect";
+          const tl0 = W(sid, "flaky");
+          slideIn("#n5-lost", tl0 - 0.2);
+          show("#mb5-lost", tl0 - 0.2, 0.2);
+          hide("#mb5-on", tl0 - 0.2, 0.2);
+          rise("#status5", tl0 - 0.1);
+          tl.fromTo("#st-dot", { opacity: 1 }, { opacity: 0.35, duration: 0.4, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, tl0);
+          const tr = W(sid, "reconnect");
+          hide("#st-lost", tr, 0.2);
+          show("#st-back", tr, 0.3);
+          show("#mb5-back", tr, 0.2);
+          hide("#mb5-lost", tr, 0.2);
+          const tn = W(sid, "notify");
+          tl.to("#n5-lost", { y: 150, scale: 0.96, opacity: 0.8, duration: 0.4, ease: "power2.out" }, tn - 0.15);
+          slideIn("#n5-back", tn - 0.15);
+          rise("#sub05", tn - 0.1, { y: 16 });
+        }
+
+        // ---------- s06: one error card per spoken error ----------
+        {
+          const sid = "s06-errors";
+          rise("#e1", W(sid, "password") - 0.25);
+          rise("#e2", W(sid, "secret") - 0.45);
+          rise("#e3", W(sid, "udp") - 0.4);
+        }
+
+        // ---------- s07: safety, then the download ----------
+        {
+          const sid = "s07-outro";
+          rise("#f-kill", W(sid, "kill") - 0.1);
+          rise("#f-key", W(sid, "keychain") - 0.25);
+          const tb = W(sid, "brand");
+          hide("#feats", tb - 0.45, 0.3);
+          show("#end", tb - 0.2, 0.01);
+          pop("#logo7", tb - 0.2, { from: 0.7, d: 0.7, ease: "expo.out" });
+          rise("#name7", tb, { y: 20 });
+          pop("#dl7", W(sid, "download") - 0.15, { from: 0.9 });
+          rise("#meta7", W(sid, "macos") - 0.2, { y: 14 });
+          rise("#url7", W(sid, "macos") + 0.3, { y: 14 });
+        }
+
+        // ---------- Vietnamese karaoke captions ----------
+        const capLayer = $("#captions");
+        T.captions.forEach((c) => {
+          const cap = document.createElement("div");
+          cap.className = "cap";
+          const box = document.createElement("div");
+          box.className = "cap-box";
+          const spans = c.words.map(([txt], j) => {
+            if (j) box.append(" ");
+            const s = document.createElement("span");
+            s.className = "cw";
+            s.textContent = txt;
+            box.append(s);
+            return s;
+          });
+          cap.append(box);
+          capLayer.append(cap);
+          tl.fromTo(cap, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.14, ease: "power2.out", immediateRender: false }, c.start);
+          tl.to(cap, { autoAlpha: 0, duration: 0.12, ease: "power1.in" }, Math.max(c.start + 0.3, c.end - 0.12));
+          gsap.set(cap, { autoAlpha: 0 });
+          c.words.forEach(([, s], j) => tl.to(spans[j], { color: "#ffffff", duration: 0.08 }, s));
+        });
+
+        tl.to("#fade", { opacity: 1, duration: 1.0, ease: "power1.in" }, T.duration - 1.0);
+        tl.set({}, {}, T.duration); // pin the timeline length to the video duration
+      })();
+    </script>
+  </body>
+</html>

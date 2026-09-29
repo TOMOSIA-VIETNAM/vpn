@@ -1,0 +1,59 @@
+{
+  "release": "TOMOSIA VPN promo",
+  "source": "README.md, README.en.md, README.ja.md, assets/screenshots/",
+  "voice": { "model": "gemini-3.1-flash-tts-preview", "voice": "Orus", "style": "A calm, confident Vietnamese product narrator." },
+  "outroStyle": "The same narrator, warmer and a little slower: a quiet, confident promise.",
+  "scenes": [
+    {
+      "id": "s01-hook",
+      "lofi": true,
+      "lines": [
+        { "en": "Mid-meeting, the VPN drops.", "vi": "Đang họp thì VPN{vpn} rớt{drop}.", "vi_say": "Đang họp thì vi pi en rớt." }
+      ]
+    },
+    {
+      "id": "s02-pain",
+      "lofi": true,
+      "lines": [
+        { "en": "You open Settings: Connection failed.", "vi": "Mở cài đặt{settings} ra: Connection failed{failed}.", "vi_say": "Mở cài đặt ra: Connection failed." },
+        { "en": "No explanation at all.", "vi": "Không một lời giải thích{why}." }
+      ]
+    },
+    {
+      "id": "s03-why",
+      "lofi": true,
+      "lines": [
+        { "en": "The company VPN runs L2TP/IPsec, an older protocol.", "vi": "VPN công ty chạy L2TP/IPsec{protocol}, một giao thức đời cũ{old}.", "vi_say": "Vi pi en công ty chạy el hai ti pi, ai pi séc, một giao thức đời cũ." },
+        { "en": "The Mac's built-in VPN keeps dropping with it, and many other apps want their own certificates.", "stopLine": true, "vi": "VPN có sẵn{builtin} của Mac chạy chập chờn với nó, còn nhiều{others} ứng dụng khác lại đòi chứng chỉ{cert} riêng.", "vi_say": "Vi pi en có sẵn của Mác chạy chập chờn với nó, còn nhiều ứng dụng khác lại đòi chứng chỉ riêng." }
+      ]
+    },
+    {
+      "id": "s04-reveal",
+      "drop": true,
+      "lines": [
+        { "en": "So we built TOMOSIA VPN.", "vi": "Nên chúng tôi làm TOMOSIA{brand} VPN.", "vi_say": "Nên chúng tôi làm Tô mô si a vi pi en." },
+        { "en": "One switch, right in the menu bar.", "vi": "Một công tắc{switch}, ngay trên menu bar{menubar}.", "vi_say": "Một công tắc, ngay trên menu ba." }
+      ]
+    },
+    {
+      "id": "s05-reconnect",
+      "lines": [
+        { "en": "Flaky network? It reconnects on its own and tells you when you're back.", "vi": "Mạng chập chờn{flaky}? Ứng dụng tự kết nối lại{reconnect} và báo{notify} khi đã có mạng." }
+      ]
+    },
+    {
+      "id": "s06-errors",
+      "lines": [
+        { "en": "Errors say what's wrong: wrong password, wrong shared secret, or a network blocking UDP.", "vi": "Lỗi thì nói rõ{clear}: sai mật khẩu{password}, sai shared secret{secret}, hay mạng chặn cổng UDP{udp}.", "vi_say": "Lỗi thì nói rõ: sai mật khẩu, sai sheo sì cờ rít, hay mạng chặn cổng u đi pi." }
+      ]
+    },
+    {
+      "id": "s07-outro",
+      "outro": true,
+      "lines": [
+        { "en": "Kill switch. Passwords in the Keychain.", "vi": "Kill switch{kill}. Mật khẩu cất trong Keychain{keychain}.", "vi_say": "Kin suých. Mật khẩu cất trong ki chên." },
+        { "en": "TOMOSIA VPN. Download it for macOS 12 and later.", "vi": "TOMOSIA{brand} VPN. Tải ngay{download} cho macOS 12{macos} trở lên.", "vi_say": "Tô mô si a vi pi en. Tải ngay cho mác O Ét mười hai trở lên." }
+      ]
+    }
+  ]
+}

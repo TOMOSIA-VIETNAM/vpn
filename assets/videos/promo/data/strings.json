@@ -1,0 +1,19 @@
+{
+  "_about": "On-screen text by language. Keys are the English text of a text node in index.html; the page swaps it for the caption language. App UI strings (error titles, buttons, notification text), product names and protocol names stay English and are left out of this table.",
+  "vi": {
+    "Weekly sync": "Họp tuần",
+    "What went wrong?": "Lỗi gì vậy?",
+    "No details.": "Không có chi tiết.",
+    "Old protocol. No tool that fits.": "Giao thức cũ. Không công cụ nào vừa.",
+    "Built-in VPN": "VPN có sẵn",
+    "keeps dropping": "hay rớt",
+    "Other apps": "Ứng dụng khác",
+    "need certificates": "cần chứng chỉ",
+    "One switch. Done.": "Một công tắc. Xong.",
+    "Reconnects on its own": "Tự kết nối lại",
+    "and tells you when you're back": "và báo khi đã có mạng",
+    "Clear errors, fixed fast": "Lỗi rõ ràng, sửa ngay",
+    "Passwords in Keychain": "Mật khẩu trong Keychain",
+    "Download": "Tải ngay"
+  }
+}
