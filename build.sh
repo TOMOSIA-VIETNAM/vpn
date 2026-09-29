@@ -9,12 +9,12 @@ OUTPUT_NAME="tms-vpn-bar"
 APP_NAME="TMS VPN.app"
 BUILD_DIR="./build"
 
-echo "🚀 [1/3] Chuẩn bị môi trường build..."
+echo "==> [1/3] Preparing build directory"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
 if [[ "$(uname)" != "Darwin" ]]; then
-    echo "⚠️ Lưu ý: Script build Swift UI cần chạy trên hệ điều hành macOS (có swiftc)."
+    echo "error: the menu bar app builds only on macOS (needs swiftc)." >&2
     exit 1
 fi
 
@@ -23,17 +23,17 @@ fi
 # between are untested, so warn rather than refuse.
 SWIFT_MAJOR="$(swiftc --version 2>/dev/null | sed -nE 's/.*Swift version ([0-9]+)\..*/\1/p' | head -1)"
 if [[ -z "$SWIFT_MAJOR" || "$SWIFT_MAJOR" -lt 6 ]]; then
-    echo "⚠️  swiftc $(swiftc --version 2>/dev/null | sed -nE 's/.*Swift version ([0-9.]+).*/\1/p' | head -1) detected — CI builds this app with Xcode 26 (Swift 6); older toolchains may fail to compile it."
+    echo "warning: swiftc $(swiftc --version 2>/dev/null | sed -nE 's/.*Swift version ([0-9.]+).*/\1/p' | head -1) detected — CI builds this app with Xcode 26 (Swift 6); older toolchains may fail to compile it." >&2
 fi
 
-echo "🔨 [2/3] Biên dịch Universal Binary (ARM64 Apple Silicon + Intel x86_64)..."
+echo "==> [2/3] Compiling universal binary (arm64 + x86_64)"
 
 swiftc -O -target arm64-apple-macos12.0 -framework Cocoa -framework SwiftUI main.swift -o "$BUILD_DIR/${OUTPUT_NAME}-arm64"
 swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI main.swift -o "$BUILD_DIR/${OUTPUT_NAME}-x86_64"
 
 lipo -create "$BUILD_DIR/${OUTPUT_NAME}-arm64" "$BUILD_DIR/${OUTPUT_NAME}-x86_64" -output "$BUILD_DIR/$OUTPUT_NAME"
 
-echo "📦 [3/3] Đóng gói thành macOS Application Bundle ($APP_NAME)..."
+echo "==> [3/3] Packaging $APP_NAME"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/MacOS"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 
@@ -69,5 +69,5 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 </plist>
 EOF
 
-echo "✅ Đã build thành công Universal Binary tại: $BUILD_DIR/$OUTPUT_NAME"
-echo "✅ Đã tạo App bundle tại: $BUILD_DIR/$APP_NAME"
+echo "Built binary: $BUILD_DIR/$OUTPUT_NAME"
+echo "Built app:    $BUILD_DIR/$APP_NAME"

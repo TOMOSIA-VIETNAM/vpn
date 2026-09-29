@@ -63,14 +63,12 @@ verify_sha256() {
   fi
 }
 
-echo "=================================================="
-echo "🛡️  INSTALLING TMS VPN (CLI & MENU BAR UI, $ARCH)"
-echo "=================================================="
+echo "Installing TMS VPN ($ARCH)"
 
 curl -fsSL -o "$DOWNLOAD/SHA256SUMS" "$BASE_URL/SHA256SUMS"
 
 # --- Step 1: Install `vpn` CLI Backend (setuid-root) ---
-echo "📦 [1/2] Downloading VPN CLI engine ($CLI_ASSET)..."
+echo "==> [1/2] Downloading CLI ($CLI_ASSET)"
 curl -fsSL -o "$DOWNLOAD/$CLI_ASSET" "$BASE_URL/$CLI_ASSET"
 # Copy into a root-owned directory *before* verifying: the download
 # directory is writable by this user, so anything checked there could be
@@ -88,12 +86,12 @@ sudo chown root:wheel "$OWNER_FILE"
 sudo chmod 600 "$OWNER_FILE"
 sudo chmod 755 /var/run/vpn 2>/dev/null || true
 sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
-echo "  -> CLI Installed: $INSTALL_PATH ($("$INSTALL_PATH" version))"
+echo "    Installed CLI: $INSTALL_PATH ($("$INSTALL_PATH" version))"
 
 # --- Step 2: Install Menu Bar UI (prebuilt universal app) ---
 # Runs as this user, not setuid, so verifying in the user's own download
 # directory is enough here.
-echo "🎨 [2/2] Installing TMS VPN Menu Bar UI..."
+echo "==> [2/2] Installing menu bar app"
 if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
   verify_sha256 "$DOWNLOAD/$APP_ASSET" "$APP_ASSET"
   rm -rf "$APP_DIR"
@@ -101,15 +99,13 @@ if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
   # packed it (`ditto -c` — see .github/workflows/release.yml), keeping
   # its executable bits and resource forks intact.
   ditto -x -k "$DOWNLOAD/$APP_ASSET" "$(dirname "$APP_DIR")"
-  echo "  -> UI Installed to $APP_DIR"
+  echo "    Installed app: $APP_DIR"
 else
-  echo "⚠️  Could not download Menu Bar UI from $BASE_URL/$APP_ASSET — is a release published yet?"
+  echo "warning: could not download the menu bar app from $BASE_URL/$APP_ASSET — is a release published yet?" >&2
 fi
 
-echo "=================================================="
-echo "🎉 SUCCESS: TMS VPN Engine & Menu Bar UI Installed!"
-echo "👉 Menu Bar App: $APP_DIR"
-echo "👉 CLI Engine: $INSTALL_PATH"
-echo "=================================================="
+echo "TMS VPN installed."
+echo "  CLI: $INSTALL_PATH"
+echo "  App: $APP_DIR"
 
 open -a "$APP_DIR" 2>/dev/null || true
