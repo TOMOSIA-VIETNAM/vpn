@@ -32,6 +32,13 @@ import (
 // shipping one release signed by the old key that carries the new one.
 const PublicKey = "k1pto5sjuH6enZg6r8/kQfm/7mboNyuxLnr184Y5U70="
 
+// PreviousPublicKey is the key PublicKey replaced, which every binary shipped
+// before the rotation still verifies with. It is never trusted by Verify:
+// only releasesign's pre-publish check accepts it, so the one rotation
+// release — signed with this key, carrying the new one — can be published.
+// Empty it once that release is out.
+const PreviousPublicKey = "Rmq0PrjOcajdr8764NjTBwKVTrG/jBSy0GZf/iIhGEE="
+
 const (
 	ManifestName  = "SHA256SUMS"
 	SignatureName = "SHA256SUMS.sig"
