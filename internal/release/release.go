@@ -37,7 +37,7 @@ const PublicKey = "k1pto5sjuH6enZg6r8/kQfm/7mboNyuxLnr184Y5U70="
 // only releasesign's pre-publish check accepts it, so the one rotation
 // release — signed with this key, carrying the new one — can be published.
 // Empty it once that release is out.
-const PreviousPublicKey = "Rmq0PrjOcajdr8764NjTBwKVTrG/jBSy0GZf/iIhGEE="
+const PreviousPublicKey = ""
 
 const (
 	ManifestName  = "SHA256SUMS"
