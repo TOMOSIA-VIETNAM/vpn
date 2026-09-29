@@ -48,7 +48,7 @@ prompt (`CLIInstaller` in `main.swift`).
 | `assets/` | App icon, logo, status item images, and the script that renders them |
 | `build.sh`, `make-dmg.sh` | Build the app and the disk image |
 | `install.sh`, `install-arm64.sh`, `install-intel.sh`, `install-local.sh`, `uninstall.sh` | Install / uninstall |
-| `docs/` | Landing page, published by GitHub Pages |
+| `webapp/` | Landing page (Next.js static export, deployed on Vercel) |
 
 ## Requirements
 
@@ -85,6 +85,12 @@ go test ./...
 bash build.sh     # the app must compile
 ```
 
+The same workflow builds and lints the landing page:
+
+```bash
+cd webapp && npm ci && npm run build && npm run lint
+```
+
 UI changes have no automated tests: build the app and look at every state you
 touched (idle, connecting, connected, failure alerts, sheets), in both Light and
 Dark appearance.
@@ -111,9 +117,10 @@ Every raster brand asset is drawn from one vector definition in
 swift assets/render-icons.swift
 ```
 
-It rewrites `assets/AppIcon.icns`, `assets/logo.png`, `docs/logo.png` and
-`assets/menubar-*.png`. Change the script, never the PNGs by hand, and commit the
-regenerated files with it.
+It rewrites `assets/AppIcon.icns`, `assets/logo.png` and `assets/menubar-*.png`.
+Change the script, never the PNGs by hand, and commit the regenerated files with it.
+The landing page draws the same mark as SVG in `webapp/src/components/Mark.tsx`;
+keep its paths in step with the script.
 
 ### Scripts
 
@@ -152,5 +159,26 @@ the release. The tag becomes both `vpn version` and the version in the app foote
   `releases/latest/download/<asset>`. Renaming an asset breaks those links until a
   release that carries the new name is published.
 
-The landing page in `docs/` is published by `.github/workflows/pages.yml` on every
-push to `main` that touches `docs/`.
+## Landing page
+
+`webapp/` is the product site: Next.js (App Router, TypeScript) exported as static
+HTML, in English, Vietnamese and Japanese at `/en`, `/vi` and `/ja` (`/` opens
+`/en`).
+
+```bash
+cd webapp
+npm install
+npm run dev      # http://localhost:3000/en
+npm run build    # static site in webapp/out/
+npm run lint     # ESLint and the TypeScript check
+```
+
+Copy lives in `webapp/src/i18n/dictionaries/`, links and product facts (download
+URL, uninstall command, minimum macOS) in `webapp/src/config/site.ts`. The logo and
+screenshots are copied from `assets/` at build time, so update them there. See
+[webapp/README.md](webapp/README.md) for details.
+
+It is deployed on Vercel from this repository with the project's **Root Directory**
+set to `webapp`; Vercel detects Next.js and serves `out/`. Canonical, hreflang and
+Open Graph URLs use the project's production domain; set the `SITE_URL` environment
+variable to use a different one.
