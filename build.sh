@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# TMS VPN: Universal Binary Build Script (ARM64 + Intel x86_64)
+# TOMOSIA VPN: Universal Binary Build Script (ARM64 + Intel x86_64)
 # ==============================================================================
 
 set -euo pipefail
@@ -86,7 +86,9 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
     <key>CFBundleIdentifier</key>
     <string>com.tms.vpn.menubar</string>
     <key>CFBundleName</key>
-    <string>TMS VPN</string>
+    <string>TOMOSIA VPN</string>
+    <key>CFBundleDisplayName</key>
+    <string>TOMOSIA VPN</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

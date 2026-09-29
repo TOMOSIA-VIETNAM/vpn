@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="assets/logo.png" width="96" height="96" alt="TMS VPN logo" />
+  <img src="assets/logo.png" width="96" height="96" alt="TOMOSIA VPN logo" />
 </p>
 
-<h1 align="center">TMS VPN</h1>
+<h1 align="center">TOMOSIA VPN</h1>
+
+<p align="center">
+  <b>Tiếng Việt</b> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
+</p>
 
 <p align="center">
   <b>VPN Client L2TP/IPsec thuần macOS — Ổn định, bảo mật, không phụ thuộc phần mềm ngoài.</b>
@@ -21,7 +25,7 @@
 
 VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) thường xuyên gặp tình trạng chập chờn, khó kết nối trên các mạng Wi-Fi công cộng/văn phòng có tường lửa, và khi lỗi chỉ báo thông điệp chung chung không rõ nguyên nhân.
 
-**TMS VPN** tự cài đặt trực tiếp toàn bộ giao thức (IKEv1, ESP, L2TP, PPP) giúp kết nối xuyên suốt, ổn định và dễ chẩn đoán:
+**TOMOSIA VPN** tự cài đặt trực tiếp toàn bộ giao thức (IKEv1, ESP, L2TP, PPP) giúp kết nối xuyên suốt, ổn định và dễ chẩn đoán:
 - 🖥️ **Menu Bar App (SwiftUI)**: Giao diện trực quan trên thanh Menu Bar — kết nối/ngắt kết nối 1 click, quản lý nhiều profile/account, xem IP & trạng thái tức thì.
 - ⚡ **CLI Engine (`vpn`)**: Bộ điều phối kết nối hiệu năng cao viết bằng Go — độc lập hoàn toàn, không cần Docker, WireGuard, strongSwan, xl2tpd hay pppd.
 
@@ -32,7 +36,7 @@ VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) th
 **Cách 1 — File .dmg (như các app macOS khác):**
 
 1. Tải [`TMS-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TMS-VPN.dmg) (luôn là bản mới nhất).
-2. Mở file, kéo **TMS VPN** vào thư mục **Applications**.
+2. Mở file, kéo **TOMOSIA VPN** vào thư mục **Applications**.
 3. Mở app. Lần đầu, macOS hỏi mật khẩu quản trị một lần để cài phần lõi `vpn`. Nếu macOS cảnh báo nhà phát triển chưa xác minh: chuột phải vào app → **Open**.
 
 Tự build file .dmg: `VERSION=1.2.3 ./make-dmg.sh` (kết quả: `build/TMS-VPN.dmg`).
@@ -66,8 +70,8 @@ Chuẩn bị 4 thông tin từ quản trị mạng: **Server Address**, **IPsec 
 
 ### Cách 1: Sử dụng App Menu Bar (Khuyến nghị)
 
-1. Mở ứng dụng **TMS VPN** từ thư mục `Applications` hoặc Spotlight.
-2. Click biểu tượng TMS VPN trên Menu Bar → chọn **Add**.
+1. Mở ứng dụng **TOMOSIA VPN** từ thư mục `Applications` hoặc Spotlight.
+2. Click biểu tượng TOMOSIA VPN trên Menu Bar → chọn **Add**.
 3. Nhập thông tin:
    - **Display name**: Tên gợi nhớ (VD: `Công ty`).
    - **Server address**: Địa chỉ IP hoặc tên miền VPN.

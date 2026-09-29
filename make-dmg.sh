@@ -16,7 +16,7 @@ cd "$(dirname "$0")"
 
 BUILD_DIR="${BUILD_DIR:-./build}"
 APP_NAME="TMS VPN.app"
-VOL_NAME="TMS VPN"
+VOL_NAME="TOMOSIA VPN"
 OUT="${OUT:-$BUILD_DIR/TMS-VPN.dmg}"
 
 if [[ ! -d "$BUILD_DIR/$APP_NAME" ]]; then
