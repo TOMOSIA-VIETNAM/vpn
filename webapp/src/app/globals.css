@@ -1,0 +1,2754 @@
+/* Design tokens follow the macOS system palette, so the site looks like the app.
+   Each color is light-dark(light value, dark value): it follows the viewer's
+   appearance. Color comes from two places only: the wallpaper field (a soft
+   blue / lilac / peach wash like a macOS wallpaper, deep indigo and ember in Dark
+   mode) and the system colors, used for status and for the feature icon tiles.
+   Text in a system color uses the -text variant, which keeps AA contrast. */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#ffffff, #000000);
+  --bg-alt: light-dark(#f5f5f7, #111113);
+  /* Cards on --bg-alt, and on --bg. */
+  --card: light-dark(#ffffff, #1c1c1e);
+  --card-alt: light-dark(#f5f5f7, #1c1c1e);
+  --fill: light-dark(rgba(120, 120, 128, 0.12), rgba(120, 120, 128, 0.24));
+  --label: light-dark(#1d1d1f, #f5f5f7);
+  --label-secondary: light-dark(#6e6e73, #a1a1a6);
+  --separator: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.14));
+
+  --accent: light-dark(#007aff, #0a84ff);
+  --accent-hover: light-dark(#0062cc, #409cff);
+  --link: light-dark(#0066cc, #2997ff);
+  --on-accent: #ffffff;
+  --focus-ring: light-dark(rgba(0, 122, 255, 0.55), rgba(10, 132, 255, 0.7));
+
+  --blue: var(--accent);
+  --green: light-dark(#34c759, #30d158);
+  --orange: light-dark(#ff9500, #ff9f0a);
+  --red: light-dark(#ff3b30, #ff453a);
+  --indigo: light-dark(#5856d6, #5e5ce6);
+  --gray: #8e8e93;
+  --gray-dot: light-dark(#aeaeb2, #636366);
+
+  --blue-text: var(--link);
+  --green-text: light-dark(#248a3d, #30d158);
+  --orange-text: light-dark(#c93400, #ffb340);
+  --red-text: light-dark(#d70015, #ff6961);
+  --indigo-text: light-dark(#3634a3, #7d7aff);
+
+  /* Wallpaper field. */
+  --field-base: light-dark(#eef0f8, #0b1024);
+  --field-blue: light-dark(#c3d5f6, #1b3172);
+  --field-lilac: light-dark(#dcd2f3, #3a2a6e);
+  --field-peach: light-dark(#f8dbc4, #5a3124);
+  --field-rose: light-dark(#f3dde7, #2d1b42);
+
+  /* App surfaces: popover, notification banners, switches, the desktop menu bar. */
+  --popover: light-dark(#ececea, #2a2a2c);
+  --popover-card: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.07));
+  --notification: light-dark(rgba(248, 248, 248, 0.97), rgba(52, 52, 54, 0.97));
+  --switch-off: light-dark(#d1d1d6, #4a4a4d);
+  --menubar: light-dark(rgba(250, 250, 250, 0.72), rgba(28, 28, 30, 0.72));
+  --window-bar: light-dark(#ececec, #2c2c2e);
+
+  --shadow-panel: 0 0 0 1px light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08)),
+    0 1px 2px light-dark(rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.4)),
+    0 12px 32px light-dark(rgba(30, 40, 80, 0.1), rgba(0, 0, 0, 0.5));
+  --shadow-window: 0 0 0 1px light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1)),
+    0 24px 48px -12px light-dark(rgba(40, 50, 100, 0.22), rgba(0, 0, 0, 0.6)),
+    0 60px 120px -30px light-dark(rgba(40, 50, 100, 0.3), rgba(0, 0, 0, 0.7));
+
+  /* --font, --font-display and the tracking and leading tokens (--display-*,
+     --heading-*, --body-leading) are set per locale on <html>, from
+     localeInfo[locale].typography in src/i18n/locales.ts. */
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --container: 1120px;
+  --gutter: 24px;
+  --header-height: 56px;
+  --section-space: 128px;
+  --radius-tile: 28px;
+  --radius-panel: 14px;
+
+  /* Motion: one easing for entrances, durations by distance travelled. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --reveal-duration: 900ms;
+  --reveal-step: 70ms;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --gutter: 16px;
+    --section-space: 88px;
+    --radius-tile: 22px;
+  }
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + 16px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--label);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: var(--body-leading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+  overflow-x: clip;
+}
+
+body:lang(ja) {
+  line-break: strict;
+}
+
+h1,
+h2,
+h3,
+p,
+ol,
+ul,
+figure,
+pre {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ui-label {
+  white-space: nowrap;
+}
+
+/* The wallpaper field: large, soft washes over a pale base, like a macOS wallpaper. */
+.field {
+  background:
+    radial-gradient(70% 60% at 10% 16%, var(--field-blue), transparent 72%),
+    radial-gradient(60% 55% at 90% 10%, var(--field-lilac), transparent 72%),
+    radial-gradient(65% 60% at 88% 92%, var(--field-peach), transparent 72%),
+    radial-gradient(55% 55% at 14% 90%, var(--field-rose), transparent 70%),
+    var(--field-base);
+}
+
+/* The same wallpaper, paler, for panels that hold app UI. */
+.field--soft {
+  background:
+    radial-gradient(70% 70% at 0% 0%, color-mix(in srgb, var(--field-blue) 70%, transparent), transparent 72%),
+    radial-gradient(70% 70% at 100% 100%, color-mix(in srgb, var(--field-peach) 70%, transparent), transparent 72%),
+    radial-gradient(60% 60% at 100% 0%, color-mix(in srgb, var(--field-lilac) 60%, transparent), transparent 72%),
+    var(--field-base);
+}
+
+/* A headline word split out by SplitText stays whole: "Wi-Fi" never breaks at its hyphen. */
+.split__word {
+  white-space: nowrap;
+}
+
+/* Reveal and parallax (see components/motion/). Everything here is inside
+   prefers-reduced-motion: no-preference, and the hidden state only applies to
+   blocks RevealObserver marked .is-pending because they started below the fold. */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] [data-item] {
+    transition:
+      opacity var(--reveal-duration) var(--ease-out),
+      transform var(--reveal-duration) var(--ease-out),
+      filter var(--reveal-duration) var(--ease-out);
+    transition-delay: calc(var(--i, 0) * var(--reveal-step));
+  }
+
+  [data-reveal].is-pending [data-item] {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  [data-reveal] .split__piece {
+    display: inline-block;
+  }
+
+  [data-reveal].is-pending .split__piece {
+    transform: translateY(0.45em);
+    filter: blur(10px);
+  }
+
+  [data-parallax] {
+    transform: translate3d(0, var(--parallax-y, 0px), 0);
+  }
+}
+
+/* Status dots */
+
+.status-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background-color 300ms ease;
+}
+
+.status-dot--idle {
+  background: var(--gray-dot);
+}
+
+.status-dot--ok {
+  background: var(--green);
+}
+
+.status-dot--warning {
+  background: var(--orange);
+}
+
+.status-dot--error {
+  background: var(--red);
+}
+
+/* The halo the app draws around a dot while it connects. */
+@media (prefers-reduced-motion: no-preference) {
+  .status-dot.is-pulsing {
+    animation: dot-pulse 1.2s ease-out infinite;
+  }
+}
+
+@keyframes dot-pulse {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+/* Buttons: the macOS push-button shapes */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.button:hover {
+  text-decoration: none;
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+/* Large text (19px semibold) keeps white-on-blue readable at the system accent colors. */
+.button--primary {
+  min-height: 50px;
+  padding: 0 28px;
+  border-radius: 980px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.button--primary:hover {
+  background: var(--accent-hover);
+}
+
+/* The header's download: smaller, so its label is bold to stay readable on blue. */
+.button--compact {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.button--small {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: var(--card-alt);
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+
+.download {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.download__requirements {
+  margin-top: 12px;
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+/* Switch, drawn like the app's ConnectSwitch */
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--switch-off);
+  transition: background-color 250ms ease;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 300ms var(--ease-spring);
+}
+
+.switch.is-on {
+  background: var(--accent);
+}
+
+.switch.is-on .switch__knob {
+  transform: translateX(16px);
+}
+
+/* Icon tiles: a white glyph on a rounded square of a system color. */
+
+.icon-tile {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 24%;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.icon-tile--blue {
+  background: linear-gradient(180deg, #2b8cff, #0068e0);
+}
+
+.icon-tile--green {
+  background: linear-gradient(180deg, #45d36a, #22a948);
+}
+
+.icon-tile--orange {
+  background: linear-gradient(180deg, #ffa41f, #f28200);
+}
+
+.icon-tile--red {
+  background: linear-gradient(180deg, #ff5a4f, #e5271c);
+}
+
+.icon-tile--gray {
+  background: linear-gradient(180deg, #9d9da3, #77777d);
+}
+
+.icon-tile--indigo {
+  background: linear-gradient(180deg, #6f6de2, #4644c4);
+}
+
+/* Header: translucent over the page, like a macOS toolbar. */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px);
+  backdrop-filter: saturate(1.8) blur(20px);
+  border-bottom: 1px solid var(--separator);
+}
+
+.header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--header-height);
+}
+
+.header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--label);
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.header__brand:hover {
+  text-decoration: none;
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .header__brand span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Language menu: a globe button and a small menu like a macOS pop-up menu. */
+
+.lang-menu {
+  position: relative;
+}
+
+.lang-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 180ms ease;
+}
+
+.lang-menu__button::-webkit-details-marker {
+  display: none;
+}
+
+.lang-menu__button:hover,
+.lang-menu[open] .lang-menu__button {
+  background: var(--fill);
+}
+
+.lang-menu__chevron {
+  color: var(--label-secondary);
+  transition: transform 200ms ease;
+}
+
+.lang-menu[open] .lang-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.lang-menu__list {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 180px;
+  padding: 5px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(30px);
+  backdrop-filter: saturate(1.8) blur(30px);
+  box-shadow: var(--shadow-panel);
+}
+
+.lang-menu--down .lang-menu__list {
+  top: calc(100% + 6px);
+}
+
+.lang-menu--up .lang-menu__list {
+  bottom: calc(100% + 6px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lang-menu[open] .lang-menu__list {
+    animation: menu-in 160ms ease-out;
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.lang-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px 0 8px;
+  border-radius: 6px;
+  color: var(--label);
+  font-size: 14px;
+}
+
+.lang-menu__item:hover,
+.lang-menu__item:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  text-decoration: none;
+  outline: none;
+}
+
+.lang-menu__check {
+  visibility: hidden;
+}
+
+.lang-menu__item[aria-checked="true"] .lang-menu__check {
+  visibility: visible;
+}
+
+/* Hero: centred text on the wallpaper, running up under the translucent header,
+   then the promo video in a window frame. */
+
+.hero {
+  margin-top: calc(-1 * var(--header-height));
+  padding-top: calc(var(--header-height) + clamp(56px, 6vw, 80px));
+  text-align: center;
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 5.8vw, 84px);
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
+  text-wrap: balance;
+}
+
+.hero__title-lead,
+.hero__title-strong {
+  display: block;
+}
+
+.hero__title-lead {
+  color: var(--label-secondary);
+  font-weight: calc(var(--display-weight) - 100);
+}
+
+.hero__lead {
+  max-width: 34em;
+  margin: 28px auto 0;
+  color: var(--label);
+  font-size: 21px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.hero .download {
+  margin-top: 36px;
+}
+
+.hero .download__requirements {
+  color: var(--label);
+  opacity: 0.72;
+}
+
+/* Room under the frame for its scroll growth (--grow-room, set by HeroVideo). */
+.hero__stage {
+  margin-top: clamp(40px, 5vw, 64px);
+  padding-bottom: calc(var(--grow-room, 0px) + clamp(40px, 5vw, 64px));
+  padding-inline: var(--gutter);
+}
+
+.window {
+  position: relative;
+  width: min(1160px, 100%);
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--window-bar);
+  box-shadow: var(--shadow-window);
+  transform: scale(var(--frame-scale, 1));
+  transform-origin: 50% 0;
+  text-align: left;
+}
+
+.window__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.window__lights {
+  position: absolute;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.window__lights span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+}
+
+.window__lights span:nth-child(2) {
+  background: #febc2e;
+}
+
+.window__lights span:nth-child(3) {
+  background: #28c840;
+}
+
+.window__title {
+  color: var(--label-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.window__screen {
+  position: relative;
+  background: var(--field-base);
+}
+
+.window__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+/* The picture is clickable: sound on the first time, then play/pause. */
+.window__screen {
+  cursor: pointer;
+}
+
+/* A very thin, quiet line along the bottom edge of the picture: how far it has played. */
+.window__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.window__controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.video-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 980px;
+  background: rgba(28, 28, 32, 0.66);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+
+.video-button:hover {
+  background: rgba(28, 28, 32, 0.85);
+}
+
+.video-button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* The sound button while the video plays muted: speaker with tiny equalizer
+   bars; it opens into a pill with its label (timed once, on hover of the
+   picture, on focus), with two soft rings the first time. */
+.sound-button {
+  position: relative;
+  gap: 0;
+  padding: 0 14px;
+}
+
+.sound-button__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 10px;
+  margin-left: 3px;
+}
+
+.sound-button__bars span {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: 50% 100%;
+  transform: scaleY(0.55);
+}
+
+.sound-button__label {
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  white-space: nowrap;
+  transition:
+    max-width 500ms var(--ease-out),
+    margin 500ms var(--ease-out),
+    opacity 300ms ease,
+    transform 500ms var(--ease-out);
+}
+
+.sound-button.is-open .sound-button__label,
+.window__screen:hover .sound-button.is-inviting .sound-button__label,
+.sound-button.is-inviting:focus-visible .sound-button__label {
+  max-width: 14em;
+  margin-left: 8px;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s, 0s, 120ms, 0s;
+}
+
+.sound-button::before,
+.sound-button::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: inherit;
+  /* A dark hairline too, so the ring also shows over light frames. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span {
+    animation: sound-bar 900ms ease-in-out infinite alternate;
+  }
+
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span:nth-child(2) {
+    animation-delay: -350ms;
+  }
+
+  .sound-button.is-inviting:not(.is-calm) .sound-button__bars span:nth-child(3) {
+    animation-delay: -650ms;
+  }
+
+  .sound-button.is-rippling::before {
+    animation: sound-ripple 1400ms ease-out 250ms 1;
+  }
+
+  .sound-button.is-rippling::after {
+    animation: sound-ripple 1400ms ease-out 700ms 1;
+  }
+}
+
+@keyframes sound-bar {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes sound-ripple {
+  from {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35, 1.7);
+  }
+}
+
+/* Facts panel: frosted glass over the end of the hero's wallpaper. Numbers in
+   the text color; the icon tile and the accent line carry the color. */
+
+.stats {
+  padding-bottom: clamp(64px, 8vw, 104px);
+}
+
+.stats__panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 32px 8px;
+  border-radius: var(--radius-tile);
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(24px);
+  backdrop-filter: saturate(1.6) blur(24px);
+  box-shadow:
+    inset 0 0 0 1px light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08)),
+    0 1px 2px light-dark(rgba(30, 40, 80, 0.06), rgba(0, 0, 0, 0.3)),
+    0 24px 48px -24px light-dark(rgba(30, 40, 80, 0.18), rgba(0, 0, 0, 0.5));
+}
+
+.stats__item {
+  --tint: var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 4px 28px;
+}
+
+.stats__item + .stats__item {
+  border-left: 1px solid var(--separator);
+}
+
+.stats__item--red {
+  --tint: var(--red);
+}
+
+.stats__item--green {
+  --tint: var(--green);
+}
+
+.stats__item--indigo {
+  --tint: var(--indigo);
+}
+
+.stats__value {
+  display: flex;
+  align-items: flex-end;
+  min-height: 82px;
+  margin-top: 12px;
+  color: var(--label);
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats__word {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
+}
+
+.stats__line {
+  display: block;
+  width: 36px;
+  height: 2px;
+  margin-top: 16px;
+  border-radius: 1px;
+  background: var(--tint);
+  transform-origin: 0 50%;
+}
+
+.stats__label {
+  max-width: 16em;
+  margin-top: 12px;
+  color: var(--label-secondary);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* Odometer wheels: a strip of digits behind a one-digit window whose top and
+   bottom edges fade, so rolling digits pass under a soft edge. */
+.odometer {
+  --wheel: 1.14em;
+}
+
+.odometer__wheels {
+  display: inline-flex;
+}
+
+.odometer__wheel {
+  display: inline-block;
+  overflow: hidden;
+  height: var(--wheel);
+  line-height: var(--wheel);
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+}
+
+.odometer__strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--to) * -1 * var(--wheel)));
+}
+
+.odometer__strip span {
+  height: var(--wheel);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stats__panel .odometer__strip {
+    transition: transform 1600ms cubic-bezier(0.16, 0.84, 0.24, 1);
+    transition-delay: calc(var(--i, 0) * 140ms);
+  }
+
+  .stats__panel .stats__line {
+    transition: transform 900ms var(--ease-out);
+    transition-delay: calc(500ms + var(--i, 0) * 140ms);
+  }
+
+  .stats__panel .stats__word {
+    transition:
+      opacity 900ms ease,
+      transform 1000ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 140ms);
+  }
+
+  .stats__panel.is-pending .odometer__strip {
+    transform: translateY(0);
+  }
+
+  .stats__panel.is-pending .stats__line {
+    transform: scaleX(0);
+  }
+
+  .stats__panel.is-pending .stats__word {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+}
+
+/* Sections */
+
+.section {
+  padding-block: var(--section-space);
+}
+
+.section--alt {
+  background: var(--bg-alt);
+}
+
+.section__head {
+  max-width: 46em;
+  margin-bottom: 56px;
+}
+
+.section__head--center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.section__head--split {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+  align-items: end;
+  gap: 24px 48px;
+  max-width: none;
+}
+
+.eyebrow {
+  margin-bottom: 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.eyebrow--red {
+  color: var(--red-text);
+}
+
+.eyebrow--green {
+  color: var(--green-text);
+}
+
+.eyebrow--blue {
+  color: var(--blue-text);
+}
+
+.eyebrow--indigo {
+  color: var(--indigo-text);
+}
+
+.section__title {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 5vw, 60px);
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
+  text-wrap: balance;
+}
+
+.section__lead {
+  margin-top: 20px;
+  color: var(--label-secondary);
+  font-size: 20px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.section__head--split .section__lead {
+  margin-top: 0;
+}
+
+.section__detail {
+  margin-top: 14px;
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+/* Japanese headlines break between phrases, not inside words. */
+:lang(ja) .hero__title,
+:lang(ja) .section__title,
+:lang(ja) .cta__title {
+  word-break: auto-phrase;
+}
+
+/* Before and after */
+
+.segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--fill);
+}
+
+.segmented__option {
+  position: relative;
+  z-index: 1;
+  min-height: 38px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--label-secondary);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 250ms ease;
+}
+
+.segmented__option[aria-pressed="true"] {
+  color: var(--label);
+}
+
+.segmented__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 0 0 0.5px var(--separator), 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 450ms var(--ease-out);
+}
+
+.compare[data-side="app"] .segmented__thumb {
+  transform: translateX(100%);
+}
+
+.compare__stage {
+  display: grid;
+  margin-top: 28px;
+  padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 48px);
+  border-radius: var(--radius-tile);
+}
+
+.compare__pane {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: start center;
+  transition:
+    opacity 500ms ease,
+    transform 600ms var(--ease-out),
+    visibility 0s linear 0s;
+}
+
+.compare__pane[data-active="false"] {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.97);
+  transition:
+    opacity 400ms ease,
+    transform 500ms var(--ease-out),
+    visibility 0s linear 400ms;
+}
+
+.compare__caption {
+  margin-top: 20px;
+  color: var(--label-secondary);
+  font-size: 17px;
+  text-align: center;
+}
+
+.cause {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 980px;
+  background: var(--card);
+  box-shadow: var(--shadow-panel);
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.before {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(640px, 100%);
+}
+
+.before__causes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  text-align: center;
+}
+
+.before__funnel {
+  width: 100%;
+  height: 56px;
+  fill: none;
+  stroke: var(--label-secondary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  opacity: 0.6;
+}
+
+.mac-alert {
+  width: min(280px, 100%);
+  padding: 20px 16px 16px;
+  border-radius: var(--radius-panel);
+  background: var(--popover);
+  box-shadow: var(--shadow-window);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mac-alert__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #9d9da3, #77777d);
+  color: #ffffff;
+}
+
+.mac-alert__title {
+  font-weight: 700;
+}
+
+.mac-alert__message {
+  margin-top: 6px;
+}
+
+.mac-alert__button {
+  display: block;
+  margin-top: 16px;
+  padding: 5px 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+
+.after {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 20px;
+  width: min(860px, 100%);
+}
+
+.after__item {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 10px;
+}
+
+.after__item .alert-card {
+  width: 100%;
+  box-shadow: var(--shadow-panel);
+}
+
+/* Alert card, as in the popover */
+
+.alert-card {
+  --tint: var(--red);
+  padding: 11px 12px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tint) 8%, var(--popover));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 28%, transparent);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.alert-card--warning {
+  --tint: var(--orange);
+}
+
+.alert-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.alert-card__icon {
+  flex: none;
+  color: var(--tint);
+}
+
+.alert-card__message {
+  margin-top: 4px;
+}
+
+.alert-card__buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.alert-card__button {
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--fill);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.alert-card__button--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Scroll story */
+
+.story__body {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 64px;
+}
+
+.story__step {
+  display: flex;
+  align-items: center;
+  min-height: 64vh;
+}
+
+/* The first step starts at the top, next to the desk; the last ends near the
+   section's end, so the desk does not ride on over empty space. */
+.story__step:first-child {
+  min-height: 52vh;
+  align-items: flex-start;
+}
+
+.story__step:last-child {
+  min-height: 44vh;
+  align-items: flex-end;
+}
+
+.story__text {
+  max-width: 26em;
+  transition: opacity 400ms ease;
+}
+
+.story__body.is-live .story__step[data-active="false"] .story__text {
+  opacity: 0.32;
+}
+
+.story__number {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--label);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 300ms ease,
+    color 300ms ease;
+}
+
+.story__step[data-active="true"] .story__number {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.story__title {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: var(--display-weight);
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
+}
+
+.story__copy {
+  margin-top: 12px;
+  color: var(--label-secondary);
+  font-size: 19px;
+}
+
+.story__card-desk {
+  display: none;
+}
+
+.story__sticky {
+  position: sticky;
+  top: max(calc(var(--header-height) + 24px), calc(50vh - 280px));
+  align-self: start;
+}
+
+.story__stack {
+  display: grid;
+}
+
+/* One desk per step, stacked; the active one fades in over the others. */
+.story__desk {
+  --popover-left: 28px;
+  grid-area: 1 / 1;
+  min-height: 540px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 450ms ease,
+    visibility 0s linear 450ms;
+}
+
+.story__desk.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 450ms ease;
+}
+
+/* The banner slides in when its step becomes active. */
+.story__desk .desk__notice {
+  animation: none;
+  opacity: 0;
+  transform: translateX(calc(100% + 16px));
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
+.story__desk.is-active .desk__notice {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 500ms ease 250ms,
+    transform 600ms var(--ease-out) 250ms;
+}
+
+/* On the wide desk the popover sits left, under its status item, so the
+   notification banner on the right leaves the popover's text uncovered. */
+.story__desk .popover {
+  margin-left: var(--popover-left);
+}
+
+.story__desk .desk__menubar {
+  justify-content: flex-start;
+  padding-right: 0;
+  padding-left: calc(var(--popover-left) + 170px - 15px);
+}
+
+.story__desk .desk__notices {
+  width: 260px;
+}
+
+.story__progress {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 14px;
+}
+
+.story__dot {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.story__dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--label-secondary) 40%, transparent);
+  transition:
+    width 400ms var(--ease-out),
+    background-color 300ms ease;
+}
+
+.story__dot[aria-current="step"]::before {
+  width: 28px;
+  background: var(--accent);
+}
+
+/* A slice of a Mac desktop: wallpaper, menu bar, popover, banners. */
+
+.desk {
+  --menubar-height: 26px;
+  position: relative;
+  overflow: hidden;
+  min-height: 460px;
+  padding-bottom: 28px;
+  border-radius: var(--radius-tile);
+  background:
+    radial-gradient(80% 70% at 0% 0%, var(--field-blue), transparent 72%),
+    radial-gradient(70% 70% at 100% 100%, var(--field-peach), transparent 72%),
+    radial-gradient(60% 60% at 100% 0%, var(--field-lilac), transparent 72%),
+    var(--field-base);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.desk__menubar {
+  display: flex;
+  justify-content: flex-end;
+  height: var(--menubar-height);
+  padding-right: calc(50% - 15px);
+  background: var(--menubar);
+  border-bottom: 1px solid var(--separator);
+}
+
+/* The status item sits centred over the popover's arrow. */
+.desk__status-item {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: calc(var(--menubar-height) - 4px);
+  margin-top: 2px;
+  border-radius: 5px;
+  background: var(--fill);
+  color: var(--label);
+}
+
+.desk__notices {
+  position: absolute;
+  top: calc(var(--menubar-height) + 10px);
+  right: 10px;
+  z-index: 2;
+  width: min(300px, calc(100% - 20px));
+}
+
+.desk__notice {
+  animation: notice-in 550ms var(--ease-out) both;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 16px));
+  }
+}
+
+/* Popover replica (sizes follow the app at 1x) */
+
+.popover {
+  position: relative;
+  width: min(340px, calc(100% - 24px));
+  margin: 12px auto 0;
+  border-radius: 12px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.popover::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 3px 0 0 0;
+  background: var(--popover);
+}
+
+.popover__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+.popover__logo {
+  border-radius: 8px;
+}
+
+.popover__name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.popover__status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  margin-top: 2px;
+}
+
+.popover__status-word {
+  font-weight: 500;
+}
+
+.popover__status-detail {
+  color: var(--label-secondary);
+}
+
+/* The tunnel card and the alert card open from 0fr, so nothing jumps. */
+.popover__tunnel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 500ms var(--ease-out);
+}
+
+.popover__tunnel.is-open {
+  grid-template-rows: 1fr;
+}
+
+.popover__tunnel-inner {
+  overflow: hidden;
+}
+
+.popover__card,
+.popover__alert {
+  margin: 0 16px 12px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 400ms ease 150ms,
+    transform 500ms var(--ease-out) 150ms;
+}
+
+.popover__card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--popover-card);
+}
+
+.popover__tunnel.is-open .popover__card,
+.popover__tunnel.is-open .popover__alert {
+  opacity: 1;
+  transform: none;
+}
+
+.popover__card-label {
+  color: var(--label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.popover__card-value {
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.popover__section {
+  padding: 12px 16px;
+  border-top: 1px solid var(--separator);
+}
+
+.popover__section-title {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--label-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.popover__plus {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.popover__profiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.popover__profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 12px;
+  border-radius: 10px;
+  background: var(--popover-card);
+}
+
+.popover__profile-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.popover__profile-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.popover__profile-sub {
+  overflow: hidden;
+  color: var(--label-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover__footer {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--separator);
+  color: var(--label-secondary);
+  font-size: 11px;
+}
+
+/* Notification banners */
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px 12px 11px;
+  border-radius: 16px;
+  background: var(--notification);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.notification__icon {
+  flex: none;
+  border-radius: 7px;
+}
+
+.notification__title {
+  font-weight: 600;
+}
+
+.notification__body {
+  margin-top: 1px;
+}
+
+/* Features: bento grid. Wide tiles lay text and visual side by side. */
+
+.bento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.tile {
+  --tint: var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow: hidden;
+  padding: 28px;
+  border-radius: var(--radius-tile);
+  background: var(--card);
+}
+
+.tile--green {
+  --tint: var(--green);
+}
+
+.tile--orange {
+  --tint: var(--orange);
+}
+
+.tile--red {
+  --tint: var(--red);
+}
+
+.tile--gray {
+  --tint: var(--gray);
+}
+
+.tile--indigo {
+  --tint: var(--indigo);
+}
+
+.tile--menuBar {
+  grid-column: 1 / 3;
+}
+
+.tile--reconnect {
+  grid-column: 3;
+  grid-row: 1 / 3;
+}
+
+.tile--keychain {
+  grid-column: 2 / 4;
+}
+
+.tile--menuBar,
+.tile--keychain {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  align-items: stretch;
+}
+
+.tile__title {
+  margin-top: 18px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
+  text-wrap: balance;
+}
+
+.tile__body {
+  margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.tile__detail {
+  margin-top: 10px;
+  color: var(--label-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.tile__visual {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 190px;
+  padding: 24px 20px;
+  border-radius: 18px;
+  background:
+    radial-gradient(90% 80% at 15% 0%, color-mix(in srgb, var(--tint) 38%, transparent), transparent 72%),
+    radial-gradient(80% 80% at 100% 100%, color-mix(in srgb, var(--field-peach) 80%, transparent), transparent 70%),
+    var(--field-base);
+}
+
+.mini-popover {
+  width: min(340px, 100%);
+  overflow: hidden;
+  padding-bottom: 12px;
+  border-radius: 12px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.mini-popover__bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 26px;
+  margin-bottom: 12px;
+  padding-inline: 12px;
+  background: var(--menubar);
+  border-bottom: 1px solid var(--separator);
+}
+
+.mini-popover .popover__profiles {
+  padding-inline: 12px;
+}
+
+.mini-popover .popover__card {
+  margin-inline: 12px;
+}
+
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  justify-items: center;
+}
+
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 50%;
+  border-left: 2px dashed color-mix(in srgb, var(--label-secondary) 45%, transparent);
+}
+
+.timeline__event {
+  position: relative;
+  width: 100%;
+}
+
+.timeline__status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 980px;
+  background: var(--card);
+  box-shadow: var(--shadow-panel);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.deck {
+  position: relative;
+  width: min(330px, 100%);
+  margin-top: 16px;
+}
+
+.deck__card {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+}
+
+.deck__card--back1 {
+  transform: translateY(-9px) scale(0.95);
+  opacity: 0.85;
+}
+
+.deck__card--back2 {
+  transform: translateY(-18px) scale(0.9);
+  opacity: 0.6;
+}
+
+.deck__front {
+  position: relative;
+  box-shadow: var(--shadow-panel);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(330px, 100%);
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+  line-height: 1.35;
+}
+
+.setting-row__text {
+  display: grid;
+  gap: 3px;
+}
+
+.setting-row__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.setting-row__detail {
+  color: var(--label-secondary);
+  font-size: 12px;
+}
+
+.waiting {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.waiting__glyph {
+  margin-bottom: 6px;
+  color: var(--orange-text);
+}
+
+.waiting__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 980px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.waiting__detail {
+  color: var(--label-secondary);
+  font-size: 13px;
+}
+
+.keychain {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  width: min(400px, 100%);
+}
+
+.keychain__lock {
+  color: var(--label-secondary);
+}
+
+.keychain__items {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.keychain__items li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--popover);
+  box-shadow: var(--shadow-panel);
+}
+
+.keychain__key {
+  color: var(--label-secondary);
+}
+
+.keychain__name {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keychain__where {
+  color: var(--label-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Feature tile demos. A tile RevealObserver held back (.is-pending) rises in when
+   it scrolls into view, then its visual plays once: the switch flips on and the
+   public IP types in, the banners slide in in turn, the alert cards stack up, the
+   kill switch flips, the Wi-Fi glyph pulses, the Keychain rows slide in. Only
+   opacity, transform, translate and clip-path change, so nothing reflows; without
+   motion every tile shows its final state. */
+@media (prefers-reduced-motion: no-preference) {
+  .tile[data-reveal] {
+    --demo: calc(350ms + var(--i, 0) * 90ms);
+  }
+
+  /* Transitions only on the way in: entering the pending state is instant. */
+  .tile[data-reveal]:not(.is-pending) {
+    transition:
+      opacity 800ms ease,
+      transform 900ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  .tile.is-pending {
+    opacity: 0;
+    transform: translateY(32px) scale(0.97);
+  }
+
+  /* Menu bar: the Office switch flips on, its dot turns green, the IP card opens
+     and its digits type in. */
+  .tile--menuBar[data-reveal]:not(.is-pending) .switch,
+  .tile--killSwitch[data-reveal]:not(.is-pending) .switch {
+    transition: background-color 250ms ease calc(var(--demo) + 400ms);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .switch__knob,
+  .tile--killSwitch[data-reveal]:not(.is-pending) .switch__knob {
+    transition: transform 350ms var(--ease-spring) calc(var(--demo) + 400ms);
+  }
+
+  .tile--menuBar.is-pending .switch.is-on,
+  .tile--killSwitch.is-pending .switch.is-on {
+    background: var(--switch-off);
+  }
+
+  .tile--menuBar.is-pending .switch.is-on .switch__knob,
+  .tile--killSwitch.is-pending .switch.is-on .switch__knob {
+    transform: none;
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .status-dot {
+    transition: background-color 300ms ease calc(var(--demo) + 800ms);
+  }
+
+  .tile--menuBar.is-pending .status-dot--ok {
+    background: var(--gray-dot);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .popover__card {
+    transition:
+      opacity 400ms ease calc(var(--demo) + 900ms),
+      transform 500ms var(--ease-out) calc(var(--demo) + 900ms);
+  }
+
+  .tile--menuBar.is-pending .popover__card {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  .tile--menuBar[data-reveal]:not(.is-pending) .popover__card-value {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 700ms steps(12, end) calc(var(--demo) + 1200ms);
+  }
+
+  .tile--menuBar.is-pending .popover__card-value {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  /* Reconnect: lost, reconnecting, back, one after another. */
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > * {
+    transition:
+      opacity 500ms ease,
+      translate 700ms var(--ease-out);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(1) {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(2) {
+    transition-delay: calc(var(--demo) + 700ms);
+  }
+
+  .tile--reconnect[data-reveal]:not(.is-pending) .timeline > :nth-child(3) {
+    transition-delay: calc(var(--demo) + 1300ms);
+  }
+
+  .tile--reconnect.is-pending .timeline > * {
+    opacity: 0;
+    translate: 40px 0;
+  }
+
+  .tile--reconnect.is-pending .timeline__status {
+    translate: 0 8px;
+  }
+
+  /* Errors: the cards stack up, the front one last. */
+  .tile--errors[data-reveal]:not(.is-pending) .deck > * {
+    transition:
+      opacity 450ms ease,
+      translate 650ms var(--ease-out);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(1) {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(2) {
+    transition-delay: calc(var(--demo) + 300ms);
+  }
+
+  .tile--errors[data-reveal]:not(.is-pending) .deck > :nth-child(3) {
+    transition-delay: calc(var(--demo) + 500ms);
+  }
+
+  .tile--errors.is-pending .deck > * {
+    opacity: 0;
+    translate: 0 28px;
+  }
+
+  /* Waiting for the network: the glyph pulses twice, the status fades in. */
+  .tile--network:not(.is-pending) .waiting__glyph {
+    animation: wifi-pulse 1100ms ease-in-out calc(var(--demo) + 200ms) 2;
+  }
+
+  .tile--network[data-reveal]:not(.is-pending) .waiting__status,
+  .tile--network[data-reveal]:not(.is-pending) .waiting__detail {
+    transition: opacity 500ms ease calc(var(--demo) + 500ms);
+  }
+
+  .tile--network.is-pending .waiting__status,
+  .tile--network.is-pending .waiting__detail {
+    opacity: 0;
+  }
+
+  /* Keychain: the lock settles, the items slide in. */
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__lock,
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li {
+    transition:
+      opacity 450ms ease,
+      translate 650ms var(--ease-out);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__lock {
+    transition-delay: calc(var(--demo) + 100ms);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li:nth-child(1) {
+    transition-delay: calc(var(--demo) + 400ms);
+  }
+
+  .tile--keychain[data-reveal]:not(.is-pending) .keychain__items li:nth-child(2) {
+    transition-delay: calc(var(--demo) + 600ms);
+  }
+
+  .tile--keychain.is-pending .keychain__lock {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+
+  .tile--keychain.is-pending .keychain__items li {
+    opacity: 0;
+    translate: 32px 0;
+  }
+}
+
+@keyframes wifi-pulse {
+  50% {
+    opacity: 0.55;
+    transform: scale(1.12);
+  }
+}
+
+/* Screenshots: two windows, one per appearance, overlapping on the wallpaper. */
+
+.shots__stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(32px, 5vw, 64px) clamp(8px, 3vw, 40px) clamp(24px, 4vw, 48px);
+  border-radius: var(--radius-tile);
+}
+
+.shots__window {
+  width: min(50%, 540px);
+}
+
+.shots__window img {
+  width: 100%;
+}
+
+.shots__window--back {
+  z-index: 1;
+  margin-right: -20%;
+}
+
+.shots__window--front {
+  z-index: 2;
+  margin-top: clamp(40px, 7vw, 96px);
+}
+
+.shots__captions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 48px;
+  max-width: 920px;
+  margin: 36px auto 0;
+}
+
+.shots__captions p {
+  padding-top: 16px;
+  border-top: 2px solid var(--separator);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+/* Install */
+
+.install {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.install__step {
+  position: relative;
+  padding: 28px;
+  border-radius: var(--radius-tile);
+  background: var(--card);
+}
+
+.install__number {
+  position: absolute;
+  top: 20px;
+  right: 26px;
+  color: var(--label-secondary);
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+.install__title {
+  margin-top: 20px;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: var(--heading-leading);
+  letter-spacing: var(--heading-tracking);
+}
+
+.install__body {
+  margin-top: 8px;
+  color: var(--label-secondary);
+  font-size: 16px;
+}
+
+.install__body strong {
+  color: var(--label);
+  font-weight: 600;
+}
+
+.uninstall {
+  max-width: 720px;
+  margin: 48px auto 0;
+  border-top: 1px solid var(--separator);
+}
+
+.uninstall__summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  padding-top: 12px;
+  color: var(--link);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.uninstall__summary::-webkit-details-marker {
+  display: none;
+}
+
+.uninstall__chevron {
+  transition: transform 250ms var(--ease-out);
+}
+
+.uninstall[open] .uninstall__chevron {
+  transform: rotate(90deg);
+}
+
+.uninstall__body {
+  margin-top: 12px;
+  padding: 24px;
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--label-secondary);
+  font-size: 15px;
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 12px 12px 16px;
+  border-radius: 12px;
+  background: var(--card-alt);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--label);
+}
+
+.command__code {
+  flex: 1;
+  min-width: 0;
+  padding-block: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Closing band */
+
+.cta {
+  padding-block: clamp(96px, 12vw, 160px);
+  text-align: center;
+}
+
+.cta__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cta__icon {
+  width: 128px;
+  height: 128px;
+  filter: drop-shadow(0 0 1px light-dark(transparent, rgba(255, 255, 255, 0.35)))
+    drop-shadow(0 18px 30px light-dark(rgba(40, 50, 100, 0.28), rgba(0, 0, 0, 0.6)));
+}
+
+.cta__title {
+  max-width: 14em;
+  margin-top: 36px;
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5.4vw, 64px);
+  font-weight: var(--display-weight);
+  line-height: var(--display-leading);
+  letter-spacing: var(--display-tracking);
+  text-wrap: balance;
+}
+
+.cta__body {
+  margin-top: 16px;
+  color: var(--label-secondary);
+  font-size: 20px;
+}
+
+.cta .download {
+  margin-top: 32px;
+}
+
+.cta .download__requirements {
+  color: var(--label);
+  opacity: 0.72;
+}
+
+/* Back to top: frosted round button, clear of the home indicator and notch. */
+
+.back-to-top {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px);
+  backdrop-filter: saturate(1.8) blur(20px);
+  box-shadow: var(--shadow-panel);
+  color: var(--label);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition:
+    opacity 300ms ease,
+    transform 400ms var(--ease-out),
+    visibility 0s linear 300ms,
+    background-color 180ms ease;
+}
+
+.back-to-top.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 300ms ease,
+    transform 400ms var(--ease-out),
+    background-color 180ms ease;
+}
+
+.back-to-top:hover {
+  background: var(--card);
+}
+
+.back-to-top:focus-visible {
+  border-radius: 50%;
+}
+
+@media (min-width: 1000px) {
+  .back-to-top {
+    right: calc(28px + env(safe-area-inset-right, 0px));
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Footer */
+
+.footer {
+  border-top: 1px solid var(--separator);
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+.footer__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 24px 40px;
+  padding-block: 40px 32px;
+}
+
+.footer__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--label);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.footer__tagline {
+  margin-top: 6px;
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.footer .lang-menu {
+  justify-self: start;
+}
+
+.footer__copyright {
+  grid-column: 1 / -1;
+  padding-top: 20px;
+  border-top: 1px solid var(--separator);
+  font-size: 13px;
+}
+
+/* Responsive */
+
+@media (max-width: 1000px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile--menuBar,
+  .tile--keychain {
+    grid-column: 1 / -1;
+  }
+
+  .tile--reconnect {
+    grid-column: auto;
+    grid-row: span 2;
+  }
+
+  .story__body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .story__sticky {
+    display: none;
+  }
+
+  .story__steps {
+    display: grid;
+    gap: 20px;
+  }
+
+  .story__step,
+  .story__step:first-child,
+  .story__step:last-child {
+    display: grid;
+    gap: 24px;
+    min-height: 0;
+    padding: 28px;
+    border-radius: var(--radius-tile);
+    background: var(--card-alt);
+  }
+
+  .story__body.is-live .story__step[data-active="false"] .story__text {
+    opacity: 1;
+  }
+
+  .story__card-desk {
+    display: block;
+    min-height: 0;
+  }
+
+  /* A step card is too narrow for a banner beside the popover: it goes above it. */
+  .story__card-desk .desk__notices {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    margin: 10px 10px 0;
+  }
+
+  .footer__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .footer__links {
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 800px) {
+  .stats__panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 32px;
+    padding: 28px 4px;
+  }
+
+  .stats__item:nth-child(3) {
+    border-left: 0;
+  }
+
+  .section__head--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .install {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .after {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .before__causes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .before__funnel {
+    display: none;
+  }
+
+  .mac-alert {
+    margin-top: 24px;
+  }
+
+  .shots__captions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero__lead {
+    font-size: 18px;
+  }
+
+  .hero__stage {
+    padding-inline: 12px;
+  }
+
+  .window {
+    border-radius: 12px;
+  }
+
+  .window__bar {
+    height: 28px;
+  }
+
+  .window__lights {
+    left: 12px;
+    gap: 6px;
+  }
+
+  .window__lights span {
+    width: 9px;
+    height: 9px;
+  }
+
+  .window__title {
+    font-size: 12px;
+  }
+
+  .window__controls {
+    right: 8px;
+    bottom: 8px;
+    gap: 6px;
+  }
+
+  .sound-button__label {
+    font-size: 13px;
+  }
+
+  .stats__item {
+    padding: 4px 16px;
+  }
+
+  .stats__value {
+    min-height: 56px;
+    font-size: 56px;
+  }
+
+  .stats__word {
+    font-size: 21px;
+  }
+
+  .stats__label {
+    font-size: 14px;
+  }
+
+  .section__head {
+    margin-bottom: 40px;
+  }
+
+  .section__lead {
+    font-size: 18px;
+  }
+
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .tile--menuBar,
+  .tile--keychain {
+    display: flex;
+  }
+
+  .tile--reconnect {
+    grid-row: auto;
+  }
+
+  .tile {
+    padding: 22px;
+  }
+
+  .story__step,
+  .story__step:first-child,
+  .story__step:last-child {
+    padding: 22px;
+  }
+
+  .story__copy {
+    font-size: 17px;
+  }
+
+  .shots__window {
+    width: 64%;
+  }
+
+  .shots__window--back {
+    margin-right: -24%;
+  }
+
+  .install__step {
+    padding: 24px;
+  }
+
+  .uninstall__body {
+    padding: 18px;
+  }
+
+  .footer__inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .footer__links {
+    grid-row: auto;
+  }
+
+  /* The footer's menu button sits at the left edge here: open to the right. */
+  .footer .lang-menu__list {
+    right: auto;
+    left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

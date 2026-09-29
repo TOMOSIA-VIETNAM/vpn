@@ -1,0 +1,55 @@
+{
+  "output": "assets/audio/music/bgm-ja.flac",
+  "outro": "assets/audio/music/outro-raw.mp3",
+  "bpm": 116,
+  "beat0": 0,
+  "key": "F minor",
+  "fadeOut": {
+    "beat": 86,
+    "seconds": 5
+  },
+  "outroBed": 42.7,
+  "sections": [
+    {
+      "from": 0,
+      "to": 2,
+      "role": "intro"
+    },
+    {
+      "from": 2,
+      "to": 12,
+      "role": "intro"
+    },
+    {
+      "from": 12,
+      "to": 40,
+      "role": "groove",
+      "lofi": true
+    },
+    {
+      "from": 40,
+      "to": 46,
+      "role": "build"
+    },
+    {
+      "from": 46,
+      "to": 48,
+      "role": "stop"
+    },
+    {
+      "from": 48,
+      "role": "drop",
+      "to": 62
+    },
+    {
+      "from": 62,
+      "to": 86,
+      "role": "groove"
+    },
+    {
+      "from": 86,
+      "to": 98,
+      "role": "tail"
+    }
+  ]
+}

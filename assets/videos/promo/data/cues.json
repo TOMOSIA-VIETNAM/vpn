@@ -1,0 +1,66 @@
+[
+  {
+    "sfx": "ding",
+    "scene": "s01-hook",
+    "word": "drop",
+    "vol": 0.35
+  },
+  {
+    "sfx": "click",
+    "scene": "s02-pain",
+    "word": "failed",
+    "vol": 0.25
+  },
+  {
+    "sfx": "riser",
+    "vol": 0.22,
+    "scene": "s03-why",
+    "word": "others",
+    "offset": -0.52
+  },
+  {
+    "sfx": "click",
+    "scene": "s04-reveal",
+    "word": "switch",
+    "vol": 0.4
+  },
+  {
+    "sfx": "pop",
+    "scene": "s05-reconnect",
+    "word": "flaky",
+    "vol": 0.25
+  },
+  {
+    "sfx": "ding",
+    "scene": "s05-reconnect",
+    "word": "notify",
+    "vol": 0.35
+  },
+  {
+    "sfx": "click",
+    "scene": "s06-errors",
+    "word": "errors",
+    "offset": 0.35,
+    "vol": 0.2
+  },
+  {
+    "sfx": "click",
+    "scene": "s06-errors",
+    "word": "button",
+    "vol": 0.2,
+    "offset": -0.46
+  },
+  {
+    "sfx": "click",
+    "scene": "s06-errors",
+    "word": "button",
+    "vol": 0.2,
+    "offset": -0.22
+  },
+  {
+    "sfx": "click",
+    "scene": "s07-outro",
+    "word": "download",
+    "vol": 0.3
+  }
+]

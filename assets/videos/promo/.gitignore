@@ -1,0 +1,10 @@
+# Generated media and local tooling; the video is rebuilt from the sources in this folder.
+.venv/
+node_modules/
+assets/audio/
+renders/
+snapshots/
+data/align-*/
+data/vo-envelope.*.json
+# the repository ignores scripts/ at every level; this video's build scripts are source
+!scripts/

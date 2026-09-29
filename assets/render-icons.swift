@@ -4,8 +4,8 @@
 //
 // Writes next to this file, into assets/:
 //   AppIcon.icns                          .app icon (black tile, white mark)
-//   logo.png                              the same tile without margin, for the popover header and README
-//                                         (also written to docs/logo.png for the landing page)
+//   logo.png                              the same tile without margin, for the popover header, the README
+//                                         and the landing page (webapp/ copies it at build time)
 //   menubar-idle.png / @2x                status item template image, outline mark (disconnected)
 //   menubar-connected.png / @2x           status item template image, solid mark (connected)
 //   menubar-lost.png / @2x                status item template image, outline mark with a circled "!" (error)
@@ -17,6 +17,9 @@ import Cocoa
 let assets = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 
 // MARK: Mark geometry (64 × 64 design grid, y pointing down)
+//
+// webapp/src/components/Mark.tsx draws the same paths as SVG for the landing page;
+// change both together.
 
 let strokeWidth: CGFloat = 4.5
 
@@ -154,7 +157,6 @@ for (name, style) in [("menubar-idle", MarkStyle.outline), ("menubar-connected",
 
 let logo = render(pixels: 256) { drawTile(in: $0, margin: 0) }
 try write(logo, "logo.png")
-try write(logo, "logo.png", in: assets.deletingLastPathComponent().appendingPathComponent("docs"))
 
 let iconset = FileManager.default.temporaryDirectory.appendingPathComponent("AppIcon.iconset")
 try? FileManager.default.removeItem(at: iconset)

@@ -1,0 +1,4 @@
+# Copied from ../assets by scripts/copy-assets.mjs before dev and build.
+/public/logo.png
+/public/screenshots/
+/public/videos/
