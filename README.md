@@ -29,6 +29,16 @@ VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) th
 
 ## 🚀 Cài đặt
 
+**Cách 1 — File .dmg (như các app macOS khác):**
+
+1. Tải [`TMS-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TMS-VPN.dmg) (luôn là bản mới nhất).
+2. Mở file, kéo **TMS VPN** vào thư mục **Applications**.
+3. Mở app. Lần đầu, macOS hỏi mật khẩu quản trị một lần để cài phần lõi `vpn`. Nếu macOS cảnh báo nhà phát triển chưa xác minh: chuột phải vào app → **Open**.
+
+Tự build file .dmg: `VERSION=1.2.3 ./make-dmg.sh` (kết quả: `build/TMS-VPN.dmg`).
+
+**Cách 2 — Script:**
+
 **Cài đặt tự động (tự nhận diện chip Apple Silicon M1/M2/M3... hoặc Mac Intel 2017+):**
 
 ```bash
@@ -114,7 +124,8 @@ curl -4 https://ifconfig.co
 | **Quản lý Profile** | `vpn profile list` | Danh sách profile (* = active) |
 | | `vpn profile add <tên> --server <host>` | Thêm server mới |
 | | `vpn profile rename <tên> [tên mới]` | Đổi tên hiển thị trên App |
-| | `vpn profile remove <tên>` | Xóa profile và secret trong Keychain |
+| | `vpn profile edit <tên> [--server host] [--user tên] [--full-tunnel=bool] [--set-psk]` | Đổi host / username / chế độ tunnel, giữ nguyên password và secret đã lưu |
+| | `vpn profile remove <tên>` | Xóa profile và secret trong Keychain (không thể xóa/sửa khi đang kết nối) |
 | **Quản lý Account** | `vpn account add <profile> <user>` | Thêm tài khoản cho profile |
 | **Cài đặt chung** | `vpn mtu [1280\|1400]` | Đặt MTU (1280 cho mạng 4G/PPPoE hay nghẽn) |
 | | `vpn killswitch [on\|off]` | Bật/tắt bảo vệ ngắt mạng khi rớt kết nối |
