@@ -15,9 +15,9 @@
     "envelope": "data/vo-envelope.vi.json",
     "mix": "assets/audio/mix-vi.m4a",
     "arrangement": "data/music-arrangement.vi.json",
-    "musicDb": -5,
+    "musicDb": -4,
     "tempo": 1.08,
-    "duration": 57,
+    "duration": 50.5,
     "anchors": {
       "s01-hook": {
         "scene": 0,
@@ -26,36 +26,36 @@
         ]
       },
       "s02-pain": {
-        "scene": 8
+        "scene": 10
       },
       "s03-why": {
-        "scene": 20,
+        "scene": 22,
         "lines": [
           null,
-          33.4
+          32.3
         ]
       },
       "s04-reveal": {
-        "scene": 44,
+        "scene": 36,
         "lines": [
           [
-            44,
+            36,
             0.35
           ],
           null
         ]
       },
       "s05-reconnect": {
-        "scene": 58
+        "scene": 48
       },
       "s06-errors": {
-        "scene": 70
+        "scene": 60
       },
       "s07-outro": {
-        "scene": 86,
+        "scene": 74,
         "lines": [
-          87,
-          95
+          75,
+          86
         ]
       }
     }

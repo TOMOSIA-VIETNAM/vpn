@@ -14,10 +14,15 @@ Every claim spoken or shown in the video, and where it comes from. Paths are rel
 | Passwords and shared secrets are kept in the Keychain | `main.swift` ("Password and shared secret stay saved in Keychain") |
 | Download page | https://github.com/TOMOSIA-VIETNAM/vpn |
 
-Illustrative, not app UI: the video-call window, the System Settings style "Connection failed" panel and the
-"VPN Disconnected" notification in the opening show the problem with a generic built-in VPN; they carry no
-real product names. The two cards "Built-in VPN: keeps dropping" and "Other apps: need certificates" are
-neutral and name no product.
+Illustrative, not app UI: the video-call window, the System Settings style "Connection failed" panel, the
+"VPN Disconnected" notification in the opening and the Dock (generic app tiles, no third-party marks) show a
+generic macOS desktop; they carry no real product names. The two cards "Built-in VPN: keeps dropping" and
+"Other apps: need certificates" are neutral and name no product.
+
+Background images: `assets/bg/office.jpg` and `assets/bg/cafe.jpg` are AI-generated backgrounds (Gemini image
+generation), cropped at the bottom and right edge to remove the generator's corner mark and scaled to
+1920x1080. They show no identifiable person, text or logo and are blurred in the composition. The network line
+art and the wallpaper colour fields are drawn in `index.html`.
 
 How the video is made: the script, visuals, music and sound effects are written as code and rendered with
-HyperFrames and ffmpeg; the Vietnamese voice is Gemini TTS (voice Orus, `data/voices.json`).
+HyperFrames and ffmpeg; the on-screen and spoken Vietnamese copy was polished with Gemini; the Vietnamese voice is Gemini TTS (voice Orus, `data/voices.json`).

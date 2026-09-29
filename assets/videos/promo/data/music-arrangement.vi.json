@@ -5,10 +5,10 @@
   "beat0": 0,
   "key": "F minor",
   "fadeOut": {
-    "beat": 86,
+    "beat": 74,
     "seconds": 5
   },
-  "outroBed": 42.7,
+  "outroBed": 36.5,
   "sections": [
     {
       "from": 0,
@@ -17,38 +17,38 @@
     },
     {
       "from": 2,
-      "to": 8,
+      "to": 10,
       "role": "intro"
     },
     {
-      "from": 8,
-      "to": 36,
+      "from": 10,
+      "to": 28,
       "role": "groove",
       "lofi": true
     },
     {
-      "from": 36,
-      "to": 42,
+      "from": 28,
+      "to": 34,
       "role": "build"
     },
     {
-      "from": 42,
-      "to": 44,
+      "from": 34,
+      "to": 36,
       "role": "stop"
     },
     {
-      "from": 44,
+      "from": 36,
       "role": "drop",
-      "to": 58
+      "to": 48
     },
     {
-      "from": 58,
-      "to": 86,
+      "from": 48,
+      "to": 74,
       "role": "groove"
     },
     {
-      "from": 86,
-      "to": 98,
+      "from": 74,
+      "to": 86,
       "role": "tail"
     }
   ]

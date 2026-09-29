@@ -2,7 +2,9 @@
 <!--
   TOMOSIA VPN promo video (HyperFrames 0.7.99 + GSAP).
   `node scripts/build-timeline.mjs --voice=vi --caption=vi` injects window.TIMING, the durations and the mix.
-  Look: native macOS, quiet. Dark scenes for the problem, light scenes once the app appears.
+  Look: a real macOS desktop. The problem plays over a blurred office / café photo (assets/bg, AI-generated),
+  the "why" over dark network line art with broken links, and the product over a soft macOS-style wallpaper
+  where the same network lights up green once the VPN reconnects.
   App screenshots and the brand mark are the real assets from the repo (assets/screenshots, assets/logo.png).
 -->
 <html lang="en" data-resolution="landscape">
@@ -21,34 +23,50 @@
       }
       * { box-sizing: border-box; font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
       html, body { margin: 0; background: var(--dark); }
-      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--dark); color: var(--dark-ink); font-family: "Inter", sans-serif; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #111113; color: var(--dark-ink); font-family: "Inter", sans-serif; }
       .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
       .abs { position: absolute; }
       .scene { opacity: 0; visibility: hidden; }
       .hl { white-space: nowrap; font-weight: 700; letter-spacing: -0.03em; line-height: 1.15; padding-top: 0.3em; margin-top: -0.3em; }
       .hl .w { display: inline-block; }
       .label, .chip { white-space: nowrap; }
-      #bg-light { background: var(--light); opacity: 0; }
       #flash { background: #fff; opacity: 0; pointer-events: none; }
       #fade { background: #000; opacity: 1; pointer-events: none; }
 
+      /* backgrounds: photos are blurred and darkened so they read as a desktop wallpaper, not as content */
+      .bg { overflow: hidden; opacity: 0; }
+      .photo { position: absolute; left: -96px; top: -54px; width: 2112px; height: 1188px; object-fit: cover; filter: blur(22px) saturate(0.7) brightness(0.52); }
+      #bg-net { background: #0e0f12; }
+      #bg-wall { background: linear-gradient(160deg, #eef2f8 0%, #f4f1f7 55%, #f8f3ee 100%); }
+      .blob { position: absolute; border-radius: 50%; filter: blur(90px); }
+      .net line { stroke-linecap: round; }
+
       /* macOS menu bar */
       .menubar { left: 0; top: 0; width: 1920px; height: 44px; display: flex; align-items: center; justify-content: flex-end; gap: 30px; padding-right: 30px; font: 500 21px/1 "Inter"; }
-      .menubar.dark { background: rgba(44, 44, 46, 0.92); color: #f5f5f7; }
-      .menubar.light { background: rgba(255, 255, 255, 0.78); color: #1d1d1f; border-bottom: 1px solid var(--hair); }
+      .menubar.dark { background: rgba(30, 30, 32, 0.72); color: #f5f5f7; }
+      .menubar.light { background: rgba(255, 255, 255, 0.62); color: #1d1d1f; border-bottom: 1px solid var(--hair); }
       .mb-icon { position: relative; width: 24px; height: 24px; }
       .mb-icon img { position: absolute; left: 0; top: 0; width: 24px; height: 24px; }
-      
+
+      /* Dock: generic app tiles, no third-party marks */
+      #dock { left: 0; top: 0; }
+      .dock { left: 610px; top: 986px; width: 700px; height: 84px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 14px; }
+      #dock-dark { left: 648px; width: 624px; background: rgba(60, 60, 64, 0.55); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12); }
+      #dock-light { background: rgba(255, 255, 255, 0.55); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06); opacity: 0; }
+      .app { width: 64px; height: 64px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex: none; }
+      .app img { width: 64px; height: 64px; border-radius: 15px; }
+
       /* macOS window */
       .win { border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08); }
-      .win-bar { height: 52px; display: flex; align-items: center; gap: 10px; padding-left: 20px; background: #323234; color: var(--dark-mute); font: 600 20px/1 "Inter"; }
+      .win-bar { height: 52px; display: flex; align-items: center; gap: 10px; padding-left: 20px; background: #323234; color: #a1a1a6; font: 600 20px/1 "Inter"; }
+      .win-bar.light { background: #ececee; color: #6e6e73; height: 44px; }
       .dot3 { width: 14px; height: 14px; border-radius: 50%; }
       .win-title { flex: 1; text-align: center; margin-right: 90px; }
 
       /* call window */
       .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #1a1a1a; }
-      .tile { position: relative; height: 300px; border-radius: 14px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; }
-      .avatar { width: 124px; height: 124px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 600 52px/1 "Inter"; color: #fff; }
+      .tile { position: relative; height: 230px; border-radius: 14px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; }
+      .avatar { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 600 48px/1 "Inter"; color: #fff; }
       .tile-name { position: absolute; left: 16px; bottom: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); font: 500 20px/1 "Inter"; color: #fff; }
       .call-bar { height: 86px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 22px; }
       .call-btn { width: 56px; height: 56px; border-radius: 50%; background: #3a3a3c; }
@@ -69,11 +87,11 @@
       .n-text { flex: 1; }
 
       /* system settings mock */
-      .settings { display: flex; height: 588px; background: #262628; }
-      .side { width: 280px; background: #2c2c2e; padding: 22px 14px; font: 500 22px/1 "Inter"; color: #d1d1d6; }
+      .settings { display: flex; height: 540px; background: #262628; }
+      .side { width: 260px; background: #2c2c2e; padding: 22px 14px; font: 500 22px/1 "Inter"; color: #d1d1d6; }
       .side div { padding: 13px 16px; border-radius: 10px; }
       .side .sel { background: var(--blue); color: #fff; }
-      .pane { flex: 1; padding: 34px 40px; }
+      .pane { flex: 1; padding: 34px 36px; }
       .pane-title { font: 700 32px/1 "Inter"; color: #f5f5f7; margin-bottom: 30px; }
       .row { border-radius: 14px; background: #333335; padding: 24px 26px; display: flex; align-items: center; gap: 18px; }
       .row-main { flex: 1; }
@@ -82,21 +100,23 @@
       .status-red { font: 600 22px/1 "Inter"; color: var(--red); display: flex; align-items: center; gap: 10px; }
       .toggle { width: 60px; height: 34px; border-radius: 17px; background: #48484a; position: relative; }
       .toggle::after { content: ""; position: absolute; left: 3px; top: 3px; width: 28px; height: 28px; border-radius: 50%; background: #e5e5ea; }
-      .row-note { margin-top: 22px; font: 400 21px/1.3 "Inter"; color: #636366; padding-left: 4px; }
+      .row-note { margin-top: 22px; font: 400 21px/1.3 "Inter"; color: #8e8e93; padding-left: 4px; }
 
       /* cards */
       .card { border-radius: 24px; padding: 34px 36px; }
-      .card.dark { background: var(--dark-2); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07); }
+      .card.dark { background: rgba(44, 44, 46, 0.92); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.4); }
       .card.light { background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); }
       .c-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 26px; }
       .c-title { font: 700 44px/1.2 "Inter"; letter-spacing: -0.02em; white-space: nowrap; }
       .c-sub { font: 600 36px/1.25 "Inter"; margin-top: 8px; white-space: nowrap; }
       .chip { font: 500 40px/1 "JetBrains Mono"; padding: 18px 30px; border-radius: 999px; background: var(--dark-3); color: #f5f5f7; }
 
-      /* error cards (app strings, English as in the app) */
+      /* error windows (app strings, English as in the app) */
+      .ewin { border-radius: 18px; overflow: hidden; background: var(--light-2); box-shadow: 0 22px 54px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--hair); }
+      .ewin-body { padding: 28px 32px 32px; }
       .err-title { font: 700 31px/1.2 "Inter"; color: var(--ink); white-space: nowrap; }
-      .err-msg { font: 400 24px/1.4 "Inter"; color: var(--mute); margin-top: 10px; height: 102px; }
-      .btn { display: inline-block; margin-top: 22px; padding: 12px 24px; border-radius: 10px; background: #0068da; color: #fff; font: 600 22px/1 "Inter"; white-space: nowrap; }
+      .err-msg { font: 400 24px/1.4 "Inter"; color: #58585d; margin-top: 10px; height: 102px; }
+      .btn { display: inline-block; margin-top: 18px; padding: 12px 24px; border-radius: 10px; background: #0068da; color: #fff; font: 600 22px/1 "Inter"; white-space: nowrap; }
 
       /* status widget */
       .status-card { display: flex; align-items: center; gap: 22px; }
@@ -113,15 +133,25 @@
 
       #cursor { width: 38px; height: 50px; }
 
-      /* karaoke captions: bottom band only */
-      .cap { position: absolute; left: 0; width: 1920px; bottom: 40px; display: flex; justify-content: center; }
-      .cap-box { max-width: 1500px; padding: 12px 30px; border-radius: 18px; background: rgba(28, 28, 30, 0.78); font: 600 42px/1.3 "Inter"; text-align: center; color: #fff; }
+      /* karaoke captions: a band above the Dock */
+      .cap { position: absolute; left: 0; width: 1920px; bottom: 128px; display: flex; justify-content: center; }
+      .cap-box { max-width: 1500px; padding: 12px 30px; border-radius: 18px; background: rgba(28, 28, 30, 0.8); font: 600 42px/1.3 "Inter"; text-align: center; color: #fff; }
       .cw { color: rgba(255, 255, 255, 0.62); }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="57" data-width="1920" data-height="1080">
-      <div id="bg-light" class="layer"></div>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="50.5" data-width="1920" data-height="1080">
+      <!-- backgrounds, cross-faded per scene -->
+      <div id="bg-office" class="bg layer"><img class="photo" src="assets/bg/office.jpg" alt=""></div>
+      <div id="bg-cafe" class="bg layer"><img class="photo" src="assets/bg/cafe.jpg" alt=""></div>
+      <div id="bg-net" class="bg layer"><svg id="net-dark" class="net layer" viewBox="0 0 1920 1080"></svg></div>
+      <div id="bg-wall" class="bg layer">
+        <div id="blob1" class="blob" style="left: -160px; top: 120px; width: 1100px; height: 760px; background: #cfdff4"></div>
+        <div id="blob2" class="blob" style="left: 900px; top: -220px; width: 1200px; height: 800px; background: #e4ddf2"></div>
+        <div id="blob3" class="blob" style="left: 1040px; top: 560px; width: 1000px; height: 700px; background: #f3e4d6"></div>
+        <svg id="net-green" class="net layer" viewBox="0 0 1920 1080" style="opacity: 0"></svg>
+      </div>
+
       <div id="pulse" class="layer">
         <div id="stage" class="layer">
 
@@ -131,7 +161,8 @@
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#f5f5f7" stroke-width="2.4" stroke-linecap="round" /></svg>
               <span>Mon 10:02</span>
             </div>
-            <div id="call" class="abs win" style="left: 330px; top: 130px; width: 1260px">
+            <div class="abs" style="left: 0; width: 1920px; top: 92px; text-align: center"><div id="h01" class="hl" style="display: inline-block; font-size: 80px" data-fit-width="1180">VPN drops out of nowhere</div></div>
+            <div id="call" class="abs win" style="left: 410px; top: 212px; width: 1100px">
               <div class="win-bar"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">Weekly sync</div></div>
               <div style="position: relative">
                 <div class="tiles">
@@ -154,8 +185,14 @@
 
           <!-- s02: settings say "Connection failed" and nothing else -->
           <section id="sc02" class="scene layer" data-manual-intro>
-            <div class="abs hl" style="left: 130px; top: 450px; font-size: 96px" data-fit-width="560">What went wrong?</div>
-            <div id="set-win" class="abs win" style="left: 760px; top: 220px; width: 1040px">
+            <div class="abs menubar dark">
+              <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#f5f5f7" stroke-width="2.4" stroke-linecap="round" /></svg>
+              <span>Mon 10:03</span>
+            </div>
+            <div class="abs" style="left: 120px; top: 360px"><div id="h02" class="hl" style="font-size: 76px" data-fit-width="640">“Connection</div></div>
+            <div class="abs" style="left: 120px; top: 460px"><div id="h02b" class="hl" style="font-size: 76px; color: var(--red)" data-fit-width="640">failed”</div></div>
+            <div id="shrug" class="abs label" style="left: 124px; top: 590px; font: 500 38px/1.3 Inter; color: #d1d1d6">What went wrong? No idea.</div>
+            <div id="set-win" class="abs win" style="left: 820px; top: 200px; width: 980px">
               <div class="win-bar"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">VPN</div></div>
               <div class="settings">
                 <div class="side"><div>Wi-Fi</div><div>Bluetooth</div><div>Network</div><div class="sel">VPN</div><div>Notifications</div></div>
@@ -172,10 +209,10 @@
             </div>
           </section>
 
-          <!-- s03: an old protocol that no tool at hand handles well -->
+          <!-- s03: the protocol drops with the built-in client, other apps need certificates -->
           <section id="sc03" class="scene layer" data-manual-intro>
             <div id="proto" class="abs" style="left: 0; width: 1920px; top: 150px; display: flex; justify-content: center"><div class="chip">L2TP/IPsec</div></div>
-            <div class="abs" style="left: 0; width: 1920px; top: 290px; text-align: center"><div id="h03" class="hl" style="display: inline-block; font-size: 76px" data-fit-width="1680">Old protocol. No tool that fits.</div></div>
+            <div class="abs" style="left: 0; width: 1920px; top: 290px; text-align: center"><div id="h03" class="hl" style="display: inline-block; font-size: 76px; text-shadow: 0 0 18px #0e0f12, 0 0 36px #0e0f12" data-fit-width="1680">Certificates in the way</div></div>
             <div id="card-builtin" class="abs card dark" style="left: 290px; top: 490px; width: 640px">
               <div class="c-icon" style="background: rgba(255, 159, 10, 0.16)"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M17,4 L31,29 H3 Z" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-linejoin="round" /><path d="M17,13 V20 M17,24 V24.6" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round" /></svg></div>
               <div class="c-title">Built-in VPN</div>
@@ -188,7 +225,7 @@
             </div>
           </section>
 
-          <!-- s04: TOMOSIA VPN, one switch in the menu bar -->
+          <!-- s04: TOMOSIA VPN, tucked into the menu bar -->
           <section id="sc04" class="scene layer" data-manual-intro>
             <div class="abs menubar light">
               <div class="mb-icon"><img id="mb4-idle" src="assets/images/menubar-idle@2x.png" alt=""><img id="mb4-on" src="assets/images/menubar-connected@2x.png" alt="" style="opacity: 0"></div>
@@ -199,7 +236,7 @@
               <img id="logo4" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 832px; top: 250px; width: 256px; height: 256px; border-radius: 56px">
               <div id="name4" class="abs label" style="left: 0; width: 1920px; top: 560px; text-align: center; font: 700 96px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
             </div>
-            <div class="abs" style="left: 140px; top: 470px"><div id="h04" class="hl" style="font-size: 96px; color: var(--ink)" data-fit-width="780">One switch. Done.</div></div>
+            <div class="abs" style="left: 140px; top: 470px"><div id="h04" class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="800">Quick and easy</div></div>
             <div id="pop4" class="abs" style="left: 1000px; top: 50px; width: 824px; height: 736px">
               <img src="assets/images/popover-light.png" alt="" style="position: absolute; left: 0; top: 0; width: 824px; height: 736px">
               <!-- "not connected" patches over the real screenshot, lifted when the switch is flipped -->
@@ -220,9 +257,9 @@
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
               <span>Mon 10:31</span>
             </div>
-            <div class="abs" style="left: 140px; top: 380px"><div class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="800">Reconnects on its own</div></div>
-            <div id="sub05" class="abs label" style="left: 140px; top: 510px; font: 500 40px/1.3 Inter; color: var(--mute)">and tells you when you're back</div>
-            <div id="status5" class="abs card light" style="left: 140px; top: 640px; width: 700px; padding: 30px 36px">
+            <div class="abs" style="left: 140px; top: 380px"><div class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="820">Reconnects on its own</div></div>
+            <div id="sub05" class="abs label" style="left: 140px; top: 510px; font: 500 40px/1.3 Inter; color: var(--mute)">and tells you once it's back</div>
+            <div id="status5" class="abs card light" style="left: 140px; top: 630px; width: 700px; padding: 30px 36px">
               <div class="stack" style="height: 110px" data-layout-allow-overlap>
                 <div id="st-lost" class="status-card"><div id="st-dot" class="s-dot" style="background: var(--orange)"></div><div><div class="s-main">Reconnecting…</div><div class="s-sub">Reconnecting to Office…</div></div></div>
                 <div id="st-back" class="status-card" style="opacity: 0"><div class="s-dot" style="background: var(--green)"></div><div><div class="s-main">Connected</div><div class="s-sub">Protected via Office</div></div></div>
@@ -238,26 +275,40 @@
             </div>
           </section>
 
-          <!-- s06: errors that say what is wrong, with the fix one click away -->
+          <!-- s06: each error names its cause, with the fix one click away -->
           <section id="sc06" class="scene layer">
-            <div class="abs" style="left: 140px; top: 150px"><div class="hl" style="font-size: 88px; color: var(--ink)" data-fit-width="1640">Clear errors, fixed fast</div></div>
-            <div id="e1" class="abs card light" style="left: 140px; top: 380px; width: 520px">
-              <div class="c-icon" style="background: rgba(255, 59, 48, 0.12)"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
-              <div class="err-title">Authentication Failed</div>
-              <div class="err-msg">Wrong account name or password.</div>
-              <div class="btn">Update Password</div>
+            <div class="abs menubar light">
+              <div class="mb-icon"><img src="assets/images/menubar-lost@2x.png" alt=""></div>
+              <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
+              <span>Mon 10:40</span>
             </div>
-            <div id="e2" class="abs card light" style="left: 700px; top: 380px; width: 520px">
-              <div class="c-icon" style="background: rgba(255, 59, 48, 0.12)"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
-              <div class="err-title">IKE Handshake Failed</div>
-              <div class="err-msg">Check the shared secret.</div>
-              <div class="btn">Try Again</div>
+            <div class="abs" style="left: 140px; top: 140px"><div class="hl" style="font-size: 88px; color: var(--ink)" data-fit-width="1640">Right cause, right error</div></div>
+            <div id="e1" class="abs ewin" style="left: 140px; top: 350px; width: 520px">
+              <div class="win-bar light"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">TOMOSIA VPN</div></div>
+              <div class="ewin-body">
+                <div class="c-icon" style="background: rgba(255, 159, 10, 0.14); margin-bottom: 20px"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M17,4 L31,29 H3 Z" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-linejoin="round" /><path d="M17,13 V20 M17,24 V24.6" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round" /></svg></div>
+                <div class="err-title">Server Not Responding</div>
+                <div class="err-msg">This network may be blocking VPN traffic (UDP 500/4500).</div>
+                <div class="btn">Try Again</div>
+              </div>
             </div>
-            <div id="e3" class="abs card light" style="left: 1260px; top: 380px; width: 520px">
-              <div class="c-icon" style="background: rgba(255, 159, 10, 0.14)"><svg width="34" height="34" viewBox="0 0 34 34"><path d="M17,4 L31,29 H3 Z" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-linejoin="round" /><path d="M17,13 V20 M17,24 V24.6" stroke="#ff9f0a" stroke-width="3" stroke-linecap="round" /></svg></div>
-              <div class="err-title">Server Not Responding</div>
-              <div class="err-msg">This network may be blocking VPN traffic (UDP 500/4500).</div>
-              <div class="btn">Try Again</div>
+            <div id="e2" class="abs ewin" style="left: 700px; top: 350px; width: 520px">
+              <div class="win-bar light"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">TOMOSIA VPN</div></div>
+              <div class="ewin-body">
+                <div class="c-icon" style="background: rgba(255, 59, 48, 0.12); margin-bottom: 20px"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
+                <div class="err-title">Authentication Failed</div>
+                <div class="err-msg">Wrong account name or password.</div>
+                <div class="btn">Update Password</div>
+              </div>
+            </div>
+            <div id="e3" class="abs ewin" style="left: 1260px; top: 350px; width: 520px">
+              <div class="win-bar light"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">TOMOSIA VPN</div></div>
+              <div class="ewin-body">
+                <div class="c-icon" style="background: rgba(255, 59, 48, 0.12); margin-bottom: 20px"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#ff3b30" /><path d="M15,8 V17 M15,21 V21.6" stroke="#fff" stroke-width="3" stroke-linecap="round" /></svg></div>
+                <div class="err-title">IKE Handshake Failed</div>
+                <div class="err-msg">Check the shared secret.</div>
+                <div class="btn">Try Again</div>
+              </div>
             </div>
           </section>
 
@@ -271,7 +322,7 @@
               <img id="logo7" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 870px; top: 170px; width: 180px; height: 180px; border-radius: 40px">
               <div id="name7" class="abs label" style="left: 0; width: 1920px; top: 390px; text-align: center; font: 700 92px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
               <div id="dl7" class="abs" style="left: 0; width: 1920px; top: 550px; display: flex; justify-content: center">
-                <div class="dl"><svg width="30" height="30" viewBox="0 0 30 30"><path d="M15,4 V20 M8,13 L15,20 L22,13 M5,26 H25" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Download</span></div>
+                <div class="dl"><svg width="30" height="30" viewBox="0 0 30 30"><path d="M15,4 V20 M8,13 L15,20 L22,13 M5,26 H25" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Download TOMOSIA VPN</span></div>
               </div>
               <div id="meta7" class="abs meta" style="left: 0; width: 1920px; top: 690px; text-align: center">macOS 12+ · Apple Silicon &amp; Intel</div>
               <div id="url7" class="abs url" style="left: 0; width: 1920px; top: 760px; text-align: center">github.com/TOMOSIA-VIETNAM/vpn</div>
@@ -279,13 +330,19 @@
           </section>
         </div>
       </div>
+
+      <!-- the Dock stays in place across scenes; its glass switches from dark to light with the wallpaper -->
+      <div id="dock" class="layer" style="opacity: 0">
+        <div id="dock-dark" class="abs dock"></div>
+        <div id="dock-light" class="abs dock"></div>
+      </div>
       <div id="flash" class="layer"></div>
       <div id="captions" class="layer"></div>
       <div id="fade" class="layer"></div>
-      <audio id="mix" src="assets/audio/mix-vi.m4a" data-start="0" data-duration="57" data-track-index="10" data-volume="1"></audio>
+      <audio id="mix" src="assets/audio/mix-vi.m4a" data-start="0" data-duration="50.5" data-track-index="10" data-volume="1"></audio>
     </div>
 
-    <script>/*TIMING:BEGIN*/window.TIMING={"duration":57,"fps":30,"beat0":0,"beatLen":0.517241,"kick":[[8,36],[44,58],[58,86]],"drops":[44],"outroBeat":86,"scenes":{"s01-hook":{"start":0,"end":4.138,"lines":[{"on":1.034,"off":2.758,"words":[["~đang",1.034,1.295],["~họp",1.295,1.422],["~thì",1.422,1.549],["vpn",1.875,2.332],["drop",2.332,2.758]]}]},"s02-pain":{"start":4.138,"end":10.345,"lines":[{"on":4.688,"off":7.502,"words":[["~mở",4.688,5.077],["~cài",5.077,5.206],["settings",5.206,5.41],["~ra",5.41,5.653],["~connection",6.376,6.818],["failed",6.818,7.502]]},{"on":8.256,"off":9.218,"words":[["~không",8.256,8.41],["~một",8.41,8.651],["~lời",8.651,8.892],["~giải",8.892,9.095],["why",9.095,9.218]]}]},"s03-why":{"start":10.345,"end":22.759,"lines":[{"on":10.969,"off":15.727,"words":[["~vpn",10.969,11.393],["~công",11.393,11.708],["~ty",11.708,11.949],["~chạy",11.949,13.351],["protocol",13.81,14.28],["~một",14.814,14.93],["~giao",14.93,15.097],["~thức",15.097,15.245],["~đời",15.245,15.449],["old",15.449,15.727]]},{"on":17.276,"off":22.56,"words":[["~vpn",17.276,17.634],["~có",17.634,17.893],["builtin",17.893,18.19],["~của",18.19,18.301],["~mac",18.301,18.393],["~chạy",18.393,18.515],["~chập",18.803,19.19],["~chờn",19.19,19.449],["~với",19.449,19.579],["~nó",19.579,19.853],["~còn",20.56,20.671],["others",20.671,20.875],["~ứng",20.875,21.042],["~dụng",21.042,21.245],["~khác",21.245,21.43],["~lại",21.43,21.671],["~đòi",21.671,21.93],["~chứng",21.93,22.097],["cert",22.097,22.319],["~riêng",22.319,22.56]]}]},"s04-reveal":{"start":22.759,"end":30,"lines":[{"on":23.109,"off":25.639,"words":[["~nên",23.109,23.301],["~chúng",23.301,23.542],["~tôi",23.542,23.764],["~làm",23.764,24.073],["brand",24.31,25.06],["~vpn",25.06,25.639]]},{"on":26.492,"off":28.32,"words":[["~một",26.492,26.603],["~công",26.603,26.82],["switch",26.82,26.993],["~ngay",27.531,27.727],["~trên",27.727,27.894],["~menu",27.894,28.116],["menubar",28.116,28.32]]}]},"s05-reconnect":{"start":30,"end":36.207,"lines":[{"on":30.55,"off":34.748,"words":[["~mạng",30.55,30.976],["~chập",30.976,31.172],["flaky",31.172,31.369],["~ứng",32.286,32.397],["~dụng",32.397,32.624],["~tự",32.624,32.846],["~kết",32.846,32.994],["~nối",32.994,33.18],["reconnect",33.18,33.402],["~và",33.402,33.772],["notify",33.772,34.106],["~khi",34.106,34.291],["~đã",34.291,34.402],["~có",34.402,34.55],["~mạng",34.55,34.748]]}]},"s06-errors":{"start":36.207,"end":44.483,"lines":[{"on":36.831,"off":43.398,"words":[["~lỗi",36.831,37.082],["~thì",37.082,37.304],["~nói",37.304,37.526],["clear",37.526,37.89],["~sai",38.618,38.823],["~mật",38.823,39.063],["password",39.063,39.333],["~sai",39.946,40.193],["~shared",40.193,40.962],["secret",40.962,41.141],["~hay",41.887,42.026],["~mạng",42.026,42.397],["~chặn",42.397,42.619],["~cổng",42.619,42.878],["udp",42.878,43.398]]}]},"s07-outro":{"start":44.483,"end":57,"lines":[{"on":45,"off":48.316,"words":[["~kill",45,45.577],["kill",45.577,45.789],["~mật",46.324,46.617],["~khẩu",46.617,46.832],["~cất",46.832,46.993],["~trong",47.288,47.697],["keychain",47.697,48.316]]},{"on":49.138,"off":54.537,"words":[["brand",49.138,49.92],["~vpn",49.92,50.843],["~tải",51.69,51.81],["download",51.81,52.2],["~cho",52.2,52.4],["~macos",52.4,53.023],["macos",53.368,53.8],["~trở",53.8,54.32],["~lên",54.32,54.537]]}]}},"voice":"vi","captionLang":"vi","strings":{"Weekly sync":"Họp tuần","What went wrong?":"Lỗi gì vậy?","No details.":"Không có chi tiết.","Old protocol. No tool that fits.":"Giao thức cũ. Không công cụ nào vừa.","Built-in VPN":"VPN có sẵn","keeps dropping":"hay rớt","Other apps":"Ứng dụng khác","need certificates":"cần chứng chỉ","One switch. Done.":"Một công tắc. Xong.","Reconnects on its own":"Tự kết nối lại","and tells you when you're back":"và báo khi đã có mạng","Clear errors, fixed fast":"Lỗi rõ ràng, sửa ngay","Passwords in Keychain":"Mật khẩu trong Keychain","Download":"Tải ngay"},"captions":[{"start":0.914,"end":3.258,"words":[["Đang",1.034],["họp",1.295],["thì",1.422],["VPN",1.875],["rớt.",2.332]]},{"start":4.568,"end":8.002,"words":[["Mở",4.688],["cài",5.077],["đặt",5.206],["ra:",5.41],["Connection",6.376],["failed.",6.818]]},{"start":8.136,"end":9.718,"words":[["Không",8.256],["một",8.41],["lời",8.651],["giải",8.892],["thích.",9.095]]},{"start":10.849,"end":14.654,"words":[["VPN",10.969],["công",11.393],["ty",11.708],["chạy",11.949],["L2TP/IPsec,",13.81]]},{"start":14.694,"end":16.227,"words":[["một",14.814],["giao",14.93],["thức",15.097],["đời",15.245],["cũ.",15.449]]},{"start":17.156,"end":19.419,"words":[["VPN",17.276],["có",17.634],["sẵn",17.893],["của",18.19],["Mac",18.301],["chạy",18.393],["chập",18.803],["chờn",19.19],["với",19.449]]},{"start":19.459,"end":21.937,"words":[["nó,",19.579],["còn",20.56],["nhiều",20.671],["ứng",20.875],["dụng",21.042],["khác",21.245],["lại",21.43],["đòi",21.671],["chứng",21.93]]},{"start":21.977,"end":22.949,"words":[["chỉ",22.097],["riêng.",22.319]]},{"start":22.989,"end":26.139,"words":[["Nên",23.109],["chúng",23.301],["tôi",23.542],["làm",23.764],["TOMOSIA",24.31],["VPN.",25.06]]},{"start":26.372,"end":28.82,"words":[["Một",26.492],["công",26.603],["tắc,",26.82],["ngay",27.531],["trên",27.727],["menu",27.894],["bar.",28.116]]},{"start":30.43,"end":32.126,"words":[["Mạng",30.55],["chập",30.976],["chờn?",31.172]]},{"start":32.166,"end":34.131,"words":[["Ứng",32.286],["dụng",32.397],["tự",32.624],["kết",32.846],["nối",32.994],["lại",33.18],["và",33.402],["báo",33.772],["khi",34.106]]},{"start":34.171,"end":35.248,"words":[["đã",34.291],["có",34.402],["mạng.",34.55]]},{"start":36.711,"end":38.458,"words":[["Lỗi",36.831],["thì",37.082],["nói",37.304],["rõ:",37.526]]},{"start":38.498,"end":39.786,"words":[["sai",38.618],["mật",38.823],["khẩu,",39.063]]},{"start":39.826,"end":41.727,"words":[["sai",39.946],["shared",40.193],["secret,",40.962]]},{"start":41.767,"end":43.898,"words":[["hay",41.887],["mạng",42.026],["chặn",42.397],["cổng",42.619],["UDP.",42.878]]},{"start":44.88,"end":48.816,"words":[["Kill",45],["switch.",45.577],["Mật",46.324],["khẩu",46.617],["cất",46.832],["trong",47.288],["Keychain.",47.697]]},{"start":49.018,"end":55.037,"words":[["TOMOSIA",49.138],["VPN.",49.92],["Tải",51.69],["ngay",51.81],["cho",52.2],["macOS",52.4],["12",53.368],["trở",53.8],["lên.",54.32]]}],"sfx":[{"sfx":"ding","vol":0.35,"t":2.332},{"sfx":"click","vol":0.25,"t":6.818},{"sfx":"riser","vol":0.22,"t":20.69},{"sfx":"click","vol":0.4,"t":26.82},{"sfx":"pop","vol":0.25,"t":31.172},{"sfx":"ding","vol":0.35,"t":33.772},{"sfx":"click","vol":0.2,"t":39.063},{"sfx":"click","vol":0.2,"t":40.962},{"sfx":"click","vol":0.2,"t":42.878},{"sfx":"click","vol":0.3,"t":51.81}],"env":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.38,0.76,1,0.99,0.74,0.82,0.73,0.76,0.79,0.58,0.3,0.55,0.85,0.93,1,0.42,0.02,0,0,0,0,0,0,0,0,0.06,0.64,0.82,0.54,0.25,0.66,1,0.71,0.04,0.23,1,0.94,0.86,1,0.81,0.74,0.87,0.82,0.5,0.49,0.56,1,0.74,0.46,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.05,0.75,1,1,1,1,0.75,0.25,0.01,0,0.31,0.7,0.73,0.53,0.63,0.5,0.05,0.01,0.11,0.16,0.35,0.78,0.59,0.48,0.28,0.1,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.22,0.13,0.73,0.82,0.62,0.59,0.61,0.64,0.65,0.16,0.01,0.12,0.22,0.29,0.24,0.69,0.55,0.45,0.33,0.19,0.05,0.02,0.03,0.04,0.04,0.09,0.76,0.73,0.51,0.26,0.08,0.01,0.01,0,0.04,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.03,0.2,0.29,0.33,1,0.91,1,1,1,1,1,0.67,0.02,0.06,0.5,0.66,0.92,0.69,0.5,0.28,0.19,0.28,0.4,0.4,0.23,0.04,0.01,0.1,0.88,0.18,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.33,0.37,0.27,0.95,1,0.75,0.19,0.01,0.5,0.79,0.65,0.79,0.8,0.69,0.7,0.62,0.59,0.31,0.03,0.23,1,0.79,0.67,0.45,0.06,0.61,1,0.83,0.66,0.64,0.49,0.22,0.02,0.01,0.19,0.65,0.5,0.81,0.57,0.21,0,0,0,0,0,0,0.36,0.63,0.7,0.83,0.67,0.31,0.2,0.18,0.23,0.54,0.49,0.54,0.41,0.07,0,0.5,1,0.67,0.12,0,0.22,1,1,0.91,0.56,0.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0.45,0.6,0.76,0.4,0.01,0.25,0.69,0.48,0.28,0.53,0.5,0.34,0.66,0.52,0.23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.21,0.51,0.65,0.26,0.01,0.08,0.34,0.56,0.35,0.09,0.11,0.84,0.19,0,0.14,0.45,0.75,0.47,0.19,0.06,0,0,0.23,0.8,0.63,0.61,0.5,0.24,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.27,0.32,0.8,1,0.62,0.04,0.52,0.83,0.74,0.98,0.91,0.7,0.69,0.73,0.47,0.04,0.19,0.7,1,0.64,0.34,0.36,0.39,0.43,1,0.45,0.69,0.39,0,0.26,1,0.89,0.6,0.67,0.61,0.59,0.55,0.18,0,0,0,0,0,0,0,0.02,0.43,0.67,0.84,0.34,0.14,0.14,0.02,0.26,0.46,0.79,0.13,0.02,0.05,0.33,0.5,0.64,0.89,0.78,0.36,0.29,0.15,0.06,0.61,0.56,0.66,0.53,0.44,0.29,0.23,0.27,0.3,0.14,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.06,0.96,1,0.88,0.88,0.81,0.84,0.97,1,1,0.9,0.61,0.16,0.55,0.78,1,0.57,0.6,0.67,0.16,0.09,0.11,0.13,0.18,0.59,0.73,0.49,0.04,0,0.01,0.08,0.51,0.74,0.44,0.19,0.31,0.49,0.62,0.5,0.34,0.21,0.11,0,0.2,0.3,0.23,0.44,0.51,0.12,0.19,0.19,0.55,0.53,0.21,0.1,0.16,0.25,0.92,1,1,0.7,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.59,1,1,1,1,1,0.85,1,0.61,0.11,0.38,0.45,0.83,0.29,0.29,0.04,0.75,1,1,0.87,0.78,0.41,0.53,0.7,0.59,0.46,0.25,0.14,0.08,0.02,0,0,0,0,0,0,0.01,0,0,0.88,1,1,0.92,1,1,1,1,0.58,0.43,0.6,0.42,0.37,0.38,0.27,0.27,0.73,0.57,0.53,0.48,0.44,0.27,0.08,0.04,0.62,0.69,0.23,0.01,0.25,0.66,0.55,0.5,0.77,0.71,0.5,0.34,0.18,0.04,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.12,0.58,0.71,0.73,0.29,0.03,0.02,0.01,0.76,0.89,0.34,0.21,0.01,0.96,0.5,0.07,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.3,1,1,1,0.9,0.6,0.36,0.04,0.3,0.39,1,0.6,0.6,0.56,0.71,0.6,0.56,0.65,0.84,0.59,0.29,0.5,0.81,0.62,0.38,0.16,0.04,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.06,0.67,0.93,0.96,0.87,0.36,0.09,0.41,0.67,0.33,0.46,0.78,0.75,0.04,0.12,0.53,0.78,1,1,1,0.51,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.74,1,1,1,0.86,0.52,0.81,1,0.11,0.14,0.25,0,0,0.35,1,0.67,0.19,0.07,0,0.47,1,0.56,0.06,1,1,1,1,1,0.88,0.73,0.78,0.73,0.33,0.04,0.03,0,0,0,0,0.01,0.13,0.13,0.13,0.78,0.64,0.28,0.1,0.09,0.09,0.3,0.41,0.28,0.29,0.22,0.37,0.26,0.05,0.06,0.04,0.34,0.72,0.27,0.52,0.34,0.07,0,0.19,0.44,0.36,0.42,0.63,0.71,0.64,0.3,0.07,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.04,0.79,1,1,1,0.55,0.38,0.62,0.8,0.31,0,0,0.08,0.33,0.53,0.27,0.13,0.14,0.16,0.22,0.19,0.33,0.59,0.5,0.37,0.44,0.43,1,0.33,0.48,0.69,0.47,0.23,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.04,0.3,0.38,0.46,0.29,0.58,0.7,0.81,0.85,0.86,0.97,1,0.04,0.09,0.07,0.07,0.14,0.79,1,0.68,0.18,0.08,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.17,0.34,0.43,0.74,0.69,0.65,0.65,0.59,0.4,0.22,0.37,0.43,0.57,0.44,0.67,0.81,0.62,0.52,0.31,0.42,0.5,0.23,0.92,0.43,0.24,0.03,0,0.09,0.4,0.23,0.12,0.17,0.51,0.8,1,0.34,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.02,0.12,0.24,0.65,0.67,0.6,0.63,0.42,0.38,0.37,0.48,0.63,0.48,0.07,0.01,0.02,0.02,0.26,0.5,0.29,0.03,0.06,0.11,0.02,0.23,1,0.46,0.2,0.12,0.04,0,0.22,0.72,0.73,0.55,0.58,1,1,0.07,0,0.69,0.96,0.82,0.84,0.83,0.41,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.37,1,1,0.94,0.94,0.78,0.64,0.38,0.69,0.83,0.65,0.41,0.82,1,0.83,0.61,0.27,0,0,0,0.01,0,0,0.01,0,0,0,0.01,0.01,0.01,0,0,0,0,0,0,0,0,0.01,0.08,0.46,0.59,0.65,0.87,0.65,0.02,0.02,0.01,0.08,0.03,0.05,0.17,0.15,0.61,0.91,0.84,0.69,0.31,0.1,0.05,0.03,0.01,0.01,0,0,0,0,0,0.19,1,0.82,0.01,0,0,0,0,0.23,0.5,0.84,0.81,0.44,0.42,0.25,0.03,0,0.07,0.71,0.63,0.31,0.04,0.01,0.15,0.31,0.46,0.97,0.74,0.63,0.4,0.25,0.07,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0.99,0.88,1,1,1,1,0.99,0.53,0.56,0.76,0.59,0.44,0.56,0.84,0.87,0.85,0.68,0.74,0.7,0.62,0.48,0.36,0.25,0.1,0.02,0.01,0,0.06,0.2,0.34,0.87,0.83,0.6,0.38,0.01,0.01,0.02,0.66,0.67,0.54,0.72,0.64,0.78,0.6,0.64,0.51,0.3,0.16,0.04,0,0,0,0,0,0,0,0,0.01,0.01,0.02,0.02,0.02,0.02,0.01,0.01,0,0,0,0,0,0,0,0,0.32,1,0.75,0.64,0.41,0.22,0.23,0.26,0.43,0.53,0.52,0.59,0.69,0.84,0.8,0.69,0.47,0.02,0.01,0.4,0.51,0.95,0.74,0.6,0.71,0.73,0.53,0.36,0.04,0,0.06,0.27,0.65,0.51,0.66,0.16,0.07,0.35,0.56,0.66,0.3,0,0,0,0,0.01,0,0,0,0.01,0.02,0.47,0.65,0.59,0.78,0.66,0.58,0.45,0.22,0.07,0.08,0.12,0.14,0.16,0.14,0.5,0.53,0.48,0.51,0.48,0.19,0.03,0.01,0.05,0.17,0.24,0.29,0.17,0.14,0.21,0.3,0.56,0.57,0.6,0.34,0.17,0.03,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};/*TIMING:END*/</script>
+    <script>/*TIMING:BEGIN*/window.TIMING={"duration":50.5,"fps":30,"beat0":0,"beatLen":0.517241,"kick":[[10,28],[36,48],[48,74]],"drops":[36],"outroBeat":74,"scenes":{"s01-hook":{"start":0,"end":5.172,"lines":[{"on":1.034,"off":3.902,"words":[["~đang",1.034,1.198],["~họp",1.198,1.569],["~hăng",1.569,1.754],["~say",1.754,2.062],["~tự",2.648,2.759],["~nhiên",2.759,3.032],["drop",3.032,3.365],["vpn",3.365,3.902]]}]},"s02-pain":{"start":5.172,"end":11.379,"lines":[{"on":5.722,"off":8.044,"words":[["~hệ",5.722,6],["~thống",6,6.148],["~báo",6.148,6.452],["~connection",7.12,7.63],["failed",7.63,8.044]]},{"on":8.762,"off":9.596,"words":[["~lỗi",8.762,8.945],["~gì",8.945,9.148],["~thì",9.148,9.315],["why",9.315,9.596]]}]},"s03-why":{"start":11.379,"end":18.621,"lines":[{"on":11.929,"off":15.056,"words":[["protocol",11.929,13.013],["~mặc",13.311,14.059],["builtin",14.059,14.337],["~rất",14.337,14.596],["~hay",14.596,14.827],["~rớt",14.827,15.056]]},{"on":16.707,"off":18.529,"words":[["~dùng",16.707,16.881],["~app",16.881,17.066],["others",17.066,17.157],["~lại",17.157,17.225],["~vướng",17.533,18.214],["~chứng",18.214,18.362],["cert",18.362,18.529]]}]},"s04-reveal":{"start":18.621,"end":24.828,"lines":[{"on":18.971,"off":20.983,"words":[["~đã",18.971,19.248],["~có",19.248,19.508],["brand",19.508,20.415],["~vpn",20.415,20.983]]},{"on":21.808,"off":23.558,"words":[["~nằm",21.808,22.063],["~gọn",22.063,22.304],["switch",22.304,22.563],["~trên",22.563,22.934],["~menu",22.934,23.304],["menubar",23.304,23.558]]}]},"s05-reconnect":{"start":24.828,"end":31.034,"lines":[{"on":25.452,"off":29.639,"words":[["~mạng",25.452,25.805],["flaky",25.805,26.013],["~app",26.828,27.046],["~tự",27.046,27.213],["~động",27.213,27.416],["~kết",27.416,27.62],["~nối",27.62,27.824],["reconnect",27.824,28.042],["~xong",28.439,28.676],["~xuôi",28.676,28.972],["~sẽ",28.972,29.194],["notify",29.194,29.398],["~ngay",29.398,29.639]]}]},"s06-errors":{"start":31.034,"end":38.276,"lines":[{"on":31.584,"off":36.936,"words":[["~lỗi",31.584,31.973],["~gì",31.973,32.196],["~báo",32.196,32.473],["clear",32.473,32.754],["~kẹt",33.304,33.547],["~cổng",33.547,33.77],["udp",33.77,34.367],["~sai",34.772,34.992],["~mật",34.992,35.177],["password",35.177,35.458],["~hay",35.849,36.01],["~shared",36.01,36.436],["secret",36.436,36.936]]}]},"s07-outro":{"start":38.276,"end":50.5,"lines":[{"on":38.793,"off":43.253,"words":[["~trang",38.793,39.106],["~bị",39.106,39.374],["~kill",39.663,39.866],["kill",39.866,40.169],["~lưu",41.141,41.466],["~mật",41.466,41.626],["~khẩu",41.626,42.066],["~bằng",42.066,42.466],["keychain",42.466,43.253]]},{"on":44.483,"off":47.98,"words":[["brand",44.483,45.323],["~vpn",45.323,46.272],["~tải",47.401,47.523],["download",47.523,47.98]]}]}},"voice":"vi","captionLang":"vi","strings":{"Weekly sync":"Họp tuần","VPN drops out of nowhere":"VPN rớt bất ngờ","What went wrong? No idea.":"Lỗi gì? Không rõ.","No details.":"Không có chi tiết.","Certificates in the way":"Rào cản chứng chỉ phức tạp","Built-in VPN":"VPN mặc định","keeps dropping":"rất hay rớt","Other apps":"App khác","need certificates":"vướng chứng chỉ","Quick and easy":"Nhanh chóng, tiện lợi","Reconnects on its own":"Tự động kết nối lại","and tells you once it's back":"Xong xuôi, báo ngay","Right cause, right error":"Bắt đúng bệnh, báo đúng lỗi","Passwords in Keychain":"Mật khẩu trong Keychain","Download TOMOSIA VPN":"Tải TOMOSIA VPN ngay"},"captions":[{"start":0.914,"end":4.402,"words":[["Đang",1.034],["họp",1.198],["hăng",1.569],["say,",1.754],["tự",2.648],["nhiên",2.759],["rớt",3.032],["VPN.",3.365]]},{"start":5.602,"end":8.544,"words":[["Hệ",5.722],["thống",6],["báo",6.148],["“Connection",7.12],["failed”.",7.63]]},{"start":8.642,"end":10.096,"words":[["Lỗi",8.762],["gì",8.945],["thì",9.148],["chịu.",9.315]]},{"start":11.809,"end":15.556,"words":[["L2TP/IPsec",11.929],["mặc",13.311],["định",14.059],["rất",14.337],["hay",14.596],["rớt,",14.827]]},{"start":16.587,"end":18.811,"words":[["dùng",16.707],["app",16.881],["khác",17.066],["lại",17.157],["vướng",17.533],["chứng",18.214],["chỉ.",18.362]]},{"start":18.851,"end":21.483,"words":[["Đã",18.971],["có",19.248],["TOMOSIA",19.508],["VPN.",20.415]]},{"start":21.688,"end":24.058,"words":[["Nằm",21.808],["gọn",22.063],["gàng",22.304],["trên",22.563],["menu",22.934],["bar.",23.304]]},{"start":25.332,"end":28.279,"words":[["Mạng",25.452],["rớt?",25.805],["App",26.828],["tự",27.046],["động",27.213],["kết",27.416],["nối",27.62],["lại,",27.824]]},{"start":28.319,"end":30.139,"words":[["xong",28.439],["xuôi",28.676],["sẽ",28.972],["báo",29.194],["ngay.",29.398]]},{"start":31.464,"end":33.144,"words":[["Lỗi",31.584],["gì",31.973],["báo",32.196],["nấy:",32.473]]},{"start":33.184,"end":34.612,"words":[["kẹt",33.304],["cổng",33.547],["UDP,",33.77]]},{"start":34.652,"end":37.436,"words":[["sai",34.772],["mật",34.992],["khẩu",35.177],["hay",35.849],["shared",36.01],["secret.",36.436]]},{"start":38.673,"end":43.753,"words":[["Trang",38.793],["bị",39.106],["Kill",39.663],["switch.",39.866],["Lưu",41.141],["mật",41.466],["khẩu",41.626],["bằng",42.066],["Keychain.",42.466]]},{"start":44.363,"end":48.48,"words":[["TOMOSIA",44.483],["VPN.",45.323],["Tải",47.401],["ngay.",47.523]]}],"sfx":[{"sfx":"ding","vol":0.35,"t":3.032},{"sfx":"click","vol":0.25,"t":7.63},{"sfx":"riser","vol":0.22,"t":16.552},{"sfx":"click","vol":0.4,"t":22.304},{"sfx":"pop","vol":0.25,"t":25.805},{"sfx":"ding","vol":0.35,"t":29.194},{"sfx":"click","vol":0.2,"t":33.77},{"sfx":"click","vol":0.2,"t":35.177},{"sfx":"click","vol":0.2,"t":36.436},{"sfx":"click","vol":0.3,"t":47.523}],"env":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.29,0.74,0.6,0.57,0.59,0.55,0.55,0.46,0.33,0.28,0.7,0.82,0.65,0.26,0.01,0.14,0.23,0.4,0.66,0.91,0.96,0.86,0.64,0.5,0.48,0.63,0.64,0.73,0.72,0.56,0.28,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0,0,0.41,1,0.13,0.07,0.66,1,1,1,1,0.7,0.85,0.74,0.41,0.09,0,0,0.01,0.11,0.41,0.72,1,0.94,0.53,0.01,0.01,0.3,0.71,0.91,0.74,0.14,0.01,0.65,0.67,0.84,0.86,0.64,0.6,0.46,0.12,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.13,1,0.7,0.07,0.15,0.49,0.75,0.48,0.43,0.41,0.83,0.77,0.58,0.46,0.43,0.5,0.65,0.2,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.24,0.27,1,0.61,0.65,0.72,0.98,0.52,0.02,0.13,0.28,0.35,0.35,0.66,0.31,0.22,0.08,0.06,0.06,0.09,0.66,0.95,0.9,0.72,0.55,0.24,0.06,0.02,0.05,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,1,1,1,0.56,0.81,1,0.51,0.4,0.54,1,1,0.99,0.82,0.18,0.09,0.88,0.61,0.04,0.34,0.72,0.54,0.85,0.23,0.15,0.2,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.03,1,1,1,0.92,0.62,0.28,0.28,0.36,0.47,0.46,0.46,0.44,0.11,0.01,0.25,0.61,0.43,0.05,0.01,0.63,0.97,0.77,0.72,0.38,0.26,0.06,0,0,0,0,0,0,0,0,0.79,0.78,0.84,0.7,0.02,0.07,0.68,0.53,0.26,0.31,0.33,0.32,0.84,0.41,0.01,0.01,0.02,0.29,0.48,0.44,0.59,0.21,0.01,0.06,0.25,0.73,0.31,0.08,0,0,0,0,0,0.01,0.1,0.24,0.25,0.31,1,0.51,0.01,0,0.01,0.05,0.14,0.48,0.36,0.2,0.12,0.2,0.63,0.56,0.33,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.17,0.27,0.75,1,0.21,0.1,0.01,0.09,1,0.35,0.28,0.2,0.51,0.96,0.66,0.33,0.01,0,0,0,0,0,0.01,0,0.01,0.22,0.41,0.44,0.36,0.1,0.14,0.26,0.32,0.27,0.22,0.18,0.12,0.15,0.16,0.17,0.32,0.67,0.68,0.57,0.72,0.32,0.08,0.23,0.56,0.87,0.5,0.32,0.22,0.94,0.59,0.15,0.04,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.14,0.31,0.73,0.66,0.65,0.29,0,0.38,0.81,0.65,0.58,0.46,0.56,0.58,0.37,0.01,0,0,0,0,0,1,1,1,0.77,0.86,1,1,0.89,0.43,0.46,0.4,0.25,0.52,0.56,0.89,0.94,0.56,0.45,0.34,0.3,0.13,0.09,0.11,0.39,1,0.75,0.18,0,0.58,0.98,1,1,0.69,0.55,0.24,0.09,0.01,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.38,0.66,0.86,0.73,0.54,0.45,0.38,0.38,0.23,0.09,0.13,0.6,1,0.51,0.11,0.4,0.23,0.43,0.89,0.76,0.51,0.33,0.16,0.07,0.01,0.01,0,0,0,0,0.12,0.19,0.78,0.75,0.28,0.44,0.42,0.33,0.31,0.36,0.43,0.62,0.54,0.45,0.57,0.58,0.55,0.34,0.3,0.65,0.51,0.27,0.13,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.21,0.72,0.81,0.85,0.74,0.94,0.41,0.12,0.11,0.21,0.17,0.21,0.26,0.3,0.76,0.61,0.68,0.29,0,0,0,0,0,0,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.6,0.95,1,0.47,0.01,0,0,0,0.03,0.97,0.43,0.19,0.05,0.07,0.23,0.91,0.87,0.34,0.08,0.23,0.01,0.06,0.73,0.66,0.09,0,0.52,0.82,0.83,1,0.75,0.41,0.58,0.74,0.64,0.35,0.21,0.11,0.01,0,0,0,0,0,0,0,0,0,0,0.06,0.21,0.33,0.41,0.75,0.63,0.58,0.5,0.28,0.31,0.33,0.47,0.97,1,0.89,0.61,0.43,0.18,0.36,0.44,0.35,0.32,0.63,0.11,0.26,0.47,0.29,0.25,0.35,0.5,0.61,0.62,0.68,0.82,0.85,0.67,0.42,0.09,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.21,0.44,0.67,1,0.73,0.73,0.46,0.44,0.28,0.3,0.32,0.73,0.75,0.42,0.4,0.38,0.24,0.32,0.27,0.38,0.45,0.91,0.98,1,0.93,0.77,0.95,0.72,0.43,0.32,0.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.36,0.76,0.48,0.06,0,0.01,0,0.02,0.82,0.84,0.27,0.22,0.17,0.05,0.01,0.36,0.97,0.72,0.91,0.79,1,0.97,0.76,0.02,0,1,1,1,1,0.85,0.54,0.24,0.02,0,0,0,0,0,0,0,0,0,0,0.01,0.06,0.21,0.28,0.37,0.29,0.69,0.67,0.85,1,1,0.69,0.08,0.06,0.08,0.12,0.64,1,0.94,0.5,0.25,0.07,0.01,0,0,0,0,0,0,0,0,0,0,0.05,0.17,0.24,0.62,0.76,0.62,0.42,0.44,0.35,0.17,0.4,0.33,0.45,0.44,0.39,0.55,0.52,0.38,0.27,0.41,0.51,0.55,0.57,0.7,0.07,0,0.06,0.4,0.64,0.46,0.87,1,0.61,0.03,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.11,0.32,0.38,1,1,0.94,1,0.9,0.84,0.81,0.61,0.62,1,1,0.93,0.87,0.4,0.18,0.03,0,0,0,0,0,0,0,0.03,0.18,1,1,1,1,1,0.65,0.26,0.2,0.2,0.24,0.12,0.78,1,0.61,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.68,1,1,1,1,1,1,0.74,1,0.9,0.94,0.77,0.34,0.01,0.08,0.11,0.27,0.23,0.61,0.95,0.83,0.65,0.59,0.39,0.17,0.09,0.02,0,0,0,0,0,0.07,0.52,0.92,0.84,0.7,0.59,0.36,0.28,0.18,0.05,0.01,0,0,0,0.1,1,1,0.78,0.67,0.22,0,0.02,0.15,0.24,0.64,1,1,0.97,0.9,0.96,0.56,0.16,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.45,1,1,1,0.77,0.81,0.81,0.66,0.82,0.76,0.6,0.25,0.46,0.47,0.39,0.18,0.66,0.77,0.71,0.52,0.25,0.59,0.69,0.54,0.49,0.35,0.27,0.25,0.15,0.05,0.01,0.01,0.01,0.07,0.19,0.68,1,0.8,0.49,0.05,0,0.05,0.76,0.79,0.71,0.63,0.23,0.35,0.51,0.47,0.47,0.47,0.29,0.16,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.69,0.63,0.6,0.37,0.15,0.06,0.02,0.01,0.02,0.04,0.17,0.27,0.34,0.43,0.45,0.41,0.18,0.03,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};/*TIMING:END*/</script>
     <script>
       (() => {
         const T = window.TIMING;
@@ -307,14 +364,67 @@
         const W = (sid, word, nth = 1) => (hit(sid, word, nth) || [0, SC[sid].start])[1]; // word onset
         const LINE = (sid, i) => SC[sid].lines[i].on; // onset of a line's first word
 
+        // ---------- network line art: one fixed geometry, drawn dark (broken links) and green (reconnected) ----------
+        const SVGNS = "http://www.w3.org/2000/svg";
+        let seed = 7;
+        const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        const nodes = [];
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 8; c++) nodes.push([120 + c * 240 + (rnd() - 0.5) * 150, 110 + r * 215 + (rnd() - 0.5) * 120]);
+        const links = [];
+        nodes.forEach((a, i) => nodes.forEach((b, j) => {
+          if (j <= i) return;
+          const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+          if (d < 300 && rnd() < 0.72) links.push([i, j, d]);
+        }));
+        const BROKEN = new Set(links.map((_, i) => i).filter((i) => i % 7 === 3));
+        const draw = (svg, style) => {
+          links.forEach(([i, j, d], k) => {
+            const l = document.createElementNS(SVGNS, "line");
+            l.setAttribute("x1", nodes[i][0]); l.setAttribute("y1", nodes[i][1]);
+            l.setAttribute("x2", nodes[j][0]); l.setAttribute("y2", nodes[j][1]);
+            const broken = style.broken && BROKEN.has(k);
+            l.setAttribute("stroke", broken ? style.brokenColor(k) : style.line);
+            l.setAttribute("stroke-width", broken ? 3 : 2);
+            if (broken) l.setAttribute("stroke-dasharray", `${d * 0.38} ${d * 0.24} ${d * 0.38}`);
+            else if (style.drawable) { l.setAttribute("stroke-dasharray", d); l.setAttribute("stroke-dashoffset", d); }
+            l.classList.add(broken ? "ln-broken" : "ln");
+            svg.append(l);
+          });
+          nodes.forEach(([x, y]) => {
+            const c = document.createElementNS(SVGNS, "circle");
+            c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 5);
+            c.setAttribute("fill", style.node);
+            c.classList.add("nd");
+            svg.append(c);
+          });
+        };
+        draw($("#net-dark"), { line: "rgba(255,255,255,0.10)", node: "rgba(255,255,255,0.28)", broken: true, brokenColor: (k) => (k % 2 ? "#ff9f0a" : "#ff3b30") });
+        draw($("#net-green"), { line: "rgba(52,199,89,0.55)", node: "rgba(52,199,89,0.75)", drawable: true });
+
+        // ---------- Dock: generic app tiles (drawn here once, cloned into both glass variants) ----------
+        const glyph = {
+          folder: '<svg width="36" height="30" viewBox="0 0 36 30"><path d="M2,6 a3,3 0 0 1 3,-3 H14 L18,7 H31 a3,3 0 0 1 3,3 V25 a3,3 0 0 1 -3,3 H5 a3,3 0 0 1 -3,-3 Z" fill="#fff" /></svg>',
+          globe: '<svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#fff" stroke-width="3" /><path d="M4,18 H32 M18,4 C10,12 10,24 18,32 C26,24 26,12 18,4" fill="none" stroke="#fff" stroke-width="2.6" /></svg>',
+          chat: '<svg width="38" height="34" viewBox="0 0 38 34"><path d="M19,3 C28,3 35,9 35,16 C35,23 28,29 19,29 C17,29 15,29 13,28 L5,31 L8,25 C5,23 3,20 3,16 C3,9 10,3 19,3 Z" fill="#fff" /></svg>',
+          cal: '<svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="6" fill="#fff" /><rect x="4" y="4" width="32" height="10" rx="4" fill="#ff3b30" /><text x="20" y="32" text-anchor="middle" font-family="Inter" font-weight="700" font-size="16" fill="#1d1d1f">29</text></svg>',
+          note: '<svg width="34" height="38" viewBox="0 0 34 38"><rect x="3" y="3" width="28" height="32" rx="5" fill="#fff" /><path d="M9,14 H25 M9,20 H25 M9,26 H19" stroke="#c9a200" stroke-width="2.6" stroke-linecap="round" /></svg>',
+          gear: '<svg width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="8" fill="none" stroke="#fff" stroke-width="3.4" /><path d="M19,3 V9 M19,29 V35 M3,19 H9 M29,19 H35 M7.7,7.7 L12,12 M26,26 L30.3,30.3 M7.7,30.3 L12,26 M26,12 L30.3,7.7" stroke="#fff" stroke-width="3.4" stroke-linecap="round" /></svg>',
+        };
+        const apps = [["folder", "#2f8cf0"], ["globe", "#0a84ff"], ["chat", "#34c759"], ["cal", "#f2f2f7"], ["note", "#ffd60a"], ["gear", "#8e8e93"]];
+        ["#dock-dark", "#dock-light"].forEach((sel) => {
+          const d = $(sel);
+          apps.forEach(([g, bg]) => d.insertAdjacentHTML("beforeend", `<div class="app" style="background:${bg}">${glyph[g]}</div>`));
+          if (sel === "#dock-light") d.insertAdjacentHTML("beforeend", `<div class="app vpn-app"><img src="assets/images/logo.png" alt=""></div>`);
+        });
+
         // ---------- on-screen language: TIMING.strings maps English text nodes to the caption language ----------
         const LANG = T.captionLang;
         const STR = T.strings || {};
         document.documentElement.lang = LANG;
         const walk = document.createTreeWalker($("#root"), NodeFilter.SHOW_TEXT);
-        const nodes = [];
-        while (walk.nextNode()) nodes.push(walk.currentNode);
-        nodes.forEach((n) => {
+        const texts = [];
+        while (walk.nextNode()) texts.push(walk.currentNode);
+        texts.forEach((n) => {
           const k = n.nodeValue.trim();
           if (k && STR[k] != null) n.nodeValue = n.nodeValue.replace(k, STR[k]);
         });
@@ -350,7 +460,8 @@
         const spin = (el, t0, t1) => tl.fromTo(el, { rotation: 0 }, { rotation: 360 * Math.max(1, Math.round((t1 - t0) / 0.8)), duration: t1 - t0, ease: "none", immediateRender: false }, t0);
 
         // start states of elements revealed later
-        gsap.set(["#n-lost", "#sc02 .hl .w", "#nodetail", "#proto", "#h03 .w", "#card-builtin", "#card-cert", "#h04 .w", "#pop4", "#cursor", "#name4", "#sub05", "#status5", "#n5-lost", "#n5-back", "#sc05 .hl .w", "#sc06 .hl .w", "#e1", "#e2", "#e3", "#f-kill", "#f-key", "#end", "#dl7", "#meta7", "#url7"], { autoAlpha: 0 });
+        gsap.set(["#n-lost", "#h01 .w", "#h02 .w", "#h02b .w", "#shrug", "#nodetail", "#proto", "#h03 .w", "#card-builtin", "#card-cert", "#h04 .w", "#pop4", "#cursor", "#name4", "#sub05", "#status5", "#n5-lost", "#n5-back", "#sc05 .hl .w", "#sc06 .hl .w", "#e1", "#e2", "#e3", "#f-kill", "#f-key", "#end", "#dl7", "#meta7", "#url7"], { autoAlpha: 0 });
+        gsap.set(".vpn-app", { autoAlpha: 0, scale: 0.4 });
 
         tl.fromTo("#fade", { opacity: 1 }, { opacity: 0, duration: 0.25 }, 0);
 
@@ -360,6 +471,38 @@
           tl.to("#pulse", { scale: 1.004, duration: 0.05, ease: "power1.out" }, B(n));
           tl.to("#pulse", { scale: 1, duration: 0.35, ease: "power2.out" }, B(n) + 0.05);
         }
+
+        // ---------- backgrounds: [layer, from scene, to scene]; each drifts slowly while visible ----------
+        const S = (sid) => SC[sid].start;
+        const BGS = [
+          ["#bg-office", "s01-hook", "s02-pain"],
+          ["#bg-cafe", "s02-pain", "s03-why"],
+          ["#bg-net", "s03-why", "s04-reveal"],
+          ["#bg-wall", "s04-reveal", null],
+        ];
+        BGS.forEach(([sel, a, b]) => {
+          const t0 = S(a);
+          const t1 = b ? S(b) : T.duration;
+          if (t0 === 0) tl.set(sel, { opacity: 1 }, 0);
+          else tl.to(sel, { opacity: 1, duration: 0.6, ease: "power1.inOut" }, t0 - 0.3);
+          if (b) tl.to(sel, { opacity: 0, duration: 0.6, ease: "power1.inOut" }, t1 - 0.1);
+        });
+        // ken burns on the photos, slow drift of the line art and the wallpaper
+        tl.fromTo("#bg-office .photo", { scale: 1, x: 0 }, { scale: 1.08, x: -40, duration: S("s02-pain") + 0.5, ease: "none", immediateRender: false }, 0);
+        tl.fromTo("#bg-cafe .photo", { scale: 1.06, x: 30 }, { scale: 1, x: -20, duration: S("s03-why") - S("s02-pain") + 1, ease: "none", immediateRender: false }, S("s02-pain") - 0.3);
+        tl.fromTo("#net-dark", { scale: 1.04, x: 0 }, { scale: 1.1, x: -30, duration: S("s04-reveal") - S("s03-why") + 1, ease: "none", immediateRender: false }, S("s03-why") - 0.3);
+        const wallDur = T.duration - S("s04-reveal") + 0.3;
+        tl.fromTo("#blob1", { x: 0, y: 0 }, { x: 160, y: -40, duration: wallDur, ease: "sine.inOut", immediateRender: false }, S("s04-reveal") - 0.3);
+        tl.fromTo("#blob2", { x: 0, y: 0 }, { x: -140, y: 60, duration: wallDur, ease: "sine.inOut", immediateRender: false }, S("s04-reveal") - 0.3);
+        tl.fromTo("#blob3", { x: 0, y: 0 }, { x: -80, y: -70, duration: wallDur, ease: "sine.inOut", immediateRender: false }, S("s04-reveal") - 0.3);
+
+        // ---------- the Dock: on the desktop scenes, hidden for the line-art scene and the end card ----------
+        tl.set("#dock", { opacity: 1 }, 0);
+        hide("#dock", S("s03-why") - 0.2, 0.3);
+        show("#dock", S("s04-reveal") + 0.3, 0.4);
+        tl.set("#dock-dark", { opacity: 0 }, S("s04-reveal"));
+        tl.set("#dock-light", { opacity: 1 }, S("s04-reveal"));
+        hide("#dock", W("s07-outro", "brand") - 0.5, 0.3);
 
         // ---------- scene windows: [selector, scene id, transition in] ----------
         const WINDOWS = [
@@ -384,9 +527,8 @@
         });
         // the product appears: the dark world turns light on the drop
         T.drops.forEach((n) => flash(B(n), 0.35));
-        tl.to("#bg-light", { opacity: 1, duration: 0.5, ease: "power2.out" }, SC["s04-reveal"].start);
 
-        // ---------- s01: the call freezes on "rớt" ----------
+        // ---------- s01: the call freezes on "rớt", the headline lands on "VPN" ----------
         {
           const sid = "s01-hook";
           const t = W(sid, "drop");
@@ -394,32 +536,38 @@
           tl.to("#call .tiles", { filter: "grayscale(1)", duration: 0.25 }, t - 0.1);
           spin("#spin1", t - 0.1, SC[sid].end);
           slideIn("#n-lost", t);
+          intro($("#sc01"), W(sid, "vpn") - 0.1);
         }
 
-        // ---------- s02: "Connection failed", then the question ----------
+        // ---------- s02: "Connection failed", then the shrug ----------
         {
           const sid = "s02-pain";
           const t = W(sid, "failed");
+          intro($("#h02").parentNode, t - 0.55);
+          intro($("#h02b").parentNode, t - 0.2);
           tl.fromTo("#failed", { x: 0 }, { keyframes: { x: [0, -8, 8, -6, 6, -3, 0] }, duration: 0.45, ease: "none", immediateRender: false }, t);
-          rise("#nodetail", LINE(sid, 1) - 0.1, { y: 12 });
-          intro($("#sc02"), W(sid, "why") - 0.35);
+          rise("#nodetail", t + 0.4, { y: 12 });
+          rise("#shrug", LINE(sid, 1) - 0.1, { y: 16 });
         }
 
-        // ---------- s03: the protocol, then the two options that do not fit ----------
+        // ---------- s03: the protocol, the broken links, the two dead ends ----------
         {
           const sid = "s03-why";
-          pop("#proto", SC[sid].start + 0.3);
-          intro($("#sc03"), W(sid, "old") - 0.3);
+          pop("#proto", W(sid, "protocol") - 0.1);
           rise("#card-builtin", W(sid, "builtin") - 0.2);
+          tl.fromTo("#net-dark .ln-broken", { opacity: 0.2 }, { opacity: 1, duration: 0.3, stagger: 0.05, ease: "power1.out", immediateRender: false }, W(sid, "builtin"));
+          tl.to("#net-dark .ln-broken", { opacity: 0.35, duration: 0.5, yoyo: true, repeat: 5, ease: "sine.inOut" }, W(sid, "builtin") + 0.6);
           rise("#card-cert", W(sid, "others") - 0.2);
+          intro($("#sc03"), W(sid, "others") - 0.1);
         }
 
-        // ---------- s04: brand on the drop, then the switch ----------
+        // ---------- s04: brand on the drop, then the menu bar switch ----------
         {
           const sid = "s04-reveal";
           const t0 = SC[sid].start;
           pop("#logo4", t0, { from: 0.6, d: 0.8, ease: "expo.out" });
           rise("#name4", W(sid, "brand") - 0.1, { y: 24 });
+          pop(".vpn-app", W(sid, "brand") + 0.2, { from: 0.4, d: 0.6 });
           const t2 = LINE(sid, 1) - 0.4;
           tl.to("#brand", { autoAlpha: 0, scale: 0.92, duration: 0.35, ease: "power2.in" }, t2 - 0.2);
           intro($("#sc04"), t2 + 0.1);
@@ -434,7 +582,7 @@
           hide("#cursor", ts + 1.2, 0.3);
         }
 
-        // ---------- s05: drop, reconnect, both announced ----------
+        // ---------- s05: drop, reconnect (the network lights up green), both announced ----------
         {
           const sid = "s05-reconnect";
           const tl0 = W(sid, "flaky");
@@ -448,23 +596,28 @@
           show("#st-back", tr, 0.3);
           show("#mb5-back", tr, 0.2);
           hide("#mb5-lost", tr, 0.2);
+          tl.set("#net-green", { opacity: 0.55 }, tr - 0.6);
+          tl.to("#net-green .ln", { strokeDashoffset: 0, duration: 1.2, stagger: 0.012, ease: "power2.out" }, tr - 0.6);
+          tl.fromTo("#net-green .nd", { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.01, ease: "power1.out", immediateRender: false }, tr - 0.4);
+          tl.to("#net-green", { opacity: 0.18, duration: 0.8, ease: "power1.inOut" }, SC[sid].end - 0.6);
           const tn = W(sid, "notify");
           tl.to("#n5-lost", { y: 150, scale: 0.96, opacity: 0.8, duration: 0.4, ease: "power2.out" }, tn - 0.15);
           slideIn("#n5-back", tn - 0.15);
           rise("#sub05", tn - 0.1, { y: 16 });
         }
 
-        // ---------- s06: one error card per spoken error ----------
+        // ---------- s06: one error window per spoken error, in spoken order ----------
         {
           const sid = "s06-errors";
-          rise("#e1", W(sid, "password") - 0.25);
-          rise("#e2", W(sid, "secret") - 0.45);
-          rise("#e3", W(sid, "udp") - 0.4);
+          rise("#e1", W(sid, "udp") - 0.4);
+          rise("#e2", W(sid, "password") - 0.3);
+          rise("#e3", W(sid, "secret") - 0.4);
         }
 
         // ---------- s07: safety, then the download ----------
         {
           const sid = "s07-outro";
+          tl.to("#net-green", { opacity: 0, duration: 0.6 }, SC[sid].start);
           rise("#f-kill", W(sid, "kill") - 0.1);
           rise("#f-key", W(sid, "keychain") - 0.25);
           const tb = W(sid, "brand");
@@ -472,9 +625,10 @@
           show("#end", tb - 0.2, 0.01);
           pop("#logo7", tb - 0.2, { from: 0.7, d: 0.7, ease: "expo.out" });
           rise("#name7", tb, { y: 20 });
-          pop("#dl7", W(sid, "download") - 0.15, { from: 0.9 });
-          rise("#meta7", W(sid, "macos") - 0.2, { y: 14 });
-          rise("#url7", W(sid, "macos") + 0.3, { y: 14 });
+          const td = W(sid, "download");
+          pop("#dl7", td - 0.15, { from: 0.9 });
+          rise("#meta7", td + 0.4, { y: 14 });
+          rise("#url7", td + 0.8, { y: 14 });
         }
 
         // ---------- Vietnamese karaoke captions ----------

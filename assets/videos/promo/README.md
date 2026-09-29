@@ -1,6 +1,6 @@
 # TOMOSIA VPN promo video
 
-A 57 s, 1920×1080 promo video. The Vietnamese edition is the first one: Vietnamese voice, captions and
+A 50 s, 1920×1080 promo video. The Vietnamese edition is the first one: Vietnamese voice, captions and
 on-screen text. `index.html` is a HyperFrames composition (HTML + GSAP). Audio, voice-over and renders are
 generated files and are not committed (see `.gitignore`).
 
@@ -25,5 +25,5 @@ npx --yes hyperframes@0.7.99 render -q high -f 30 --strict -o renders/tomosia-vp
 scripts/finish-render.sh renders/tomosia-vpn-promo-vi.mp4 assets/audio/mix-vi.m4a
 ```
 
-`data/voices.json` anchors were tuned by hand after `plan-schedule.mjs` (the last line of `s03-why`); re-running
-the planner overwrites them.
+`plan-schedule.mjs` writes the scene anchors into `data/voices.json`; the anchors in it come straight from the
+planner. `assets/bg/` holds the two background photos (see `SOURCES.md`).

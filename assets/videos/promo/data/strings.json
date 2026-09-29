@@ -2,18 +2,19 @@
   "_about": "On-screen text by language. Keys are the English text of a text node in index.html; the page swaps it for the caption language. App UI strings (error titles, buttons, notification text), product names and protocol names stay English and are left out of this table.",
   "vi": {
     "Weekly sync": "Họp tuần",
-    "What went wrong?": "Lỗi gì vậy?",
+    "VPN drops out of nowhere": "VPN rớt bất ngờ",
+    "What went wrong? No idea.": "Lỗi gì? Không rõ.",
     "No details.": "Không có chi tiết.",
-    "Old protocol. No tool that fits.": "Giao thức cũ. Không công cụ nào vừa.",
-    "Built-in VPN": "VPN có sẵn",
-    "keeps dropping": "hay rớt",
-    "Other apps": "Ứng dụng khác",
-    "need certificates": "cần chứng chỉ",
-    "One switch. Done.": "Một công tắc. Xong.",
-    "Reconnects on its own": "Tự kết nối lại",
-    "and tells you when you're back": "và báo khi đã có mạng",
-    "Clear errors, fixed fast": "Lỗi rõ ràng, sửa ngay",
+    "Certificates in the way": "Rào cản chứng chỉ phức tạp",
+    "Built-in VPN": "VPN mặc định",
+    "keeps dropping": "rất hay rớt",
+    "Other apps": "App khác",
+    "need certificates": "vướng chứng chỉ",
+    "Quick and easy": "Nhanh chóng, tiện lợi",
+    "Reconnects on its own": "Tự động kết nối lại",
+    "and tells you once it's back": "Xong xuôi, báo ngay",
+    "Right cause, right error": "Bắt đúng bệnh, báo đúng lỗi",
     "Passwords in Keychain": "Mật khẩu trong Keychain",
-    "Download": "Tải ngay"
+    "Download TOMOSIA VPN": "Tải TOMOSIA VPN ngay"
   }
 }
