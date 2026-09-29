@@ -33,24 +33,16 @@
   </picture>
 </p>
 
-<table align="center">
-  <tr>
-    <td align="center" valign="top" width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
-        <img src="assets/screenshots/settings-light.png" width="100%" alt="Settings" />
-      </picture>
-      <br /><sub>Settings</sub>
-    </td>
-    <td align="center" valign="top" width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
-        <img src="assets/screenshots/new-configuration-light.png" width="100%" alt="Adding a VPN configuration" />
-      </picture>
-      <br /><sub>Adding a VPN configuration</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+    <img src="assets/screenshots/settings-light.png" height="440" alt="Settings" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+    <img src="assets/screenshots/new-configuration-light.png" height="440" alt="Adding a VPN configuration" />
+  </picture>
+</p>
 
 ## Install
 

@@ -33,24 +33,16 @@
   </picture>
 </p>
 
-<table align="center">
-  <tr>
-    <td align="center" valign="top" width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
-        <img src="assets/screenshots/settings-light.png" width="100%" alt="Cài đặt" />
-      </picture>
-      <br /><sub>Cài đặt</sub>
-    </td>
-    <td align="center" valign="top" width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
-        <img src="assets/screenshots/new-configuration-light.png" width="100%" alt="Thêm cấu hình VPN" />
-      </picture>
-      <br /><sub>Thêm cấu hình VPN</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+    <img src="assets/screenshots/settings-light.png" height="440" alt="Cài đặt" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+    <img src="assets/screenshots/new-configuration-light.png" height="440" alt="Thêm cấu hình VPN" />
+  </picture>
+</p>
 
 ## Cài đặt
 
