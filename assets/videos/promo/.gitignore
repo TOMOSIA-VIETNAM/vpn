@@ -4,7 +4,7 @@ node_modules/
 assets/audio/
 renders/
 snapshots/
-data/align-vi/
+data/align-*/
 data/vo-envelope.*.json
 # the repository ignores scripts/ at every level; this video's build scripts are source
 !scripts/

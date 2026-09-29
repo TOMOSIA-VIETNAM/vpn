@@ -13,8 +13,10 @@
   },
   {
     "sfx": "riser",
-    "beat": 32,
-    "vol": 0.22
+    "vol": 0.22,
+    "scene": "s03-why",
+    "word": "others",
+    "offset": -0.52
   },
   {
     "sfx": "click",
@@ -44,14 +46,16 @@
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "word": "~bấm",
-    "vol": 0.2
+    "word": "button",
+    "vol": 0.2,
+    "offset": -0.46
   },
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "word": "~một",
-    "vol": 0.2
+    "word": "button",
+    "vol": 0.2,
+    "offset": -0.22
   },
   {
     "sfx": "click",

@@ -13,7 +13,10 @@
       "lofi": true,
       "lines": [
         {
-          "en": "Deep in a meeting, and the VPN drops.",
+          "en": "Deep in a meeting, and the VPN{vpn} drops{drop}.",
+          "say": "Deep in a meeting, and the V P N drops.",
+          "ja": "会議の真っ最中に、VPN{vpn}が 突然 切れた{drop}。",
+          "ja_say": "会議の真っ最中に、ブイピーエヌが突然切れた。",
           "vi": "Đang họp hăng say, tự nhiên rớt{drop} VPN{vpn}.",
           "vi_say": "Đang họp hăng say, tự nhiên rớt vi pi en."
         }
@@ -24,12 +27,16 @@
       "lofi": true,
       "lines": [
         {
-          "en": "The system says \"Connection failed\".",
+          "en": "All it says is “Connection failed{failed}”.",
+          "say": "All it says is: Connection failed.",
+          "ja": "表示されるのは「Connection failed{failed}」だけ。",
+          "ja_say": "表示されるのは、コネクション・フェイルド、だけ。",
           "vi": "Hệ thống báo “Connection failed{failed}”.",
           "vi_say": "Hệ thống báo: Connection failed."
         },
         {
-          "en": "What went wrong? No idea.",
+          "en": "Why? No idea{why}.",
+          "ja": "原因は、わからない{why}。",
           "vi": "Lỗi gì thì chịu{why}."
         }
       ]
@@ -39,12 +46,17 @@
       "lofi": true,
       "lines": [
         {
-          "en": "With the built-in client, L2TP/IPsec drops all the time,",
+          "en": "The Mac's built-in{builtin} VPN keeps dropping on L2TP/IPsec{protocol},",
+          "say": "The Mac's built-in V P N keeps dropping on L two T P, I P sec,",
+          "ja": "標準の{builtin} VPN では L2TP/IPsec{protocol} が すぐ切れる。",
+          "ja_say": "標準のブイピーエヌでは、エルツーティーピー・アイピーセックが、すぐ切れる。",
           "vi": "L2TP/IPsec{protocol} mặc định{builtin} rất hay rớt,",
           "vi_say": "El hai ti pi, ai pi séc mặc định rất hay rớt,"
         },
         {
-          "en": "and other apps get stuck on certificates.",
+          "en": "and other apps{others} want their own certificates{cert}.",
+          "ja": "ほかのアプリ{others}は 証明書{cert}が 必要。",
+          "ja_say": "ほかのアプリは、証明書が必要。",
           "vi": "dùng app khác{others} lại vướng chứng chỉ{cert}.",
           "vi_say": "dùng áp khác lại vướng chứng chỉ.",
           "stopLine": true
@@ -56,12 +68,17 @@
       "drop": true,
       "lines": [
         {
-          "en": "Now there's TOMOSIA VPN.",
+          "en": "Meet TOMOSIA{brand} VPN.",
+          "say": "Meet Tomosia V P N.",
+          "ja": "そこで、TOMOSIA{brand} VPN。",
+          "ja_say": "そこで、トモシア・ブイピーエヌ。",
           "vi": "Đã có TOMOSIA{brand} VPN.",
           "vi_say": "Đã có Tô mô si a vi pi en."
         },
         {
-          "en": "Tucked neatly into the menu bar.",
+          "en": "Tucked neatly{switch} into your menu bar{menubar}.",
+          "ja": "メニューバー{menubar}に すっきり{switch} 収まります。",
+          "ja_say": "メニューバーに、すっきり収まります。",
           "vi": "Nằm gọn gàng{switch} trên menu bar{menubar}.",
           "vi_say": "Nằm gọn gàng trên menu ba."
         }
@@ -71,7 +88,9 @@
       "id": "s05-reconnect",
       "lines": [
         {
-          "en": "Network dropped? The app reconnects on its own and tells you when it's done.",
+          "en": "Network dropped{flaky}? It reconnects{reconnect} on its own, and lets you know{notify} when it's back.",
+          "ja": "回線が切れても{flaky}、自動で つなぎ直し{reconnect}、戻ったら すぐ お知らせ{notify}。",
+          "ja_say": "回線が切れても、自動でつなぎ直し、戻ったらすぐお知らせ。",
           "vi": "Mạng rớt{flaky}? App tự động kết nối lại{reconnect}, xong xuôi sẽ báo{notify} ngay.",
           "vi_say": "Mạng rớt? Áp tự động kết nối lại, xong xuôi sẽ báo ngay."
         }
@@ -81,7 +100,9 @@
       "id": "s06-errors",
       "lines": [
         {
-          "en": "Every error says what it is — one click and you're done.",
+          "en": "Every error{errors} tells you what it is. One click{button}, and you're done.",
+          "ja": "エラーは 原因を はっきり{errors}。ボタン{button} ひとつで 解決。",
+          "ja_say": "エラーは原因をはっきり。ボタンひとつで解決。",
           "vi": "Lỗi gì báo nấy{errors}, bấm một nút{button} là xong.",
           "vi_say": "Lỗi gì báo nấy, bấm một nút là xong."
         }
@@ -92,7 +113,10 @@
       "outro": true,
       "lines": [
         {
-          "en": "TOMOSIA VPN. Download it now.",
+          "en": "TOMOSIA{brand} VPN. Download{download} it now.",
+          "say": "Tomosia V P N. Download it now.",
+          "ja": "TOMOSIA{brand} VPN。今すぐ ダウンロード{download}。",
+          "ja_say": "トモシア・ブイピーエヌ。今すぐダウンロード。",
           "vi": "TOMOSIA{brand} VPN. Tải ngay{download}.",
           "vi_say": "Tô mô si a vi pi en. Tải ngay."
         }

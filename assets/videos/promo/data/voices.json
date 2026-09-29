@@ -58,5 +58,124 @@
         ]
       }
     }
+  },
+  "en": {
+    "text": "en",
+    "say": "say",
+    "language": "en",
+    "whisper": "small.en",
+    "ttsVoice": "Iapetus",
+    "style": "A calm, confident English product narrator: warm, clear, measured pace, natural American diction, like an Apple product film. Slightly tense and concerned in the opening problem lines, then relieved and assured once the product appears.",
+    "outroStyle": "The same narrator, warmer and a little slower: a quiet, confident promise.",
+    "vo": "assets/audio/vo-en",
+    "align": "data/align-en",
+    "lines": "data/vo-lines.en.json",
+    "envelope": "data/vo-envelope.en.json",
+    "mix": "assets/audio/mix-en.m4a",
+    "arrangement": "data/music-arrangement.en.json",
+    "model": "gemini-3.1-flash-tts-preview",
+    "tempo": 1,
+    "duration": 50.5,
+    "anchors": {
+      "s01-hook": {
+        "scene": 0,
+        "lines": [
+          2
+        ]
+      },
+      "s02-pain": {
+        "scene": 10
+      },
+      "s03-why": {
+        "scene": 24,
+        "lines": [
+          null,
+          36.3
+        ]
+      },
+      "s04-reveal": {
+        "scene": 40,
+        "lines": [
+          [
+            40,
+            0.35
+          ],
+          null
+        ]
+      },
+      "s05-reconnect": {
+        "scene": 52
+      },
+      "s06-errors": {
+        "scene": 64
+      },
+      "s07-outro": {
+        "scene": 78,
+        "lines": [
+          79
+        ]
+      }
+    },
+    "musicDb": -3.5
+  },
+  "ja": {
+    "text": "ja",
+    "say": "ja_say",
+    "language": "ja",
+    "whisper": "small",
+    "tagsOnly": true,
+    "ttsVoice": "Algenib",
+    "style": "A calm, confident Japanese product narrator: warm, clear, measured pace, natural standard Japanese, polite but friendly, like an Apple product film. Slightly tense and concerned in the opening problem lines, then relieved and assured once the product appears.",
+    "outroStyle": "The same narrator, warmer and a little slower: a quiet, confident promise.",
+    "vo": "assets/audio/vo-ja",
+    "align": "data/align-ja",
+    "lines": "data/vo-lines.ja.json",
+    "envelope": "data/vo-envelope.ja.json",
+    "mix": "assets/audio/mix-ja.m4a",
+    "arrangement": "data/music-arrangement.ja.json",
+    "model": "gemini-3.1-flash-tts-preview",
+    "tempo": 1,
+    "duration": 54.9,
+    "anchors": {
+      "s01-hook": {
+        "scene": 0,
+        "lines": [
+          2
+        ]
+      },
+      "s02-pain": {
+        "scene": 12
+      },
+      "s03-why": {
+        "scene": 28,
+        "lines": [
+          null,
+          42.8
+        ]
+      },
+      "s04-reveal": {
+        "scene": 48,
+        "lines": [
+          [
+            48,
+            0.35
+          ],
+          null
+        ]
+      },
+      "s05-reconnect": {
+        "scene": 62
+      },
+      "s06-errors": {
+        "scene": 74
+      },
+      "s07-outro": {
+        "scene": 86,
+        "lines": [
+          87
+        ]
+      }
+    },
+    "musicDb": -5
   }
 }

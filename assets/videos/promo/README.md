@@ -1,7 +1,7 @@
 # TOMOSIA VPN promo video
 
-A 46 s, 1920×1080 promo video. The Vietnamese edition is the first one: Vietnamese voice, captions and
-on-screen text. `index.html` is a HyperFrames composition (HTML + GSAP). Audio, voice-over and renders are
+A 1920×1080 promo video in three native editions, Vietnamese (46 s), English (50 s) and Japanese (55 s):
+each has its own voice, captions and on-screen text. `index.html` is a HyperFrames composition (HTML + GSAP). Audio, voice-over and renders are
 generated files and are not committed (see `.gitignore`).
 
 | File | Holds |
@@ -12,7 +12,7 @@ generated files and are not committed (see `.gitignore`).
 | `data/cues.json` | sound effects, each tied to a spoken word or a beat |
 | `SOURCES.md` | where every claim in the video comes from |
 
-Rebuild the Vietnamese edition (needs Node, ffmpeg, Python 3 and a Gemini API key in `~/.config/gemini/api_key`):
+Rebuild an edition, here Vietnamese; replace `vi` with `en` or `ja` for the others (needs Node, ffmpeg, Python 3 and a Gemini API key in `~/.config/gemini/api_key`):
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install faster-whisper numpy scipy fonttools
@@ -28,6 +28,12 @@ scripts/encode-web.sh renders/tomosia-vpn-promo-vi.mp4 vi                  # her
 
 `web/` is committed: it holds the encodes the landing page plays in its hero (`webapp/scripts/copy-assets.mjs`
 copies them into the site). Re-run `scripts/encode-web.sh` after every new render; its header lists the files.
+
+After changing any Japanese text, re-run `.venv/bin/python scripts/subset-jp-font.py <NotoSansJP[wght].ttf>`
+(the variable font from Google Fonts): it rebuilds the subset Noto Sans JP files that cover kana and kanji,
+which Be Vietnam Pro lacks.
+
+`index.html` carries the timing of the last `build-timeline.mjs` run; the committed copy holds the Vietnamese one.
 
 `plan-schedule.mjs` writes the scene anchors into `data/voices.json`; the anchors in it come straight from the
 planner. `assets/bg/` holds the two background photos (see `SOURCES.md`).

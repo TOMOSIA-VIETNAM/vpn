@@ -29,7 +29,7 @@ const stems = process.argv.includes("--stems"); // also write the ducked-music a
 // tokens without them. Anchor tags are stripped. Chunks break at punctuation and stay under a word or character budget.
 // maxWords: greedy chunks of at most that many words. maxChars: the line is cut into the fewest chunks of at
 // most that many characters, balanced in length, preferring cuts after punctuation.
-const CAPTION_LANGS = { vi: { maxWords: 9 }, en: { maxWords: 9 }, ja: { maxChars: 26 } };
+const CAPTION_LANGS = { vi: { maxWords: 9 }, en: { maxWords: 9 }, ja: { maxChars: 30 } };
 const CAPTION = (process.argv.find((a) => a.startsWith("--caption=")) || "--caption=vi").slice(10);
 if (!CAPTION_LANGS[CAPTION]) throw new Error(`unknown caption language ${CAPTION}; known: ${Object.keys(CAPTION_LANGS).join(", ")}`);
 const cues = dry ? [] : readJson("data/cues.json");

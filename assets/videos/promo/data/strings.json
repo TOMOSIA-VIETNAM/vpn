@@ -1,19 +1,35 @@
 {
-  "_about": "On-screen text by language. Keys are the English text of a text node in index.html; the page swaps it for the caption language. App UI strings (error titles, buttons, notification text), product names and protocol names stay English and are left out of this table.",
-  "vi": {
-    "Weekly sync": "Họp tuần",
-    "VPN drops out of nowhere": "VPN rớt bất ngờ",
-    "What went wrong? No idea.": "Lỗi gì? Không rõ.",
-    "No details.": "Không có chi tiết.",
-    "Certificates in the way": "Rào cản chứng chỉ phức tạp",
-    "Built-in VPN": "VPN mặc định",
-    "keeps dropping": "rất hay rớt",
-    "Other apps": "App khác",
-    "need certificates": "vướng chứng chỉ",
-    "Quick and easy": "Nhanh chóng, tiện lợi",
-    "Reconnects on its own": "Tự động kết nối lại",
-    "and tells you once it's back": "Xong xuôi, báo ngay",
-    "Download TOMOSIA VPN": "Tải TOMOSIA VPN ngay",
-    "Every error, spelled out": "Lỗi gì báo nấy"
-  }
+ "_about": "On-screen text by language. Keys are the English text of a text node in index.html; the page swaps it for the caption language. App UI strings (error titles, buttons, notification text), product names and protocol names stay English and are left out of this table.",
+ "vi": {
+  "Weekly sync": "Họp tuần",
+  "The VPN drops": "VPN rớt bất ngờ",
+  "What went wrong? No idea.": "Lỗi gì? Không rõ.",
+  "No details.": "Không có chi tiết.",
+  "Certificates in the way": "Rào cản chứng chỉ phức tạp",
+  "Built-in VPN": "VPN mặc định",
+  "keeps dropping": "rất hay rớt",
+  "Other apps": "App khác",
+  "need certificates": "vướng chứng chỉ",
+  "Quick and easy": "Nhanh chóng, tiện lợi",
+  "Reconnects on its own": "Tự động kết nối lại",
+  "and tells you once it's back": "Xong xuôi, báo ngay",
+  "Download TOMOSIA VPN": "Tải TOMOSIA VPN ngay",
+  "Every error, spelled out": "Lỗi gì báo nấy"
+ },
+ "ja": {
+  "Weekly sync": "定例ミーティング",
+  "The VPN drops": "VPN が突然切れる",
+  "What went wrong? No idea.": "原因は？ わからない。",
+  "No details.": "詳細なし。",
+  "Certificates in the way": "証明書の壁",
+  "Built-in VPN": "標準の VPN",
+  "keeps dropping": "すぐ切れる",
+  "Other apps": "ほかのアプリ",
+  "need certificates": "証明書が必要",
+  "Quick and easy": "すっきり、かんたん",
+  "Reconnects on its own": "自動でつなぎ直す",
+  "and tells you once it's back": "戻ったらお知らせ",
+  "Download TOMOSIA VPN": "TOMOSIA VPN をダウンロード",
+  "Every error, spelled out": "エラーは原因まではっきり"
+ }
 }

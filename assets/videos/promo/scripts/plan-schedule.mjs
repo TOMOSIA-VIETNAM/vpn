@@ -136,7 +136,7 @@ script.scenes.forEach((s, i) => {
     // the line keeps its natural start (delayed at most to the next 2-beat step); the build and the
     // silence sit under its end
     const drop = up(toBeat(before + dur + 0.1));
-    a.lines[last] = +(drop - toBeat(dur + 0.1)).toFixed(1);
+    a.lines[last] = Math.floor((drop - toBeat(dur + 0.15)) * 10) / 10; // round down: the last word never crosses the drop
     lastWord = drop * BEAT - 0.1;
     beat = drop;
   } else {

@@ -459,7 +459,7 @@
  "captionLang": "vi",
  "strings": {
   "Weekly sync": "Họp tuần",
-  "VPN drops out of nowhere": "VPN rớt bất ngờ",
+  "The VPN drops": "VPN rớt bất ngờ",
   "What went wrong? No idea.": "Lỗi gì? Không rõ.",
   "No details.": "Không có chi tiết.",
   "Certificates in the way": "Rào cản chứng chỉ phức tạp",
@@ -819,7 +819,7 @@
   {
    "sfx": "riser",
    "vol": 0.22,
-   "t": 16.552
+   "t": 16.546
   },
   {
    "sfx": "click",
@@ -844,12 +844,12 @@
   {
    "sfx": "click",
    "vol": 0.2,
-   "t": 33.318
+   "t": 33.322
   },
   {
    "sfx": "click",
    "vol": 0.2,
-   "t": 33.559
+   "t": 33.562
   },
   {
    "sfx": "click",
