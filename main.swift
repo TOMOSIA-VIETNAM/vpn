@@ -1,6 +1,7 @@
 import Cocoa
 import Combine
 import SwiftUI
+import UserNotifications
 
 // MARK: - Branding
 
@@ -16,6 +17,8 @@ enum AppBranding {
     /// Templates, so macOS tints them to match the menu bar like system items.
     static let menuBarIdle: NSImage = template("menubar-idle", fallback: "shield")
     static let menuBarConnected: NSImage = template("menubar-connected", fallback: "shield.fill")
+    /// Outline mark with a badge: a connection dropped on its own.
+    static let menuBarLost: NSImage = template("menubar-lost", fallback: "exclamationmark.shield")
 
     // Stamped into Info.plist by build.sh from the release tag; nil when run
     // outside a bundle (e.g. a bare swiftc build), so the footer omits it.
@@ -91,6 +94,8 @@ enum VPNAlertKind {
     case ikeFailed
     case routeFailed
     case processStopped
+    /// A live connection ended without the user turning it off in this app.
+    case connectionLost
     case generic
 }
 
@@ -130,13 +135,15 @@ final class VPNManager: ObservableObject {
     @Published var isConnecting: Bool = false
     @Published var currentPhase: String = "DISCONNECTED"
     @Published var currentIP: String = ""
-    @Published var currentTunDevice: String = ""
     @Published var errorMessage: String?
     @Published var activeAlert: VPNAlertInfo?
     /// Feedback for profile edits/deletes; clears itself after a few seconds.
     @Published var notice: VPNNotice?
     /// The user turned the VPN off and the daemon has not finished tearing down yet.
     @Published var isDisconnecting: Bool = false
+    /// Set when a live connection drops on its own (not turned off in this app); cleared once
+    /// it is back, when the user acts, or when the alert is dismissed. Drives the status item badge.
+    @Published var connectionLost: Bool = false
     private var noticeWorkItem: DispatchWorkItem?
     var onStatusChanged: ((String) -> Void)?
     private var pollTimer: Timer?
@@ -262,7 +269,6 @@ final class VPNManager: ObservableObject {
         var activeProf: String?
         var phase = "DISCONNECTED"
         var localIP = ""
-        var tunDev = ""
         var failStage = ""
         var failDetail = ""
         var updatedAt: Date?
@@ -284,7 +290,6 @@ final class VPNManager: ObservableObject {
             }
             activeProf = st.profile
             localIP = st.local_ip ?? ""
-            tunDev = st.tun_device ?? ""
             failStage = st.fail_stage ?? ""
             failDetail = st.fail_detail ?? ""
             updatedAt = Self.parseDate(st.updated_at)
@@ -367,9 +372,9 @@ final class VPNManager: ObservableObject {
         update(\.isConnecting, phase == "CONNECTING")
         update(\.isDisconnecting, pendingIntent?.phase == "DISCONNECTED")
         update(\.currentIP, localIP)
-        update(\.currentTunDevice, tunDev)
 
         if oldPhase != phase {
+            noteLinkChange(from: oldPhase, to: phase, profile: activeProf ?? activeProfileName)
             onStatusChanged?(phase)
         }
 
@@ -397,6 +402,45 @@ final class VPNManager: ObservableObject {
             }
             update(\.profiles, items.sorted { $0.title.lowercased() < $1.title.lowercased() })
         }
+    }
+
+    /// Makes a connection that drops on its own visible: an alert card when nothing else
+    /// explains it, the status item badge, and a system notification while the app's UI is
+    /// closed. Changes the user makes in this app go through beginIntent, which moves
+    /// currentPhase itself, so they never reach here as CONNECTED → something else.
+    private func noteLinkChange(from old: String, to new: String, profile: String?) {
+        let title = profiles.first(where: { $0.name == profile })?.title ?? profile ?? "VPN"
+        if old == "CONNECTED" && new != "CONNECTED" {
+            update(\.connectionLost, true)
+            if new == "DISCONNECTED" && activeAlert == nil {
+                update(\.activeAlert, VPNAlertInfo(
+                    kind: .connectionLost,
+                    title: "VPN Disconnected",
+                    message: "\(title) was disconnected outside this app or the connection dropped. Your traffic is no longer protected.",
+                    detail: ""
+                ))
+            }
+            if !popoverVisible {
+                let body = new == "CONNECTING"
+                    ? (reconnectNote ?? "Reconnecting to \(title)…")
+                    : (activeAlert?.message ?? "Your traffic is no longer protected.")
+                ConnectionNotifier.post(title: "VPN connection lost", body: body)
+            }
+        } else if new == "CONNECTED" {
+            if connectionLost && !popoverVisible {
+                ConnectionNotifier.post(title: "VPN reconnected", body: "Protected via \(title) again.")
+            }
+            update(\.connectionLost, false)
+            // Asked on the first successful connection, when the reason for it is obvious.
+            ConnectionNotifier.requestAuthorization()
+        }
+    }
+
+    /// Dismiss button of the alert card.
+    func dismissAlert() {
+        update(\.errorMessage, nil)
+        update(\.activeAlert, nil)
+        update(\.connectionLost, false)
     }
 
     private func applyFailure(stage: String, detail: String) {
@@ -552,6 +596,7 @@ final class VPNManager: ObservableObject {
         update(\.isConnected, false)
         update(\.isDisconnecting, phase == "DISCONNECTED")
         update(\.activeAlert, nil)
+        update(\.connectionLost, false)
         if let profile = profile {
             update(\.activeProfileName, profile)
         }
@@ -847,6 +892,31 @@ final class VPNManager: ObservableObject {
     }
 }
 
+// MARK: - System Notifications
+
+/// Posts connection drops and recoveries to Notification Center, so they are seen while the
+/// popover is closed.
+enum ConnectionNotifier {
+    /// UNUserNotificationCenter needs an app bundle; a bare swiftc build has none and would crash.
+    static var available: Bool { Bundle.main.bundleIdentifier != nil }
+
+    static func requestAuthorization() {
+        guard available else { return }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    /// Reuses one identifier, so a newer status replaces the previous banner instead of stacking.
+    static func post(title: String, body: String) {
+        guard available else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "connection-status", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+}
+
 // MARK: - Link State & Theme
 
 enum LinkState: Equatable {
@@ -1119,6 +1189,7 @@ struct AlertStyle {
         case .ikeFailed: (icon, tint) = ("network.slash", Theme.connecting)
         case .routeFailed: (icon, tint) = ("arrow.triangle.branch", Theme.connecting)
         case .processStopped: (icon, tint) = ("bolt.slash.fill", Theme.connecting)
+        case .connectionLost: (icon, tint) = ("wifi.exclamationmark", Theme.connecting)
         case .sessionStale: (icon, tint) = ("clock.arrow.circlepath", Theme.connecting)
         case .generic: (icon, tint) = ("exclamationmark.triangle.fill", Theme.connecting)
         }
@@ -1232,12 +1303,10 @@ struct ProfileCardRow: View {
 /// Details of the live tunnel, shown under the header while connected.
 struct ConnectionDetails: View {
     var ip: String
-    var device: String
 
     var body: some View {
-        HStack(spacing: 24) {
-            if !ip.isEmpty { item("IP address", ip) }
-            if !device.isEmpty { item("Interface", device) }
+        HStack {
+            item("IP address", ip)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
@@ -1359,6 +1428,7 @@ struct MenuBarPopupView: View {
 
     private var headerStatus: String {
         if vpn.isDisconnecting { return "Disconnecting…" }
+        if vpn.linkState == .idle && vpn.connectionLost { return "Connection Lost" }
         if vpn.linkState == .idle && vpn.activeAlert != nil { return "Connection Failed" }
         return Theme.statusText(for: vpn.linkState, reconnecting: vpn.isReconnecting)
     }
@@ -1428,8 +1498,8 @@ struct MenuBarPopupView: View {
             .padding(.top, 14)
             .padding(.bottom, 12)
 
-            if state == .connected && !(vpn.currentIP.isEmpty && vpn.currentTunDevice.isEmpty) {
-                ConnectionDetails(ip: vpn.currentIP, device: vpn.currentTunDevice)
+            if state == .connected && !vpn.currentIP.isEmpty {
+                ConnectionDetails(ip: vpn.currentIP)
                     .padding(.horizontal, Theme.inset)
                     .padding(.bottom, 12)
                     .transition(.opacity)
@@ -1488,10 +1558,7 @@ struct MenuBarPopupView: View {
                 AlertCard(
                     alert: alert,
                     primary: primaryAction(for: alert),
-                    onDismiss: {
-                        vpn.errorMessage = nil
-                        vpn.activeAlert = nil
-                    }
+                    onDismiss: { vpn.dismissAlert() }
                 )
                 .padding(.horizontal, Theme.inset)
                 .padding(.top, 10)
@@ -1891,7 +1958,7 @@ enum CLIInstaller {
 
 // MARK: - App Delegate & Menu Bar Setup
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate, UNUserNotificationCenterDelegate {
     static var shared: AppDelegate?
     var statusItem: NSStatusItem?
     var popover = NSPopover()
@@ -1907,14 +1974,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
+        if ConnectionNotifier.available {
+            UNUserNotificationCenter.current().delegate = self
+        }
         MainActor.assumeIsolated {
-            updateStatusIcon(VPNManager.shared.linkState)
+            updateStatusIcon()
             // objectWillChange fires before the new value is stored; hopping to the next
             // main-loop turn reads the value after the change.
             linkStateObserver = VPNManager.shared.objectWillChange
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in
-                    MainActor.assumeIsolated { self?.updateStatusIcon(VPNManager.shared.linkState) }
+                    MainActor.assumeIsolated { self?.updateStatusIcon() }
                 }
         }
 
@@ -2034,13 +2104,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         MainActor.assumeIsolated { VPNManager.shared.setPopoverVisible(false) }
     }
 
-    /// Status item shows the outline mark when idle, dimmed while a connection is
-    /// being set up, and the solid mark once connected.
-    @MainActor private func updateStatusIcon(_ state: LinkState) {
+    /// Status item shows the solid mark when connected, the outline mark with a badge after a
+    /// connection dropped on its own (also while it reconnects), the dimmed outline while
+    /// connecting, and the plain outline when idle.
+    @MainActor private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
-        button.image = state == .connected ? AppBranding.menuBarConnected : AppBranding.menuBarIdle
-        button.appearsDisabled = state == .connecting
-        button.toolTip = "\(AppBranding.name) — \(Theme.statusText(for: state, reconnecting: VPNManager.shared.isReconnecting))"
+        let vpn = VPNManager.shared
+        let state = vpn.linkState
+        let lost = vpn.connectionLost && state != .connected
+        button.image = state == .connected ? AppBranding.menuBarConnected
+            : (lost ? AppBranding.menuBarLost : AppBranding.menuBarIdle)
+        button.appearsDisabled = state == .connecting && !lost
+        let status = lost ? "Connection lost" : Theme.statusText(for: state, reconnecting: vpn.isReconnecting)
+        button.toolTip = "\(AppBranding.name) — \(status)"
+    }
+
+    // Show banners even while the app is frontmost (its window is open).
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
     }
 
     @objc func togglePopover(_ sender: AnyObject?) {

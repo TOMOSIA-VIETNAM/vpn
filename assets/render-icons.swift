@@ -8,6 +8,7 @@
 //                                         (also written to docs/logo.png for the landing page)
 //   menubar-idle.png / @2x                status item template image, outline mark (disconnected)
 //   menubar-connected.png / @2x           status item template image, solid mark (connected)
+//   menubar-lost.png / @2x                status item template image, outline mark with a badge (connection dropped)
 //
 // Menu bar images are black-on-transparent templates: macOS recolors them to match
 // the menu bar (black on light, white on dark), like every system status item.
@@ -41,7 +42,8 @@ func letterPath() -> NSBezierPath {
     return p
 }
 
-enum MarkStyle { case outline, solid }
+/// `badged`: outline mark with a solid dot at the lower right, cut out from the mark.
+enum MarkStyle { case outline, solid, badged }
 
 /// Draws the mark into `rect` (square) of the current context.
 func drawMark(in rect: NSRect, style: MarkStyle, color: NSColor) {
@@ -62,6 +64,14 @@ func drawMark(in rect: NSRect, style: MarkStyle, color: NSColor) {
     case .outline:
         shield.stroke()
         letter.stroke()
+    case .badged:
+        shield.stroke()
+        letter.stroke()
+        let center = NSPoint(x: 51, y: 50)
+        NSGraphicsContext.current?.compositingOperation = .destinationOut
+        NSBezierPath(ovalIn: NSRect(x: center.x - 14, y: center.y - 14, width: 28, height: 28)).fill()
+        NSGraphicsContext.current?.compositingOperation = .sourceOver
+        NSBezierPath(ovalIn: NSRect(x: center.x - 9.5, y: center.y - 9.5, width: 19, height: 19)).fill()
     case .solid:
         shield.fill()
         shield.stroke()
@@ -125,7 +135,7 @@ func write(_ data: Data, _ name: String, in dir: URL = assets) throws {
 // MARK: Outputs
 
 let menuBarPoints = 18
-for (name, style) in [("menubar-idle", MarkStyle.outline), ("menubar-connected", .solid)] {
+for (name, style) in [("menubar-idle", MarkStyle.outline), ("menubar-connected", .solid), ("menubar-lost", .badged)] {
     for scale in [1, 2] {
         let png = render(pixels: menuBarPoints * scale) { drawMark(in: $0, style: style, color: .black) }
         try write(png, scale == 1 ? "\(name).png" : "\(name)@2x.png")
