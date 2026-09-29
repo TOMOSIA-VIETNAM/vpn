@@ -6,8 +6,8 @@ name: release
 # but TOMOSIA-VPN.app needs Apple's Swift toolchain — so the manifest below can
 # cover every asset in a single place.
 #
-# Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip
-# plus SHA256SUMS and its ed25519 signature SHA256SUMS.sig (see
+# Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip,
+# TOMOSIA-VPN.dmg, plus SHA256SUMS and its ed25519 signature SHA256SUMS.sig (see
 # internal/release). `vpn update` refuses a release whose signature does not
 # verify against the key compiled into the installed binary.
 #
