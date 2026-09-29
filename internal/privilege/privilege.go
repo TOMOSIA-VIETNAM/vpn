@@ -17,6 +17,7 @@
 package privilege
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -76,6 +77,12 @@ func CheckOwner() error {
 	return nil
 }
 
+// ErrNotPrivileged is what Elevate wraps when this process simply cannot become
+// root (not setuid-root, not run with sudo) — as opposed to an I/O failure in
+// whatever it was going to do as root. Callers that can do without root test for
+// it with errors.Is.
+var ErrNotPrivileged = errors.New("cannot become root")
+
 // mu serializes Elevate calls: this process is single-purpose (one
 // connect/disconnect/repair per invocation), so there's no legitimate case
 // for two goroutines needing root at once, and serializing avoids a window
@@ -107,7 +114,7 @@ func Elevate(fn func() error) error {
 		return fn()
 	}
 	if err := syscall.Seteuid(0); err != nil {
-		return fmt.Errorf("this operation needs root — install with the setuid step (see install.sh) or run with sudo: %w", err)
+		return fmt.Errorf("this operation needs root — install with the setuid step (see install.sh) or run with sudo: %w: %w", ErrNotPrivileged, err)
 	}
 	defer func() { _ = syscall.Seteuid(realUID) }()
 	return fn()

@@ -1118,13 +1118,18 @@ func WithConnectLock(fn func() error) error {
 
 // WithConnectLockIfAvailable is WithConnectLock for changes that must not
 // interleave with a connect starting (editing or removing a profile), but that
-// also have to keep working where the lock file cannot be opened: without root
-// (a non-setuid build) no connect can be running either, so there is nothing
-// to serialize against and fn simply runs.
+// also have to keep working without root (a non-setuid build): there no connect
+// can be running either, so nothing needs serializing and fn simply runs. Only
+// that one case skips the lock — any other failure to open it (disk full, a
+// broken state directory, ...) is transient and says nothing about whether a
+// connect elsewhere holds the lock, so it is returned, not ignored.
 func WithConnectLockIfAvailable(fn func() error) error {
 	f, err := openLockFile()
-	if err != nil {
+	if errors.Is(err, privilege.ErrNotPrivileged) {
 		return fn()
+	}
+	if err != nil {
+		return fmt.Errorf("open connect lock: %w", err)
 	}
 	return runLocked(f, fn)
 }

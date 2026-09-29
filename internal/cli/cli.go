@@ -242,7 +242,14 @@ func cmdProfileEdit(args []string) error {
 
 	newPSK := ""
 	if *setPSK {
-		if err := errIfInUse(name, "edit"); err != nil { // fail fast, before asking for a secret
+		// Fail fast, before asking for a secret: an unknown name or a live tunnel
+		// would otherwise only be reported after the user has typed it in.
+		if cfg, err := config.Load(); err != nil {
+			return err
+		} else if _, ok := cfg.Profiles[name]; !ok {
+			return fmt.Errorf("unknown profile %q", name)
+		}
+		if err := errIfInUse(name, "edit"); err != nil {
 			return err
 		}
 		v, err := secretinput.Prompt("IPsec pre-shared key (PSK)")
