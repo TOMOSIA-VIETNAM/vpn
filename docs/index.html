@@ -385,7 +385,7 @@ footer .fl{display:flex;gap:24px}footer a:hover{color:var(--text)}
     <a class="brand" href="#top"><img src="logo.png" alt="" width="32" height="32">TOMOSIA VPN</a>
     <div class="links"><a data-i="nav.features" href="#features">Tính năng</a><a data-i="nav.how" href="#how">Cách dùng</a><a href="#cli">CLI</a><a data-i="nav.security" href="#security">Bảo mật</a><a data-i="nav.faq" href="#faq">Hỏi đáp</a></div>
     <div class="navr">
-      <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="vi">VI</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="ja">日本語</button></div>
+      <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="vi" lang="vi" aria-pressed="false">VI</button><button type="button" data-lang="en" lang="en" aria-pressed="false">EN</button><button type="button" data-lang="ja" lang="ja" aria-pressed="false">日本語</button></div>
       <a class="btn sm primary" href="#install" data-i="nav.dl">Tải xuống</a>
     </div>
   </div>
@@ -987,7 +987,7 @@ function setLang(l){
     var g = w.charAt(0) === '*';
     return '<span class="w' + (g ? ' grad' : '') + '" style="--i:' + n + '">' + (g ? w.slice(1) : w) + '</span>';
   }).join(sep);
-  document.querySelectorAll('.lang button').forEach(function(b){ b.classList.toggle('on', b.dataset.lang === l); });
+  document.querySelectorAll('.lang button').forEach(function(b){ var on = b.dataset.lang === l; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   script[0][1] = T[l]._term;
   if(termDone) render(script.length);
   try { localStorage.setItem('lang', l); } catch(e){}
