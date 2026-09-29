@@ -42,7 +42,8 @@ the default "Include files outside the Root Directory" setting.
 Dictionary strings accept `**bold**`, `[[App UI label]]` (kept English and on one
 line) and `{dmg}` (the download link).
 
-`/` has no content: it sends visitors to `/en` with a meta refresh. The language
+`/` renders the English page in place (canonical URL `/en`), so the first paint is
+the styled page rather than a redirect. The language
 menu keeps the section being read (`/vi#features`); it is a `<details>`, so without
 JavaScript it still opens and lists plain links.
 
