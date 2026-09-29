@@ -16,8 +16,11 @@ set -euo pipefail
 BASE_URL="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download"
 INSTALL_PATH="/usr/local/bin/vpn"
 OWNER_FILE="/etc/vpn-owner-uid"
-APP_DIR="/Applications/TMS VPN.app"
-APP_ASSET="TMS-VPN.app.zip"
+APP_DIR="/Applications/TOMOSIA-VPN.app"
+APP_ASSET="TOMOSIA-VPN.app.zip"
+# Where releases before the rename to TOMOSIA-VPN installed the app; removed on
+# install so an upgraded Mac does not keep two copies in the menu bar.
+LEGACY_APP_DIR="/Applications/TMS VPN.app"
 
 ARCH="${VPN_ARCH:-}"
 if [ -z "$ARCH" ]; then
@@ -63,7 +66,7 @@ verify_sha256() {
   fi
 }
 
-echo "Installing TMS VPN ($ARCH)"
+echo "Installing TOMOSIA VPN ($ARCH)"
 
 curl -fsSL -o "$DOWNLOAD/SHA256SUMS" "$BASE_URL/SHA256SUMS"
 
@@ -94,6 +97,10 @@ echo "    Installed CLI: $INSTALL_PATH ($("$INSTALL_PATH" version))"
 echo "==> [2/2] Installing menu bar app"
 if curl -fsSL -o "$DOWNLOAD/$APP_ASSET" "$BASE_URL/$APP_ASSET"; then
   verify_sha256 "$DOWNLOAD/$APP_ASSET" "$APP_ASSET"
+  if [ -d "$LEGACY_APP_DIR" ]; then
+    killall "TMS VPN" 2>/dev/null || true
+    rm -rf "$LEGACY_APP_DIR" 2>/dev/null || sudo rm -rf "$LEGACY_APP_DIR"
+  fi
   rm -rf "$APP_DIR"
   # ditto (not unzip) restores the bundle exactly as the release workflow
   # packed it (`ditto -c` — see .github/workflows/release.yml), keeping
@@ -104,7 +111,7 @@ else
   echo "warning: could not download the menu bar app from $BASE_URL/$APP_ASSET — is a release published yet?" >&2
 fi
 
-echo "TMS VPN installed."
+echo "TOMOSIA VPN installed."
 echo "  CLI: $INSTALL_PATH"
 echo "  App: $APP_DIR"
 

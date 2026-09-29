@@ -5,6 +5,8 @@ import SwiftUI
 // MARK: - Branding
 
 enum AppBranding {
+    static let name = "TOMOSIA VPN"
+
     // All artwork is rendered by assets/render-icons.swift from one vector mark and
     // bundled by build.sh into Contents/Resources, so the .app icon, the popover
     // header and the status item always show the same logo.
@@ -17,7 +19,7 @@ enum AppBranding {
 
     private static func template(_ name: String, fallback symbol: String) -> NSImage {
         let image = Bundle.main.image(forResource: name)
-            ?? NSImage(systemSymbolName: symbol, accessibilityDescription: "TMS VPN")
+            ?? NSImage(systemSymbolName: symbol, accessibilityDescription: AppBranding.name)
             ?? NSImage()
         image.isTemplate = true
         return image
@@ -1115,7 +1117,7 @@ struct MenuBarPopupView: View {
             HStack(spacing: 10) {
                 BrandTile(size: 30)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("TMS VPN")
+                    Text(AppBranding.name)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Theme.primaryText)
                     HStack(spacing: 5) {
@@ -1200,12 +1202,9 @@ struct MenuBarPopupView: View {
 
             // Footer: settings (MTU, logging, kill switch) open in a sheet like the profile form.
             HStack(spacing: 2) {
-                Text("TMS VPN Client")
-                    .font(.system(size: 11))
-                    .foregroundColor(Theme.tertiaryText)
                 Spacer()
                 IconButton(systemName: "gearshape", help: "Settings") { showingSettings = true }
-                IconButton(systemName: "power", help: "Quit TMS VPN (⌘Q)") { NSApplication.shared.terminate(nil) }
+                IconButton(systemName: "power", help: "Quit \(AppBranding.name) (⌘Q)") { NSApplication.shared.terminate(nil) }
             }
             .padding(.leading, Theme.inset)
             .padding(.trailing, Theme.inset - 4)
@@ -1514,7 +1513,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if mainWindow == nil {
             let controller = NSHostingController(rootView: MenuBarPopupView(listHeight: 380))
             let window = NSWindow(contentViewController: controller)
-            window.title = "TMS VPN"
+            window.title = AppBranding.name
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
             window.delegate = self
@@ -1592,7 +1591,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         guard let button = statusItem?.button else { return }
         button.image = state == .connected ? AppBranding.menuBarConnected : AppBranding.menuBarIdle
         button.appearsDisabled = state == .connecting
-        button.toolTip = "TMS VPN — \(Theme.statusText(for: state, reconnecting: VPNManager.shared.isReconnecting))"
+        button.toolTip = "\(AppBranding.name) — \(Theme.statusText(for: state, reconnecting: VPNManager.shared.isReconnecting))"
     }
 
     @objc func togglePopover(_ sender: AnyObject?) {

@@ -3,10 +3,10 @@ name: release
 # Publishes a release only for a pushed semver tag (vX.Y.Z), and only after
 # the test workflow passes on that exact commit. One macOS job builds
 # everything — the Go CLI cross-compiles for both architectures anywhere,
-# but TMS VPN.app needs Apple's Swift toolchain — so the manifest below can
+# but TOMOSIA-VPN.app needs Apple's Swift toolchain — so the manifest below can
 # cover every asset in a single place.
 #
-# Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TMS-VPN.app.zip
+# Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip
 # plus SHA256SUMS and its ed25519 signature SHA256SUMS.sig (see
 # internal/release). `vpn update` refuses a release whose signature does not
 # verify against the key compiled into the installed binary.
@@ -58,23 +58,20 @@ jobs:
               -o "vpn-darwin-$arch" ./cmd/vpn
           done
 
-      - name: Build TMS VPN.app (universal — arm64 + Intel)
+      - name: Build TOMOSIA-VPN.app (universal — arm64 + Intel)
         run: bash build.sh
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.
-      # The zip's outer filename stays hyphenated so install URLs never need
-      # an encoded space; the space in "TMS VPN.app" survives as an entry
-      # name inside the archive.
       - name: Zip the app bundle
-        run: ditto -c -k --sequesterRsrc --keepParent "build/TMS VPN.app" TMS-VPN.app.zip
+        run: ditto -c -k --sequesterRsrc --keepParent build/TOMOSIA-VPN.app TOMOSIA-VPN.app.zip
 
       - name: Sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
           go run ./cmd/releasesign sign -version "$GITHUB_REF_NAME" -out . \
-            vpn-darwin-arm64 vpn-darwin-amd64 TMS-VPN.app.zip
+            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip
 
       # gh is preinstalled on GitHub runners — no third-party release action.
       # Immutable releases only accept assets while draft, so upload into a
@@ -84,7 +81,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-            vpn-darwin-arm64 vpn-darwin-amd64 TMS-VPN.app.zip SHA256SUMS SHA256SUMS.sig \
+            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip SHA256SUMS SHA256SUMS.sig \
             --draft --verify-tag --title "$GITHUB_REF_NAME" \
             --notes "Built from ${GITHUB_SHA}. SHA256SUMS is signed with ed25519 (SHA256SUMS.sig)."
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

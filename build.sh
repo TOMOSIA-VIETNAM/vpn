@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# TMS VPN: Universal Binary Build Script (ARM64 + Intel x86_64)
+# TOMOSIA VPN: Universal Binary Build Script (ARM64 + Intel x86_64)
 # ==============================================================================
 
 set -euo pipefail
 
 OUTPUT_NAME="tms-vpn-bar"
-APP_NAME="TMS VPN.app"
+# The bundle and executable names carry no space, so paths need no quoting
+# or URL-encoding anywhere (install URLs, release assets, killall).
+APP_NAME="TOMOSIA-VPN.app"
+EXECUTABLE="TOMOSIA-VPN"
+DISPLAY_NAME="TOMOSIA VPN"
 BUILD_DIR="./build"
 
 echo "==> [1/3] Preparing build directory"
@@ -37,8 +41,8 @@ echo "==> [3/3] Packaging $APP_NAME"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/MacOS"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 
-cp "$BUILD_DIR/$OUTPUT_NAME" "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
-chmod +x "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
+cp "$BUILD_DIR/$OUTPUT_NAME" "$BUILD_DIR/$APP_NAME/Contents/MacOS/$EXECUTABLE"
+chmod +x "$BUILD_DIR/$APP_NAME/Contents/MacOS/$EXECUTABLE"
 cp "assets/AppIcon.icns" "$BUILD_DIR/$APP_NAME/Contents/Resources/AppIcon.icns"
 # Logo and status item artwork come from assets/render-icons.swift.
 cp "assets/logo.png" "$BUILD_DIR/$APP_NAME/Contents/Resources/Logo.png"
@@ -50,13 +54,16 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>TMS VPN</string>
+    <string>$EXECUTABLE</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
+    <!-- Kept from the original app name so existing installs keep their macOS preferences. -->
     <key>CFBundleIdentifier</key>
     <string>com.tms.vpn.menubar</string>
     <key>CFBundleName</key>
-    <string>TMS VPN</string>
+    <string>$DISPLAY_NAME</string>
+    <key>CFBundleDisplayName</key>
+    <string>$DISPLAY_NAME</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

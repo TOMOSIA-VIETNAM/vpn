@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" width="96" height="96" alt="TMS VPN logo" />
+  <img src="assets/logo.png" width="96" height="96" alt="TOMOSIA VPN logo" />
 </p>
 
-<h1 align="center">TMS VPN</h1>
+<h1 align="center">TOMOSIA VPN</h1>
 
 <p align="center">
   <b>VPN Client L2TP/IPsec thuần macOS — Ổn định, bảo mật, không phụ thuộc phần mềm ngoài.</b>
@@ -21,7 +21,7 @@
 
 VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) thường xuyên gặp tình trạng chập chờn, khó kết nối trên các mạng Wi-Fi công cộng/văn phòng có tường lửa, và khi lỗi chỉ báo thông điệp chung chung không rõ nguyên nhân.
 
-**TMS VPN** tự cài đặt trực tiếp toàn bộ giao thức (IKEv1, ESP, L2TP, PPP) giúp kết nối xuyên suốt, ổn định và dễ chẩn đoán:
+**TOMOSIA VPN** tự cài đặt trực tiếp toàn bộ giao thức (IKEv1, ESP, L2TP, PPP) giúp kết nối xuyên suốt, ổn định và dễ chẩn đoán:
 - 🖥️ **Menu Bar App (SwiftUI)**: Giao diện trực quan trên thanh Menu Bar — kết nối/ngắt kết nối 1 click, quản lý nhiều profile/account, xem IP & trạng thái tức thì.
 - ⚡ **CLI Engine (`vpn`)**: Bộ điều phối kết nối hiệu năng cao viết bằng Go — độc lập hoàn toàn, không cần Docker, WireGuard, strongSwan, xl2tpd hay pppd.
 
@@ -55,8 +55,8 @@ Chuẩn bị 4 thông tin từ quản trị mạng: **Server Address**, **IPsec 
 
 ### Cách 1: Sử dụng App Menu Bar (Khuyến nghị)
 
-1. Mở ứng dụng **TMS VPN** từ thư mục `Applications` hoặc Spotlight.
-2. Click biểu tượng TMS VPN trên Menu Bar → bấm **+** cạnh **Configurations**.
+1. Mở ứng dụng **TOMOSIA-VPN** từ thư mục `Applications` hoặc Spotlight.
+2. Click biểu tượng TOMOSIA VPN trên Menu Bar → bấm **+** cạnh **Configurations**.
 3. Nhập thông tin:
    - **Display name**: Tên gợi nhớ (VD: `Công ty`).
    - **Server address**: Địa chỉ IP hoặc tên miền VPN.
@@ -179,7 +179,7 @@ id -u | sudo tee /etc/vpn-owner-uid >/dev/null && sudo chmod 600 /etc/vpn-owner-
 
 # Build Menu Bar App (Universal arm64 + Intel)
 bash build.sh
-ditto "build/TMS VPN.app" "/Applications/TMS VPN.app"
+ditto build/TOMOSIA-VPN.app /Applications/TOMOSIA-VPN.app
 
 # Chạy Unit Tests
 go test ./...
