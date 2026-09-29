@@ -1,0 +1,781 @@
+/* Design tokens follow the macOS system palette, so the site looks like the app:
+   neutral grays, system green / orange / red for status, system blue for actions.
+   Dark values are the macOS dark-appearance variants of the same colors. */
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --bg-grouped: #f5f5f7;
+  --surface: #ffffff;
+  --fill: rgba(120, 120, 128, 0.12);
+  --label: #1d1d1f;
+  --label-secondary: #6e6e73;
+  --separator: rgba(0, 0, 0, 0.12);
+
+  --accent: #007aff;
+  --accent-pressed: #0062cc;
+  --link: #0066cc;
+  --on-accent: #ffffff;
+  --focus-ring: rgba(0, 122, 255, 0.5);
+
+  --green: #34c759;
+  --orange: #ff9500;
+  --red: #ff3b30;
+
+  --menubar: rgba(246, 246, 246, 0.94);
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --container: 1120px;
+  --gutter: 24px;
+  --header-height: 56px;
+  --radius-panel: 14px;
+  --radius-control: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --bg-grouped: #1c1c1e;
+    --surface: #2c2c2e;
+    --fill: rgba(120, 120, 128, 0.24);
+    --label: #f5f5f7;
+    --label-secondary: #98989d;
+    --separator: rgba(255, 255, 255, 0.14);
+
+    --accent: #0a84ff;
+    --accent-pressed: #409cff;
+    --link: #2997ff;
+    --focus-ring: rgba(10, 132, 255, 0.6);
+
+    --green: #30d158;
+    --orange: #ff9f0a;
+    --red: #ff453a;
+
+    --menubar: rgba(44, 44, 46, 0.94);
+    --shadow-panel: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --gutter: 16px;
+  }
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-height) + 16px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--label);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+}
+
+body:lang(ja) {
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    "Yu Gothic", Meiryo, system-ui, sans-serif;
+  line-height: 1.75;
+  line-break: strict;
+}
+
+h1,
+h2,
+h3,
+p,
+ol,
+ul,
+figure,
+pre {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* Buttons: the macOS push-button shapes */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover {
+  text-decoration: none;
+}
+
+/* Large text (19px semibold) keeps white-on-blue readable at the system accent colors. */
+.button--primary {
+  min-height: 48px;
+  padding: 0 26px;
+  border-radius: 980px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.button--primary:hover {
+  background: var(--accent-pressed);
+}
+
+.button--small {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Header */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--separator);
+}
+
+.header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--header-height);
+}
+
+.header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--label);
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.header__brand img {
+  border-radius: 6px;
+}
+
+.header__brand:hover {
+  text-decoration: none;
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header__github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--label);
+  font-size: 15px;
+}
+
+@media (max-width: 480px) {
+  .header__brand span,
+  .header__github span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Language switcher, drawn as a macOS segmented control */
+
+.lang {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--fill);
+}
+
+.lang__option {
+  min-width: 40px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  color: var(--label);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+}
+
+.lang__option:hover {
+  text-decoration: none;
+}
+
+.lang__option[aria-current="page"] {
+  background: var(--surface);
+  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Hero */
+
+.hero {
+  padding-block: 88px 96px;
+}
+
+.hero__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 56px;
+}
+
+.hero__title {
+  font-size: clamp(44px, 6.4vw, 76px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.hero__lead {
+  max-width: 34em;
+  margin-top: 24px;
+  color: var(--label-secondary);
+  font-size: 21px;
+  line-height: 1.5;
+}
+
+.hero .download {
+  margin-top: 36px;
+}
+
+.download__requirements {
+  margin-top: 12px;
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+/* A slice of a Mac desktop with the popover open under its status item. */
+.desk {
+  --menubar-height: 26px;
+  --popover-width: 460px;
+  --desk-padding: 28px;
+  position: relative;
+  overflow: hidden;
+  width: min(calc(var(--popover-width) + 2 * var(--desk-padding)), 100%);
+  padding: 0 var(--desk-padding) 4px;
+  border-radius: 18px;
+  background: var(--bg-grouped);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.desk__menubar {
+  height: var(--menubar-height);
+  margin-inline: calc(-1 * var(--desk-padding));
+  background: var(--menubar);
+  border-bottom: 1px solid var(--separator);
+}
+
+.desk__popover {
+  position: relative;
+  width: 100%;
+}
+
+/* The status item sits on the menu bar, centred over the popover's arrow. */
+.desk__status-item {
+  position: absolute;
+  top: calc(-1 * var(--menubar-height));
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: calc(var(--menubar-height) - 4px);
+  margin-top: 2px;
+  transform: translateX(-50%);
+  border-radius: 5px;
+  background: var(--fill);
+  color: var(--label);
+}
+
+/* Sections */
+
+.section {
+  padding-block: 104px;
+}
+
+.section--grouped {
+  background: var(--bg-grouped);
+}
+
+.section__intro {
+  max-width: 44em;
+}
+
+.section__title {
+  font-size: clamp(32px, 4.2vw, 48px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.section__body {
+  margin-top: 20px;
+  color: var(--label-secondary);
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+/* Japanese: no negative tracking, and headlines break between phrases, not inside words. */
+:lang(ja) .hero__title,
+:lang(ja) .section__title,
+:lang(ja) .setup__subtitle {
+  letter-spacing: 0;
+  line-height: 1.25;
+  word-break: auto-phrase;
+}
+
+/* Built-in VPN vs TOMOSIA VPN */
+
+.compare {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 32px;
+  margin-top: 56px;
+  align-items: start;
+}
+
+.compare__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.compare__label span {
+  color: var(--label-secondary);
+}
+
+.mac-alert {
+  max-width: 300px;
+  padding: 20px 16px 16px;
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mac-alert__title {
+  font-weight: 700;
+}
+
+.mac-alert__message {
+  margin-top: 6px;
+}
+
+.mac-alert__button {
+  display: block;
+  margin-top: 16px;
+  padding: 5px 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+
+.alerts {
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.alerts__item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.alerts__item + .alerts__item {
+  border-top: 1px solid var(--separator);
+}
+
+.alerts__item .status-dot {
+  margin-top: 7px;
+}
+
+.alerts__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.alerts__message {
+  margin-top: 2px;
+  color: var(--label-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.alerts__action {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--fill);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot--ok {
+  background: var(--green);
+}
+
+.status-dot--warning {
+  background: var(--orange);
+}
+
+.status-dot--error {
+  background: var(--red);
+}
+
+.ui-label {
+  white-space: nowrap;
+}
+
+/* Features */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 40px;
+  row-gap: 48px;
+  margin-top: 56px;
+}
+
+.feature {
+  padding-top: 20px;
+  border-top: 1px solid var(--separator);
+}
+
+.feature__title {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.feature__body {
+  margin-top: 8px;
+  color: var(--label-secondary);
+  font-size: 16px;
+}
+
+.feature__marks {
+  display: flex;
+  gap: 14px;
+  margin-top: 16px;
+  color: var(--label);
+}
+
+.feature__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-grouped);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Screenshots */
+
+.screens {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  margin-top: 48px;
+  align-items: end;
+}
+
+.screens__item img {
+  margin-inline: auto;
+}
+
+.screens__item figcaption {
+  max-width: 30em;
+  margin: 8px auto 0;
+  color: var(--label-secondary);
+  font-size: 15px;
+  text-align: center;
+}
+
+/* Install and uninstall */
+
+.setup {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: 64px;
+  align-items: start;
+}
+
+.steps {
+  margin-top: 32px;
+  counter-reset: step;
+}
+
+.steps__item {
+  position: relative;
+  padding: 0 0 20px 48px;
+  counter-increment: step;
+  font-size: 19px;
+}
+
+.steps__item::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--fill);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.steps__item strong {
+  font-weight: 600;
+}
+
+.setup__note {
+  color: var(--label-secondary);
+  font-size: 15px;
+}
+
+.setup__install .setup__note {
+  padding-left: 48px;
+}
+
+.setup__uninstall {
+  padding-top: 8px;
+}
+
+.setup__subtitle {
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 10px;
+  background: var(--bg-grouped);
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+
+.command__code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-block: 4px;
+}
+
+/* Footer */
+
+.footer {
+  border-top: 1px solid var(--separator);
+  color: var(--label-secondary);
+  font-size: 14px;
+}
+
+.footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-block: 28px;
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+/* Responsive */
+
+@media (max-width: 960px) {
+  .hero {
+    padding-block: 56px 72px;
+  }
+
+  .hero__inner,
+  .compare,
+  .setup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero__inner {
+    gap: 48px;
+  }
+
+  .desk {
+    margin-inline: auto;
+  }
+
+  .features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup {
+    gap: 56px;
+  }
+}
+
+@media (max-width: 640px) {
+  .section {
+    padding-block: 72px;
+  }
+
+  .hero__lead {
+    font-size: 19px;
+  }
+
+  .compare,
+  .features,
+  .screens {
+    margin-top: 40px;
+  }
+
+  .features,
+  .screens {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .features {
+    row-gap: 36px;
+  }
+
+  .desk {
+    --desk-padding: 12px;
+  }
+
+  .mac-alert {
+    max-width: none;
+  }
+
+  .alerts__item {
+    grid-template-columns: 8px minmax(0, 1fr);
+  }
+
+  .alerts__action {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .steps__item {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

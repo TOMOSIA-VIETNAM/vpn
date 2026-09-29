@@ -12,3 +12,11 @@ coverage/
 benchmark_report.json
 safe_test_report.md
 scripts/
+
+# Landing page (webapp/) build output
+webapp/.next/
+webapp/out/
+webapp/next-env.d.ts
+webapp/*.tsbuildinfo
+# The landing page's build scripts are source, unlike the local scripts/ ignored above.
+!webapp/scripts/
