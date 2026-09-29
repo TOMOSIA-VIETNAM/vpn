@@ -19,7 +19,7 @@ import (
 
 // releaseAssetBaseURL is where CI publishes prebuilt binaries plus the
 // signed manifest — see .github/workflows/release.yml and internal/release.
-const releaseAssetBaseURL = "https://github.com/tms-ninhle/vpn/releases/latest/download/"
+const releaseAssetBaseURL = "https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/"
 
 const (
 	installPath = "/usr/local/bin/vpn"

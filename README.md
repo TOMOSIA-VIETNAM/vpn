@@ -32,14 +32,14 @@ VPN mặc định của macOS (*System Settings → VPN → L2TP over IPsec*) th
 **Cài đặt tự động (tự nhận diện chip Apple Silicon M1/M2/M3... hoặc Mac Intel 2017+):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install.sh | bash
 ```
 
 **Hoặc cài đặt chỉ định theo từng kiến trúc:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install-arm64.sh | bash   # Apple Silicon (M1/M2/M3...)
-curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/install-intel.sh | bash   # Mac Intel
+curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-arm64.sh | bash   # Apple Silicon (M1/M2/M3...)
+curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-intel.sh | bash   # Mac Intel
 ```
 
 Kiểm tra xác nhận cài đặt thành công:
@@ -156,7 +156,7 @@ vpn logs -f       # Xem chi tiết gói tin giao thức
 
 - **Gỡ cài đặt hoàn toàn**:
   ```bash
-  curl -fsSL https://raw.githubusercontent.com/tms-ninhle/vpn/main/uninstall.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/uninstall.sh | bash
   ```
 
 ---
@@ -170,7 +170,7 @@ vpn logs -f       # Xem chi tiết gói tin giao thức
 ### Biên dịch và kiểm thử
 ```bash
 # Clone source code
-git clone https://github.com/tms-ninhle/vpn.git && cd vpn
+git clone https://github.com/TOMOSIA-VIETNAM/vpn.git && cd vpn
 
 # Build CLI và cài đặt với quyền setuid-root
 go build -o vpn ./cmd/vpn
