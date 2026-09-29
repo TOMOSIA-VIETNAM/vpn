@@ -1,5 +1,6 @@
 import Cocoa
 import Combine
+import Network
 import SwiftUI
 import UserNotifications
 
@@ -17,7 +18,7 @@ enum AppBranding {
     /// Templates, so macOS tints them to match the menu bar like system items.
     static let menuBarIdle: NSImage = template("menubar-idle", fallback: "shield")
     static let menuBarConnected: NSImage = template("menubar-connected", fallback: "shield.fill")
-    /// Outline mark with a badge: a connection dropped on its own.
+    /// Outline mark with a circled "!": an error the user should look at.
     static let menuBarLost: NSImage = template("menubar-lost", fallback: "exclamationmark.shield")
 
     // Stamped into Info.plist by build.sh from the release tag; nil when run
@@ -142,8 +143,11 @@ final class VPNManager: ObservableObject {
     /// The user turned the VPN off and the daemon has not finished tearing down yet.
     @Published var isDisconnecting: Bool = false
     /// Set when a live connection drops on its own (not turned off in this app); cleared once
-    /// it is back, when the user acts, or when the alert is dismissed. Drives the status item badge.
+    /// it is back, when the user acts, or when the alert is dismissed.
     @Published var connectionLost: Bool = false
+    /// Whether this Mac has any usable network path (Wi-Fi, Ethernet…), from NWPathMonitor.
+    @Published var networkOnline: Bool = true
+    private let pathMonitor = NWPathMonitor()
     private var noticeWorkItem: DispatchWorkItem?
     var onStatusChanged: ((String) -> Void)?
     private var pollTimer: Timer?
@@ -185,6 +189,28 @@ final class VPNManager: ObservableObject {
     init() {
         syncFromDisk()
         startPolling()
+        pathMonitor.pathUpdateHandler = { path in
+            let online = path.status == .satisfied
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    let vpn = VPNManager.shared
+                    vpn.update(\.networkOnline, online)
+                    // Back online: refresh now instead of on the next (slow) poll tick.
+                    if online { vpn.syncFromDisk() }
+                }
+            }
+        }
+        pathMonitor.start(queue: .global(qos: .utility))
+    }
+
+    /// Whether the status item shows the error badge ("!"). It marks a problem that is still
+    /// there: a failure alert, or a dropped connection that is reconnecting or has no network
+    /// under it. Once the network is back and the VPN simply is off, the icon shows that
+    /// plainly; the popover still explains the drop.
+    var showsErrorBadge: Bool {
+        guard linkState != .connected else { return false }
+        if let kind = activeAlert?.kind, kind != .connectionLost { return true }
+        return connectionLost && (linkState == .connecting || !networkOnline)
     }
 
     /// Whether the popover is on screen. Only then (or while something is in flight) is a 1s
@@ -405,7 +431,7 @@ final class VPNManager: ObservableObject {
     }
 
     /// Makes a connection that drops on its own visible: an alert card when nothing else
-    /// explains it, the status item badge, and a system notification while the app's UI is
+    /// explains it, the status item error badge, and a system notification while the app's UI is
     /// closed. Changes the user makes in this app go through beginIntent, which moves
     /// currentPhase itself, so they never reach here as CONNECTED → something else.
     private func noteLinkChange(from old: String, to new: String, profile: String?) {
@@ -2104,18 +2130,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         MainActor.assumeIsolated { VPNManager.shared.setPopoverVisible(false) }
     }
 
-    /// Status item shows the solid mark when connected, the outline mark with a badge after a
-    /// connection dropped on its own (also while it reconnects), the dimmed outline while
+    /// Status item shows the solid mark when connected, the outline mark with a circled "!"
+    /// while there is an error (see VPNManager.showsErrorBadge), the dimmed outline while
     /// connecting, and the plain outline when idle.
     @MainActor private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
         let vpn = VPNManager.shared
         let state = vpn.linkState
-        let lost = vpn.connectionLost && state != .connected
+        let badged = vpn.showsErrorBadge
         button.image = state == .connected ? AppBranding.menuBarConnected
-            : (lost ? AppBranding.menuBarLost : AppBranding.menuBarIdle)
-        button.appearsDisabled = state == .connecting && !lost
-        let status = lost ? "Connection lost" : Theme.statusText(for: state, reconnecting: vpn.isReconnecting)
+            : (badged ? AppBranding.menuBarLost : AppBranding.menuBarIdle)
+        button.appearsDisabled = state == .connecting && !badged
+        let status: String
+        if !badged {
+            status = Theme.statusText(for: state, reconnecting: vpn.isReconnecting)
+        } else if vpn.connectionLost {
+            status = vpn.networkOnline ? "Connection lost — reconnecting" : "Connection lost — no network"
+        } else {
+            status = vpn.activeAlert?.title ?? "Connection failed"
+        }
         button.toolTip = "\(AppBranding.name) — \(status)"
     }
 

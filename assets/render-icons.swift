@@ -8,7 +8,7 @@
 //                                         (also written to docs/logo.png for the landing page)
 //   menubar-idle.png / @2x                status item template image, outline mark (disconnected)
 //   menubar-connected.png / @2x           status item template image, solid mark (connected)
-//   menubar-lost.png / @2x                status item template image, outline mark with a badge (connection dropped)
+//   menubar-lost.png / @2x                status item template image, outline mark with a circled "!" (error)
 //
 // Menu bar images are black-on-transparent templates: macOS recolors them to match
 // the menu bar (black on light, white on dark), like every system status item.
@@ -42,7 +42,7 @@ func letterPath() -> NSBezierPath {
     return p
 }
 
-/// `badged`: outline mark with a solid dot at the lower right, cut out from the mark.
+/// `badged`: outline mark with a circled "!" at the lower right, cut out from the mark.
 enum MarkStyle { case outline, solid, badged }
 
 /// Draws the mark into `rect` (square) of the current context.
@@ -67,11 +67,21 @@ func drawMark(in rect: NSRect, style: MarkStyle, color: NSColor) {
     case .badged:
         shield.stroke()
         letter.stroke()
-        let center = NSPoint(x: 51, y: 50)
+        // Circled "!" at the lower right, cut out from the mark so it stays legible.
+        let c = NSPoint(x: 47, y: 47)
         NSGraphicsContext.current?.compositingOperation = .destinationOut
-        NSBezierPath(ovalIn: NSRect(x: center.x - 14, y: center.y - 14, width: 28, height: 28)).fill()
+        NSBezierPath(ovalIn: NSRect(x: c.x - 17, y: c.y - 17, width: 34, height: 34)).fill()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
-        NSBezierPath(ovalIn: NSRect(x: center.x - 9.5, y: center.y - 9.5, width: 19, height: 19)).fill()
+        let ring = NSBezierPath(ovalIn: NSRect(x: c.x - 12.5, y: c.y - 12.5, width: 25, height: 25))
+        ring.lineWidth = 4
+        ring.stroke()
+        let bar = NSBezierPath()
+        bar.move(to: NSPoint(x: c.x, y: c.y - 6.5))
+        bar.line(to: NSPoint(x: c.x, y: c.y + 1.5))
+        bar.lineWidth = 4
+        bar.lineCapStyle = .round
+        bar.stroke()
+        NSBezierPath(ovalIn: NSRect(x: c.x - 2.3, y: c.y + 4.5, width: 4.6, height: 4.6)).fill()
     case .solid:
         shield.fill()
         shield.stroke()
