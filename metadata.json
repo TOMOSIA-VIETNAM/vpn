@@ -1,6 +1,0 @@
-{
-  "name": "TMS VPN macOS Menu Bar Studio",
-  "description": "macOS Menu Bar status bar popup UI and Swift single-binary generator for TMS VPN profile management and connection control",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
-}

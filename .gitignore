@@ -1,19 +1,12 @@
-node_modules/
 build/
 build_app/
 build_dist/
-dist/
 
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
-*.json
-!config.json
-!package.json
-!tsconfig.json
 benchmark_report.json
 safe_test_report.md
-*.html
 scripts/
