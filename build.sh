@@ -7,7 +7,7 @@ set -euo pipefail
 
 OUTPUT_NAME="tms-vpn-bar"
 APP_NAME="TMS VPN.app"
-BUILD_DIR="./build"
+BUILD_DIR="${BUILD_DIR:-./build}"
 
 # Version shown in the app footer (CFBundleShortVersionString). The release
 # workflow passes the tag without its "v" (VERSION=1.2.3); local builds fall
@@ -42,6 +42,25 @@ swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI mai
 
 lipo -create "$BUILD_DIR/${OUTPUT_NAME}-arm64" "$BUILD_DIR/${OUTPUT_NAME}-x86_64" -output "$BUILD_DIR/$OUTPUT_NAME"
 
+# The app drives the `vpn` CLI, which must sit setuid-root in /usr/local/bin. A drag-to-
+# Applications install has no installer step, so the CLI travels inside the app and the
+# app installs it (with an admin prompt) on first launch — see CLIInstaller in main.swift.
+# Skipped when Go is missing, so a Swift-only build still works.
+if command -v go >/dev/null 2>&1; then
+    CLI_VERSION="v${VERSION}"
+    echo "🔧 Biên dịch CLI Engine (universal) để đóng gói trong app..."
+    for arch in arm64 amd64; do
+        CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -trimpath \
+            -ldflags "-s -w -X main.version=${CLI_VERSION}" \
+            -o "$BUILD_DIR/vpn-$arch" ./cmd/vpn
+    done
+    lipo -create "$BUILD_DIR/vpn-arm64" "$BUILD_DIR/vpn-amd64" -output "$BUILD_DIR/vpn"
+    BUNDLE_CLI=1
+else
+    echo "⚠️  Không tìm thấy Go — app sẽ không kèm CLI (cài CLI bằng install.sh)."
+    BUNDLE_CLI=0
+fi
+
 echo "📦 [3/3] Đóng gói thành macOS Application Bundle ($APP_NAME)..."
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/MacOS"
 mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
@@ -50,6 +69,10 @@ cp "$BUILD_DIR/$OUTPUT_NAME" "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
 chmod +x "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
 cp "assets/AppIcon.icns" "$BUILD_DIR/$APP_NAME/Contents/Resources/AppIcon.icns"
 cp "assets/logo.png" "$BUILD_DIR/$APP_NAME/Contents/Resources/Logo.png"
+if [[ "$BUNDLE_CLI" == 1 ]]; then
+    cp "$BUILD_DIR/vpn" "$BUILD_DIR/$APP_NAME/Contents/Resources/vpn"
+    chmod 755 "$BUILD_DIR/$APP_NAME/Contents/Resources/vpn"
+fi
 
 cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -77,6 +100,10 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 </dict>
 </plist>
 EOF
+
+# Ad-hoc signature over the finished bundle (keeps Apple Silicon happy about the added
+# resources). Not a Developer ID signature: first launch still needs right-click → Open.
+codesign --force --deep --sign - "$BUILD_DIR/$APP_NAME" >/dev/null 2>&1 || true
 
 echo "✅ Đã build thành công Universal Binary tại: $BUILD_DIR/$OUTPUT_NAME"
 echo "✅ Đã tạo App bundle tại: $BUILD_DIR/$APP_NAME (v$VERSION)"

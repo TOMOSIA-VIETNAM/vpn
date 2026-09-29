@@ -1113,6 +1113,28 @@ func WithConnectLock(fn func() error) error {
 	if err != nil {
 		return fmt.Errorf("open connect lock: %w", err)
 	}
+	return runLocked(f, fn)
+}
+
+// WithConnectLockIfAvailable is WithConnectLock for changes that must not
+// interleave with a connect starting (editing or removing a profile), but that
+// also have to keep working without root (a non-setuid build): there no connect
+// can be running either, so nothing needs serializing and fn simply runs. Only
+// that one case skips the lock — any other failure to open it (disk full, a
+// broken state directory, ...) is transient and says nothing about whether a
+// connect elsewhere holds the lock, so it is returned, not ignored.
+func WithConnectLockIfAvailable(fn func() error) error {
+	f, err := openLockFile()
+	if errors.Is(err, privilege.ErrNotPrivileged) {
+		return fn()
+	}
+	if err != nil {
+		return fmt.Errorf("open connect lock: %w", err)
+	}
+	return runLocked(f, fn)
+}
+
+func runLocked(f *os.File, fn func() error) error {
 	defer f.Close()
 	// flock, not privilege.Elevate's mutex: this needs to serialize across
 	// separate `vpn` processes, which an in-process mutex cannot do. Once
@@ -1169,6 +1191,22 @@ func AlreadyServing(profile, account string) (*state.State, bool) {
 		return nil, false
 	}
 	if st.Phase == state.PhaseConnected || (st.Phase == state.PhaseConnecting && st.Reconnecting) {
+		return st, true
+	}
+	return nil, false
+}
+
+// ProfileInUse reports whether a live daemon is connected (or connecting, or
+// reconnecting) through profile. Editing or deleting such a profile would pull
+// the server address, account or secrets out from under the running tunnel, so
+// callers refuse until it is disconnected. A stale state file whose daemon is
+// gone does not count.
+func ProfileInUse(profile string) (*state.State, bool) {
+	st, err := state.Load()
+	if err != nil || st.PID <= 0 || !processAlive(st.PID) || st.Profile != profile {
+		return nil, false
+	}
+	if st.Phase == state.PhaseConnected || st.Phase == state.PhaseConnecting {
 		return st, true
 	}
 	return nil, false

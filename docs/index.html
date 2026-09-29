@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMS VPN — VPN L2TP/IPsec thuần macOS</title>
+<meta name="description" content="TMS VPN là VPN client L2TP/IPsec thuần macOS: kết nối 1 click từ thanh menu, tự cài đặt toàn bộ giao thức, không cần Docker, strongSwan hay pppd.">
+<meta name="theme-color" content="#070b12">
+<meta property="og:title" content="TMS VPN — VPN L2TP/IPsec thuần macOS">
+<meta property="og:description" content="Kết nối 1 click từ thanh menu. Ổn định, bảo mật, không phụ thuộc phần mềm ngoài.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="__SITE_URL__/">
+<meta property="og:image" content="__SITE_URL__/logo.png">
+<link rel="canonical" href="__SITE_URL__/">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b12; --bg2:#0b111b; --card:rgba(255,255,255,.04); --line:rgba(255,255,255,.09);
+  --text:#e8edf5; --muted:#8b97a8; --cyan:#33d9f2; --green:#33e68c; --amber:#fa9e1a;
+  --grad:linear-gradient(120deg,var(--cyan),var(--green));
+  --r:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{max-width:100vw;background:var(--bg);color:var(--text);font:16px/1.6 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+/* ambient background */
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(110px);opacity:.28}
+.aurora i:nth-child(1){width:560px;height:560px;background:#0b8fa8;top:-160px;left:-120px;animation:float 18s ease-in-out infinite}
+.aurora i:nth-child(2){width:520px;height:520px;background:#12a56a;top:120px;right:-160px;animation:float 22s ease-in-out infinite reverse}
+.aurora i:nth-child(3){width:420px;height:420px;background:#3b4fd8;bottom:-160px;left:32%;opacity:.16;animation:float 26s ease-in-out infinite}
+.grid-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;opacity:.25;
+  -webkit-mask-image:radial-gradient(ellipse 70% 50% at 50% 0%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 70% 50% at 50% 0%,#000 30%,transparent 75%)}
+@keyframes float{50%{transform:translate(40px,30px) scale(1.08)}}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);background:rgba(7,11,18,.6);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em}
+.brand img{width:30px;height:30px;border-radius:8px}
+.links{display:flex;gap:28px;font-size:14px;color:var(--muted)}
+.links a:hover{color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:15px;padding:12px 22px;border-radius:14px;border:1px solid var(--line);background:var(--card);transition:.25s;cursor:pointer;color:var(--text);font-family:inherit}
+.btn:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.22)}
+.btn.primary{background:var(--grad);color:#04121a;border:0;box-shadow:0 10px 40px -8px rgba(51,217,242,.55)}
+.btn.primary:hover{box-shadow:0 14px 50px -6px rgba(51,230,140,.65)}
+.btn.sm{padding:8px 16px;font-size:14px;border-radius:11px}
+.btn svg{width:18px;height:18px}
+.ver{font:600 12px "JetBrains Mono",monospace;padding:2px 8px;border-radius:99px;background:rgba(4,18,26,.16)}
+.ver:empty{display:none}
+
+/* hero */
+.hero>*,.split>*{min-width:0}
+.hero{padding:88px 24px 40px;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--cyan);padding:6px 14px;border-radius:99px;background:rgba(51,217,242,.08);border:1px solid rgba(51,217,242,.25);margin-bottom:26px}
+.pill b{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+h1{font-size:clamp(38px,5.6vw,68px);line-height:1.04;letter-spacing:-.035em;font-weight:800}
+.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:19px;color:var(--muted);max-width:540px;margin:24px 0 34px}
+.cta{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.meta{margin-top:22px;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:18px}
+.meta span::before{content:"✓ ";color:var(--green)}
+
+/* app mockup */
+.stage{position:relative;display:flex;justify-content:center}
+.stage::before{content:"";position:absolute;inset:8% 6%;background:var(--grad);filter:blur(80px);opacity:.22;border-radius:50%}
+.mac{position:relative;width:min(400px,100%);background:#11151d;border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 50px 100px -30px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5);overflow:hidden;transform:perspective(1200px) rotateY(-7deg) rotateX(3deg);transition:transform .6s}
+.stage:hover .mac{transform:perspective(1200px) rotateY(0) rotateX(0)}
+.mac .bar{display:flex;gap:7px;padding:12px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--line)}
+.mac .bar i{width:12px;height:12px;border-radius:50%}
+.mac .bar i:nth-child(1){background:#ff5f57}.mac .bar i:nth-child(2){background:#febc2e}.mac .bar i:nth-child(3){background:#3b4048}
+.m-head{display:flex;gap:12px;align-items:center;padding:16px 16px 12px}
+.m-logo{width:40px;height:40px;border-radius:12px;background:#0d2938;border:1px solid rgba(31,140,166,.6);display:grid;place-items:center;box-shadow:0 0 18px rgba(20,184,209,.25)}
+.m-logo img{width:24px;height:24px}
+.m-title{font-weight:700;font-size:16px;display:flex;gap:8px;align-items:center}
+.m-status{font-size:13px;font-weight:500;display:flex;gap:6px;align-items:center;transition:color .4s}
+.dot{width:7px;height:7px;border-radius:50%;background:#7c8494;transition:.4s}
+.m-sub{font-size:11px;color:var(--muted);transition:color .4s}
+.m-sec{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;border-top:1px solid var(--line);margin-top:4px}
+.m-sec span{font-size:11px;font-weight:700;letter-spacing:.04em;color:#8593a8}
+.m-sec b{font-size:11px;color:var(--cyan);padding:4px 10px;border-radius:8px;background:#0d2938;border:1px solid rgba(31,140,166,.6)}
+.card{margin:6px 16px 0;padding:11px 14px;border-radius:13px;display:flex;align-items:center;gap:12px;background:rgba(26,31,41,.85);border:1px solid var(--line);transition:.5s}
+.card .cd{width:9px;height:9px;border-radius:50%;background:#7c8494;transition:.4s}
+.card .t{flex:1;min-width:0}.card .t b{display:block;font-size:14px}.card .t small{font-size:11px;color:#8b93a1;transition:color .4s}
+.sw{width:42px;height:24px;border-radius:99px;background:#333f54;position:relative;transition:.4s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:.4s cubic-bezier(.3,1.4,.5,1)}
+.card .more{color:#7d8797;letter-spacing:2px;font-weight:700}
+.card.off{margin-top:8px;opacity:.85}
+.m-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;margin-top:18px;border-top:1px solid var(--line);font-size:11px;color:#7d8797}
+.m-foot em{font-style:normal;font-family:"JetBrains Mono",monospace;color:var(--cyan);border:1px solid rgba(31,140,166,.5);background:#0d2938;padding:2px 7px;border-radius:99px;font-size:10px;margin-right:8px}
+/* states */
+.mac[data-s="on"] .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+.mac[data-s="on"] .m-status,.mac[data-s="on"] .m-sub{color:var(--green)}
+.mac[data-s="on"] .card.a{background:#0a2e1f;border-color:rgba(51,230,140,.6);box-shadow:0 0 24px rgba(51,230,140,.2)}
+.mac[data-s="on"] .card.a .cd{background:var(--green);box-shadow:0 0 8px var(--green)}
+.mac[data-s="on"] .card.a .sw{background:var(--green)}.mac[data-s="on"] .card.a .sw::after{left:21px}
+.mac[data-s="wait"] .dot{background:var(--amber);animation:pulse 1s infinite}
+.mac[data-s="wait"] .m-status,.mac[data-s="wait"] .m-sub,.mac[data-s="wait"] .card.a small{color:var(--amber)}
+.mac[data-s="wait"] .card.a{background:#33200a;border-color:rgba(250,158,26,.5)}
+.mac[data-s="wait"] .card.a .cd{background:var(--amber)}
+.mac[data-s="wait"] .card.a .sw{background:var(--amber)}.mac[data-s="wait"] .card.a .sw::after{left:21px}
+@keyframes pulse{50%{opacity:.35;transform:scale(1.5)}}
+
+/* sections */
+section{padding:96px 0}
+.eyebrow{font-size:13px;font-weight:600;color:var(--cyan);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+h2{font-size:clamp(30px,4vw,46px);line-height:1.1;letter-spacing:-.03em;font-weight:800;max-width:720px}
+.sub{color:var(--muted);font-size:18px;max-width:600px;margin-top:16px}
+
+/* problem strip */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:-10px}
+.strip div{background:var(--bg2);padding:26px 24px}
+.strip b{display:block;font-size:34px;letter-spacing:-.03em;font-weight:800}
+.strip span{color:var(--muted);font-size:14px}
+
+/* features */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:52px}
+.feat{position:relative;padding:28px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);transition:.3s;overflow:hidden}
+.feat::before{content:"";position:absolute;inset:0;background:radial-gradient(400px circle at var(--x,50%) var(--y,0%),rgba(51,217,242,.13),transparent 60%);opacity:0;transition:.3s}
+.feat:hover{border-color:rgba(51,217,242,.35);transform:translateY(-4px)}
+.feat:hover::before{opacity:1}
+.feat.wide{grid-column:span 2}
+.ico{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;margin-bottom:18px;background:linear-gradient(135deg,rgba(51,217,242,.18),rgba(51,230,140,.12));border:1px solid rgba(51,217,242,.25);font-size:22px}
+.feat h3{font-size:18px;letter-spacing:-.01em;margin-bottom:8px;position:relative}
+.feat p{color:var(--muted);font-size:15px;position:relative}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;position:relative}
+.tags span{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-family:"JetBrains Mono",monospace}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:52px;counter-reset:s}
+.step{padding:30px;border-radius:var(--r);background:linear-gradient(180deg,var(--card),transparent);border:1px solid var(--line);counter-increment:s}
+.step::before{content:counter(s);display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--grad);color:#04121a;font-weight:800;margin-bottom:18px}
+.step h3{margin-bottom:8px}.step p{color:var(--muted);font-size:15px}
+
+/* terminal */
+.split{display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:center}
+.term{border-radius:16px;background:#0a0e15;border:1px solid var(--line);box-shadow:0 40px 80px -30px rgba(0,0,0,.7);overflow:hidden}
+.term .bar{display:flex;gap:7px;padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.03)}
+.term .bar i{width:11px;height:11px;border-radius:50%;background:#2b313c}
+.term pre{padding:20px;font:13.5px/1.75 "JetBrains Mono",monospace;overflow-x:auto;color:#c8d1de}
+.term .p{color:var(--green)}.term .c{color:#5b6677}.term .o{color:var(--cyan)}
+.checks{list-style:none;margin-top:26px;display:grid;gap:12px}
+.checks li{display:flex;gap:12px;color:var(--muted);font-size:15px}
+.checks li::before{content:"✓";color:#04121a;background:var(--grad);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none;margin-top:3px}
+.checks b{color:var(--text);font-weight:600}
+
+/* install */
+.install{position:relative;text-align:center;padding:72px 32px;border-radius:28px;background:linear-gradient(180deg,rgba(51,217,242,.09),rgba(51,230,140,.05));border:1px solid rgba(51,217,242,.22);overflow:hidden}
+.install h2{margin:0 auto}.install .sub{margin:16px auto 32px}
+.cmd{display:inline-flex;align-items:center;gap:14px;margin-top:26px;padding:12px 14px 12px 20px;border-radius:14px;background:#0a0e15;border:1px solid var(--line);font:13px "JetBrains Mono",monospace;color:#c8d1de;max-width:100%}
+.cmd code{overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.cmd code::-webkit-scrollbar{display:none}
+.cmd button{font:600 12px Inter,sans-serif;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;flex:none;transition:.2s}
+.cmd button:hover{background:rgba(255,255,255,.1)}
+.note{margin-top:22px;font-size:13px;color:var(--muted);max-width:640px;margin-inline:auto}
+.note b{color:var(--text)}
+
+/* faq */
+.faq{max-width:780px;margin-top:44px;display:grid;gap:12px}
+details{border-radius:16px;background:var(--card);border:1px solid var(--line);padding:0 22px;transition:.2s}
+details[open]{border-color:rgba(51,217,242,.3)}
+summary{cursor:pointer;list-style:none;padding:20px 0;font-weight:600;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--cyan);font-size:22px;line-height:1;transition:.2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--muted);padding:0 0 20px;font-size:15px}
+details code{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--cyan)}
+
+footer{border-top:1px solid var(--line);padding:36px 0;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+footer .brand{color:var(--text)}
+footer .fl{display:flex;gap:22px}footer a:hover{color:var(--text)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(24px);transition:opacity .8s,transform .8s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+
+@media(max-width:920px){
+  .hero,.split{grid-template-columns:minmax(0,1fr);gap:44px}
+  .hero{padding-top:56px}
+  .features,.steps{grid-template-columns:1fr 1fr}
+  .feat.wide{grid-column:span 2}
+  .strip{grid-template-columns:1fr 1fr}
+  .links{display:none}
+}
+@media(max-width:600px){
+  section{padding:68px 0}
+  .features,.steps,.strip{grid-template-columns:minmax(0,1fr)}
+  .btn{white-space:normal}
+  .cta .btn{flex:1 1 100%;justify-content:center}
+  .feat.wide{grid-column:auto}
+  .mac{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .rv{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<div class="aurora"><i></i><i></i><i></i></div>
+<div class="grid-bg"></div>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="logo.png" alt="">TMS VPN</a>
+    <div class="links"><a href="#features">Tính năng</a><a href="#how">Cách hoạt động</a><a href="#cli">CLI</a><a href="#faq">Hỏi đáp</a></div>
+    <a class="btn sm primary" href="#install">Tải xuống</a>
+  </div>
+</nav>
+
+<main>
+<div class="wrap hero">
+  <div>
+    <div class="pill"><b></b>Thuần macOS · Apple Silicon &amp; Intel</div>
+    <h1>VPN L2TP/IPsec <span class="grad">ổn định</span> ngay trên thanh menu.</h1>
+    <p class="lead">TMS VPN tự cài đặt toàn bộ giao thức IKEv1, ESP, L2TP và PPP. Không Docker, không strongSwan, không pppd. Chỉ một app nhẹ, kết nối bằng một cú click.</p>
+    <div class="cta">
+      <a class="btn primary" id="dl" href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TMS-VPN.dmg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+        <span>Tải TMS VPN cho macOS</span><small class="ver" data-ver></small>
+      </a>
+      <a class="btn" href="https://github.com/TOMOSIA-VIETNAM/vpn">Xem trên GitHub</a>
+    </div>
+    <div class="meta"><span>macOS 12+</span><span>File .dmg, kéo thả để cài</span><span>Bản cập nhật có chữ ký số</span></div>
+  </div>
+
+  <div class="stage rv">
+    <div class="mac" id="mac" data-s="on" aria-label="Giao diện ứng dụng TMS VPN">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div class="m-head">
+        <div class="m-logo"><img src="logo.png" alt=""></div>
+        <div>
+          <div class="m-title">TMS VPN <span class="m-status"><span class="dot"></span><span id="st">Connected</span></span></div>
+          <div class="m-sub" id="sub">Protected via Hinode</div>
+        </div>
+      </div>
+      <div class="m-sec"><span>CONFIGURATIONS</span><b>+ Add</b></div>
+      <div class="card a">
+        <span class="cd"></span>
+        <div class="t"><b>Hinode</b><small id="cs">153.125.130.77 · tms-vpn</small></div>
+        <div class="sw"></div><span class="more">···</span>
+      </div>
+      <div class="card off">
+        <span class="cd"></span>
+        <div class="t"><b>Văn phòng Hà Nội</b><small>vpn.tomosia.vn · an.nguyen</small></div>
+        <div class="sw"></div><span class="more">···</span>
+      </div>
+      <div class="m-foot"><span><em>v1.0</em>© <span class="yr">2026</span> TMS VPN Client</span><span>⚙︎ &nbsp; Quit ⌘Q</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="strip rv">
+    <div><b class="grad">1 click</b><span>bật / tắt VPN từ thanh menu</span></div>
+    <div><b class="grad">0</b><span>phụ thuộc bên ngoài</span></div>
+    <div><b class="grad">Universal</b><span>Apple Silicon &amp; Intel</span></div>
+    <div><b class="grad">Keychain</b><span>lưu mật khẩu &amp; secret</span></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="eyebrow rv">Tính năng</div>
+    <h2 class="rv">Mọi thứ bạn cần. Không thừa một thứ nào.</h2>
+    <p class="sub rv">VPN mặc định của macOS hay chập chờn và báo lỗi chung chung. TMS VPN sinh ra để kết nối bền và nói rõ chuyện gì đang xảy ra.</p>
+
+    <div class="features">
+      <div class="feat wide rv"><div class="ico">⚡</div><h3>Kết nối 1 click từ Menu Bar</h3>
+        <p>Công tắc bật/tắt ngay trên thanh menu, trạng thái hiển thị tức thì: đang kết nối, đã kết nối, đang kết nối lại, đã ngắt. Đóng cửa sổ, app vẫn chạy nền.</p>
+        <div class="tags"><span>SwiftUI</span><span>Native</span><span>Nhẹ</span></div></div>
+      <div class="feat rv"><div class="ico">🛡️</div><h3>Kill switch</h3>
+        <p>Khi VPN full-tunnel rớt, chặn internet cho đến khi kết nối lại, không để lộ lưu lượng ra ngoài.</p></div>
+
+      <div class="feat rv"><div class="ico">🔁</div><h3>Tự kết nối lại</h3>
+        <p>Mất mạng, đổi Wi-Fi hay sleep/wake: engine tự phát hiện và dựng lại đường hầm.</p></div>
+      <div class="feat rv"><div class="ico">👥</div><h3>Nhiều profile, nhiều account</h3>
+        <p>Quản lý nhiều máy chủ và tài khoản. Sửa host hoặc username mà không phải nhập lại mật khẩu và secret.</p></div>
+      <div class="feat rv"><div class="ico">🔐</div><h3>Bí mật nằm trong Keychain</h3>
+        <p>Pre-shared key và mật khẩu lưu trong macOS Keychain, không bao giờ nằm trong file cấu hình hay dòng lệnh.</p></div>
+
+      <div class="feat rv"><div class="ico">🩺</div><h3>Thông báo lỗi rõ ràng</h3>
+        <p>Sai mật khẩu, server không phản hồi, mạng chặn UDP 500/4500... mỗi lỗi có tên riêng và hướng xử lý cụ thể.</p></div>
+      <div class="feat wide rv"><div class="ico">🧩</div><h3>Tự cài đặt toàn bộ giao thức</h3>
+        <p>IKEv1 (Main Mode), IPsec ESP, NAT-Traversal, L2TP và PPP với PAP / CHAP / MS-CHAPv2. Một binary Go duy nhất, không cần xl2tpd, pppd hay strongSwan.</p>
+        <div class="tags"><span>IKEv1</span><span>ESP</span><span>NAT-T</span><span>L2TP</span><span>MS-CHAPv2</span></div></div>
+
+      <div class="feat rv"><div class="ico">🔒</div><h3>Khóa khi đang dùng</h3>
+        <p>Không thể sửa hay xóa profile đang kết nối, tránh làm hỏng phiên đang chạy, cả trên app lẫn CLI.</p></div>
+      <div class="feat rv"><div class="ico">✍️</div><h3>Cập nhật có chữ ký</h3>
+        <p><code class="mono">vpn update</code> chỉ cài bản phát hành đã được xác minh chữ ký ed25519.</p></div>
+      <div class="feat rv"><div class="ico">📶</div><h3>Chẩn đoán mạng</h3>
+        <p>Lệnh <code class="mono">vpn diagnose</code> kiểm tra DNS, UDP 500/4500 và MTU để biết chính xác mạng đang chặn gì.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="padding-top:20px">
+  <div class="wrap">
+    <div class="eyebrow rv">Cách hoạt động</div>
+    <h2 class="rv">Từ tải về đến kết nối trong vài phút.</h2>
+    <div class="steps">
+      <div class="step rv"><h3>Tải &amp; kéo thả</h3><p>Mở file <b>.dmg</b>, kéo TMS VPN vào thư mục Applications như mọi app khác.</p></div>
+      <div class="step rv"><h3>Hoàn tất cài đặt</h3><p>Lần đầu mở app, macOS hỏi mật khẩu quản trị một lần để cài phần lõi mạng.</p></div>
+      <div class="step rv"><h3>Thêm &amp; bật VPN</h3><p>Nhấn <b>Add</b>, nhập server, tài khoản, secret rồi gạt công tắc. Xong.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="cli">
+  <div class="wrap split">
+    <div>
+      <div class="eyebrow rv">Dành cho dân kỹ thuật</div>
+      <h2 class="rv">Có app đẹp. Có cả CLI mạnh.</h2>
+      <ul class="checks rv">
+        <li><span><b>Cùng một engine.</b> App và lệnh <code class="mono">vpn</code> dùng chung cấu hình, bạn chọn cách nào tiện hơn.</span></li>
+        <li><span><b>Dễ script hóa.</b> <code class="mono">vpn status --json</code>, <code class="mono">vpn diagnose --json</code>.</span></li>
+        <li><span><b>Log rõ ràng.</b> <code class="mono">vpn logs -f</code> theo dõi trực tiếp, bật verbose khi cần soi từng gói.</span></li>
+        <li><span><b>Gỡ sạch.</b> <code class="mono">vpn uninstall</code> xóa cả dữ liệu và secret trong Keychain.</span></li>
+      </ul>
+    </div>
+    <div class="term rv">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="c"># thêm profile, secret được hỏi an toàn, không lộ trong ps</span>
+<span class="p">$</span> vpn profile add hinode --server 153.125.130.77
+<span class="p">$</span> vpn account add hinode an.nguyen --default
+
+<span class="p">$</span> vpn connect --profile hinode
+<span class="o">Connected</span> (local IP 10.200.0.21, device utun4).
+
+<span class="p">$</span> vpn profile edit hinode --server vpn2.example.com
+<span class="c">Error: cannot edit profile "hinode" while it is connected
+       — run `vpn disconnect` first</span>
+
+<span class="p">$</span> vpn killswitch on
+<span class="p">$</span> vpn status --json</pre>
+    </div>
+  </div>
+</section>
+
+<section id="install" style="padding-top:20px">
+  <div class="wrap">
+    <div class="install rv">
+      <div class="eyebrow">Bắt đầu</div>
+      <h2>Sẵn sàng kết nối?</h2>
+      <p class="sub">Tải bản cài đặt mới nhất cho Mac của bạn và kết nối trong vài phút.</p>
+      <a class="btn primary" href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TMS-VPN.dmg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+        <span>Tải TMS-VPN.dmg</span><small class="ver" data-ver></small>
+      </a>
+      <div><div class="cmd"><code id="cmd">curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install.sh | bash</code><button id="copy" type="button">Sao chép</button></div></div>
+      <p class="note">Hoặc cài bằng một dòng lệnh ở trên. <b>Lần đầu mở app:</b> nếu macOS cảnh báo nhà phát triển chưa xác minh, hãy nhấn chuột phải vào TMS VPN, chọn <b>Open</b>, rồi <b>Open</b> lần nữa.</p>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:20px">
+  <div class="wrap">
+    <div class="eyebrow rv">Hỏi đáp</div>
+    <h2 class="rv">Câu hỏi thường gặp</h2>
+    <div class="faq">
+      <details class="rv"><summary>TMS VPN chạy trên những máy nào?</summary><p>macOS 12 trở lên, cả Mac Apple Silicon (M1/M2/M3...) và Mac Intel. Một bản cài đặt universal dùng cho cả hai.</p></details>
+      <details class="rv"><summary>Vì sao app cần mật khẩu quản trị khi mở lần đầu?</summary><p>Để tạo đường hầm VPN và chỉnh bảng định tuyến, phần lõi <code>vpn</code> cần quyền root. App cài nó đúng một lần vào <code>/usr/local/bin</code> và chỉ tài khoản đã cài mới chạy được.</p></details>
+      <details class="rv"><summary>Mật khẩu và pre-shared key được lưu ở đâu?</summary><p>Trong macOS Keychain của bạn. File cấu hình chỉ chứa thông tin không nhạy cảm như tên profile, server, username.</p></details>
+      <details class="rv"><summary>Tôi có thể sửa profile khi đang kết nối không?</summary><p>Không. Để tránh làm hỏng phiên đang chạy, hãy tắt VPN trước, sau đó sửa. Bạn có thể đổi server hoặc username mà không phải nhập lại mật khẩu.</p></details>
+      <details class="rv"><summary>Làm sao gỡ cài đặt?</summary><p>Chạy <code>vpn uninstall</code> để xóa phần lõi, cấu hình và secret trong Keychain, sau đó kéo TMS VPN ra khỏi Applications.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="logo.png" alt="" width="24" height="24">TMS VPN Client</a>
+    <span>© <span class="yr">2026</span> TMS VPN Client</span>
+    <div class="fl"><a href="https://github.com/TOMOSIA-VIETNAM/vpn">GitHub</a><a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases">Bản phát hành</a></div>
+  </div>
+</footer>
+
+<script>
+// Copyright year follows the visitor's clock.
+document.querySelectorAll('.yr').forEach(function(e){ e.textContent = new Date().getFullYear(); });
+
+// Scroll reveal.
+var io = new IntersectionObserver(function(es){
+  es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:.12});
+document.querySelectorAll('.rv').forEach(function(e){ io.observe(e); });
+
+// Cursor glow on feature cards.
+document.querySelectorAll('.feat').forEach(function(c){
+  c.addEventListener('pointermove', function(ev){
+    var r = c.getBoundingClientRect();
+    c.style.setProperty('--x', (ev.clientX - r.left) + 'px');
+    c.style.setProperty('--y', (ev.clientY - r.top) + 'px');
+  });
+});
+
+// The download links always point at releases/latest; this only shows which version that is.
+fetch('https://api.github.com/repos/TOMOSIA-VIETNAM/vpn/releases/latest')
+  .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+  .then(function(rel){
+    if (!rel.tag_name) return;
+    document.querySelectorAll('[data-ver]').forEach(function(e){ e.textContent = rel.tag_name; });
+  }).catch(function(){});
+
+// Copy install command.
+document.getElementById('copy').addEventListener('click', function(){
+  var b = this, t = document.getElementById('cmd').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){
+    b.textContent = 'Đã chép ✓'; setTimeout(function(){ b.textContent = 'Sao chép'; }, 1800);
+  }).catch(function(){
+    var r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+});
+
+// Product mockup cycles through the real states of the app.
+(function(){
+  var mac = document.getElementById('mac'), st = document.getElementById('st'),
+      sub = document.getElementById('sub'), cs = document.getElementById('cs');
+  var seq = [
+    ['on','Connected','Protected via Hinode','153.125.130.77 · tms-vpn',4200],
+    ['off','Not Connected','Your traffic is not protected','153.125.130.77 · tms-vpn',2600],
+    ['wait','Connecting…','Connecting to Hinode','Connecting to server…',2200]
+  ], i = 0;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  (function tick(){
+    var s = seq[i % seq.length];
+    mac.dataset.s = s[0]; st.textContent = s[1]; sub.textContent = s[2]; cs.textContent = s[3];
+    i++; setTimeout(tick, s[4]);
+  })();
+})();
+</script>
+</body>
+</html>

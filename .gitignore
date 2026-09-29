@@ -9,11 +9,6 @@ coverage/
 *.log
 .env*
 !.env.example
-*.json
-!config.json
-!package.json
-!tsconfig.json
 benchmark_report.json
 safe_test_report.md
-*.html
 scripts/
