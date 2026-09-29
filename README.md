@@ -56,7 +56,7 @@ Chuẩn bị 4 thông tin từ quản trị mạng: **Server Address**, **IPsec 
 ### Cách 1: Sử dụng App Menu Bar (Khuyến nghị)
 
 1. Mở ứng dụng **TMS VPN** từ thư mục `Applications` hoặc Spotlight.
-2. Click biểu tượng TMS VPN trên Menu Bar → chọn **Add**.
+2. Click biểu tượng TMS VPN trên Menu Bar → bấm **+** cạnh **Configurations**.
 3. Nhập thông tin:
    - **Display name**: Tên gợi nhớ (VD: `Công ty`).
    - **Server address**: Địa chỉ IP hoặc tên miền VPN.

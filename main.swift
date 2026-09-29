@@ -1,15 +1,27 @@
 import Cocoa
+import Combine
 import SwiftUI
 
 // MARK: - Branding
 
 enum AppBranding {
-    // Bundled by build.sh into Contents/Resources/Logo.png so the popover header
-    // and the .app icon (assets/AppIcon.icns) stay the same artwork.
-    static let logo: NSImage? = {
-        guard let path = Bundle.main.path(forResource: "Logo", ofType: "png") else { return nil }
-        return NSImage(contentsOfFile: path)
-    }()
+    // All artwork is rendered by assets/render-icons.swift from one vector mark and
+    // bundled by build.sh into Contents/Resources, so the .app icon, the popover
+    // header and the status item always show the same logo.
+    static let logo: NSImage? = Bundle.main.image(forResource: "Logo")
+
+    /// Status item images: outline mark while disconnected, solid mark while connected.
+    /// Templates, so macOS tints them to match the menu bar like system items.
+    static let menuBarIdle: NSImage = template("menubar-idle", fallback: "shield")
+    static let menuBarConnected: NSImage = template("menubar-connected", fallback: "shield.fill")
+
+    private static func template(_ name: String, fallback symbol: String) -> NSImage {
+        let image = Bundle.main.image(forResource: name)
+            ?? NSImage(systemSymbolName: symbol, accessibilityDescription: "TMS VPN")
+            ?? NSImage()
+        image.isTemplate = true
+        return image
+    }
 }
 
 // MARK: - Models for CLI Config and State
@@ -702,7 +714,7 @@ final class VPNManager: ObservableObject {
     }
 }
 
-// MARK: - Link State & Palette
+// MARK: - Link State & Theme
 
 enum LinkState: Equatable {
     case idle, connecting, connected
@@ -714,50 +726,64 @@ extension VPNProfileItem {
     }
 }
 
-enum VPNColors {
-    static let green = Color(red: 0.2, green: 0.9, blue: 0.55)
-    static let greenBright = Color(red: 0.6, green: 1.0, blue: 0.8)
-    static let amber = Color(red: 0.98, green: 0.62, blue: 0.1)
-    static let amberBright = Color(red: 1.0, green: 0.9, blue: 0.62)
-    static let switchOff = Color(red: 0.2, green: 0.25, blue: 0.33)
-}
+/// Every color and metric the views use. Colors come from the system palette, so the
+/// UI follows the user's Light/Dark appearance and accent color like any native app.
+enum Theme {
+    static let connected = Color(nsColor: .systemGreen)
+    static let connecting = Color(nsColor: .systemOrange)
+    static let danger = Color(nsColor: .systemRed)
 
-// MARK: - Animation Primitives
-//
-// Every looping effect below is driven by TimelineView and derives its phase from
-// wall-clock time rather than `repeatForever` + `onAppear`. The old approach restarted
-// or froze whenever SwiftUI re-created the view (every state change or poll re-render).
+    static let primaryText = Color(nsColor: .labelColor)
+    static let secondaryText = Color(nsColor: .secondaryLabelColor)
+    static let tertiaryText = Color(nsColor: .tertiaryLabelColor)
 
-/// Outline for a card / badge: a static stroke whose color follows the link
-/// state — faint when idle, amber while connecting, green once connected —
-/// crossfading between states.
-struct StatusBorder: View {
-    var state: LinkState
-    var cornerRadius: CGFloat
-    var idleColor: Color = Color.white.opacity(0.08)
+    /// Resting fill of a card or row, and the fill while the pointer hovers it.
+    static let cardFill = Color.primary.opacity(0.05)
+    static let hoverFill = Color.primary.opacity(0.09)
+    static let cardRadius: CGFloat = 8
+    /// Left/right padding of every popover section, so all edges line up.
+    static let inset: CGFloat = 14
 
-    var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .strokeBorder(baseColor, lineWidth: 1)
-            .animation(.easeInOut(duration: 0.35), value: state)
-            .allowsHitTesting(false)
+    static func color(for state: LinkState) -> Color {
+        switch state {
+        case .idle: return tertiaryText
+        case .connecting: return connecting
+        case .connected: return connected
+        }
     }
 
-    private var baseColor: Color {
+    static func statusText(for state: LinkState, reconnecting: Bool) -> String {
         switch state {
-        case .idle: return idleColor
-        case .connecting: return VPNColors.amber.opacity(0.4)
-        case .connected: return VPNColors.green.opacity(0.6)
+        case .idle: return "Not connected"
+        case .connecting: return reconnecting ? "Reconnecting…" : "Connecting…"
+        case .connected: return "Connected"
         }
     }
 }
 
+extension VPNAlertKind {
+    var tint: Color { self == .authFailed ? Theme.danger : Theme.connecting }
+
+    var symbol: String {
+        switch self {
+        case .sessionStale: return "clock.arrow.circlepath"
+        case .authFailed: return "lock.fill"
+        default: return "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+// MARK: - Shared Components
+
 /// Status dot with a soft expanding halo while `pulsing`.
+//
+// The halo is driven by TimelineView and derives its phase from wall-clock time rather
+// than `repeatForever` + `onAppear`, which restarted or froze whenever SwiftUI re-created
+// the view (every state change or poll re-render).
 struct StatusDot: View {
     var color: Color
     var size: CGFloat
     var pulsing: Bool = false
-    var glowing: Bool = false
 
     var body: some View {
         ZStack {
@@ -765,88 +791,79 @@ struct StatusDot: View {
                 TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
                     let p = CGFloat((timeline.date.timeIntervalSinceReferenceDate / 1.4).truncatingRemainder(dividingBy: 1))
                     Circle()
-                        .fill(color.opacity(0.45 * Double(1 - p)))
+                        .fill(color.opacity(0.4 * Double(1 - p)))
                         .frame(width: size, height: size)
-                        .scaleEffect(1 + 1.6 * p)
+                        .scaleEffect(1 + 1.4 * p)
                 }
                 .transition(.opacity)
             }
             Circle()
                 .fill(color)
                 .frame(width: size, height: size)
-                .shadow(color: color.opacity(pulsing || glowing ? 0.85 : 0), radius: 4)
         }
         .animation(.easeInOut(duration: 0.3), value: pulsing)
     }
 }
 
-/// Switch with a spring-driven knob and crossfading tint, replacing the stock
-/// SwitchToggleStyle whose tint snapped when flipping between amber and green.
-struct GlowSwitch: View {
-    var isOn: Bool
-    var tint: Color
-    var action: () -> Void
+/// App tile shown in the popover header; falls back to a system shield when the
+/// bundled logo is missing (running the binary outside the .app).
+struct BrandTile: View {
+    var size: CGFloat
 
     var body: some View {
-        Button(action: action) {
-            ZStack {
-                Capsule()
-                    .fill(isOn ? tint : VPNColors.switchOff)
-                    .shadow(color: isOn ? tint.opacity(0.5) : .clear, radius: 6)
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 18, height: 18)
-                    .shadow(color: Color.black.opacity(0.3), radius: 1.5, y: 0.5)
-                    .offset(x: isOn ? 9 : -9)
-            }
-            .frame(width: 42, height: 24)
-            .contentShape(Capsule())
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isOn)
-            .animation(.easeInOut(duration: 0.3), value: tint)
+        if let logo = AppBranding.logo {
+            Image(nsImage: logo)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: size, height: size)
+        } else {
+            RoundedRectangle(cornerRadius: size * 0.225)
+                .fill(Color.black)
+                .overlay(
+                    Image(systemName: "shield")
+                        .font(.system(size: size * 0.5, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+                .frame(width: size, height: size)
         }
-        .buttonStyle(.plain)
-        .focusable(false)
     }
 }
 
-// MARK: - MacOSMenuBar Swift Component (Live SwiftUI View in macOS Status Bar)
-
-struct MacOSMenuBar: View {
-    @ObservedObject var vpn = VPNManager.shared
+/// Rounded background shared by the cards in the popover and the sheets.
+struct CardBackground: View {
+    var fill: Color = Theme.cardFill
+    var stroke: Color? = nil
 
     var body: some View {
-        let state = vpn.linkState
-        HStack(spacing: 0) {
-            ZStack {
-                StatusBorder(state: .idle, cornerRadius: 6, idleColor: Color.white.opacity(0.15))
+        RoundedRectangle(cornerRadius: Theme.cardRadius)
+            .fill(fill)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cardRadius)
+                    .strokeBorder(stroke ?? .clear, lineWidth: 1)
+            )
+    }
+}
 
-                if let logo = AppBranding.logo {
-                    Image(nsImage: logo)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 16, height: 16)
-                } else {
-                    Image(systemName: "shield")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color.white.opacity(0.85))
-                }
+/// Small borderless icon button with a hover highlight, for toolbar-like actions.
+struct IconButton: View {
+    var systemName: String
+    var help: String
+    var action: () -> Void
+    @State private var hovering = false
 
-                if state != .idle {
-                    Circle()
-                        .fill(state == .connected ? VPNColors.green : VPNColors.amber)
-                        .frame(width: 5, height: 5)
-                        .offset(x: 6, y: -6)
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .frame(width: 22, height: 22)
-            .animation(.easeInOut(duration: 0.3), value: state)
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(hovering ? Theme.primaryText : Theme.secondaryText)
+                .frame(width: 24, height: 22)
+                .background(RoundedRectangle(cornerRadius: 5).fill(hovering ? Theme.hoverFill : .clear))
+                .contentShape(Rectangle())
         }
-        .frame(width: 28, height: 22)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            AppDelegate.shared?.togglePopover(nil)
-        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .help(help)
+        .onHover { hovering = $0 }
     }
 }
 
@@ -857,27 +874,19 @@ struct CustomMenuButton: View {
     var onDelete: () -> Void
 
     var body: some View {
-        Button(action: showNativeMenu) {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(Color(red: 0.6, green: 0.65, blue: 0.72))
-                .frame(width: 28, height: 28)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusable(false)
+        IconButton(systemName: "ellipsis", help: "More", action: showNativeMenu)
     }
 
     private func showNativeMenu() {
         let menu = NSMenu()
-        let editItem = NSMenuItem(title: "Edit", action: #selector(MenuHelper.editAction), keyEquivalent: "")
+        let editItem = NSMenuItem(title: "Edit…", action: #selector(MenuHelper.editAction), keyEquivalent: "")
         let deleteItem = NSMenuItem(title: "Delete", action: #selector(MenuHelper.deleteAction), keyEquivalent: "")
         deleteItem.attributedTitle = NSAttributedString(string: "Delete", attributes: [.foregroundColor: NSColor.systemRed])
 
         let helper = MenuHelper(onEdit: onEdit, onDelete: onDelete)
         editItem.target = helper
         deleteItem.target = helper
-        
+
         menu.addItem(editItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(deleteItem)
@@ -910,82 +919,138 @@ struct ProfileCardRow: View {
     @ObservedObject var vpn: VPNManager
     var onEdit: () -> Void
     var onDelete: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         let state = profile.linkState
-        HStack(spacing: 12) {
-            StatusDot(
-                color: state == .connected ? VPNColors.green : (state == .connecting ? VPNColors.amber : Color.gray.opacity(0.6)),
-                size: 9,
-                pulsing: state == .connecting,
-                glowing: state == .connected
-            )
+        HStack(spacing: 10) {
+            StatusDot(color: Theme.color(for: state), size: 7, pulsing: state == .connecting)
 
-            // Profile Name & Subtitle
             VStack(alignment: .leading, spacing: 2) {
                 Text(profile.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(state == .connected ? .white : (state == .connecting ? Color(red: 1.0, green: 0.9, blue: 0.7) : Color(red: 0.85, green: 0.88, blue: 0.92)))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Theme.primaryText)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                ZStack(alignment: .leading) {
-                    if state == .connecting {
-                        Text("Connecting to server...")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(VPNColors.amber)
-                            .lineLimit(1)
-                            .transition(.opacity)
-                    } else {
-                        HStack(spacing: 4) {
-                            Text(profile.server)
-                                .font(.system(size: 11))
-                                .foregroundColor(Color.gray)
-                                .lineLimit(1)
-                            if !profile.username.isEmpty {
-                                Text("• \(profile.username)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color.gray.opacity(0.8))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .transition(.opacity)
-                    }
-                }
+                Text(subtitle(for: state))
+                    .font(.system(size: 11))
+                    .foregroundColor(state == .connecting ? Theme.connecting : Theme.secondaryText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .id(state == .connecting)
+                    .transition(.opacity)
             }
 
             Spacer(minLength: 8)
 
-            GlowSwitch(
-                isOn: state != .idle,
-                tint: state == .connecting ? VPNColors.amber : VPNColors.green,
-                action: { vpn.toggleConnect(profile: profile) }
-            )
+            Toggle("", isOn: Binding(
+                get: { state != .idle },
+                set: { _ in vpn.toggleConnect(profile: profile) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
+            .focusable(false)
+            .help(state == .idle ? "Connect" : "Disconnect")
 
-            // Context Menu Button
-            CustomMenuButton(
-                onEdit: onEdit,
-                onDelete: onDelete
-            )
+            CustomMenuButton(onEdit: onEdit, onDelete: onDelete)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 13)
-                    .fill(
-                        state == .connected ? Color(red: 0.04, green: 0.18, blue: 0.12) :
-                        (state == .connecting ? Color(red: 0.2, green: 0.12, blue: 0.04) : Color(red: 0.1, green: 0.12, blue: 0.16).opacity(0.85))
-                    )
-                    .shadow(
-                        color: state == .connected ? VPNColors.green.opacity(0.3) : (state == .connecting ? VPNColors.amber.opacity(0.3) : .clear),
-                        radius: 10
-                    )
+        .padding(.leading, 12)
+        .padding(.trailing, 6)
+        .padding(.vertical, 9)
+        .background(CardBackground(fill: hovering ? Theme.hoverFill : Theme.cardFill))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .contextMenu {
+            Button("Edit…", action: onEdit)
+            Divider()
+            Button("Delete", action: onDelete)
+        }
+        .animation(.easeInOut(duration: 0.2), value: state)
+    }
 
-                StatusBorder(state: state, cornerRadius: 13)
+    private func subtitle(for state: LinkState) -> String {
+        if state == .connecting { return "Connecting to \(profile.server)…" }
+        return profile.username.isEmpty ? profile.server : "\(profile.server) · \(profile.username)"
+    }
+}
+
+/// Details of the live tunnel, shown under the header while connected.
+struct ConnectionDetails: View {
+    var ip: String
+    var device: String
+
+    var body: some View {
+        HStack(spacing: 24) {
+            if !ip.isEmpty { item("IP address", ip) }
+            if !device.isEmpty { item("Interface", device) }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(CardBackground())
+    }
+
+    private func item(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(Theme.secondaryText)
+            Text(value)
+                .font(.system(size: 12, weight: .medium).monospacedDigit())
+                .foregroundColor(Theme.primaryText)
+                .textSelection(.enabled)
+        }
+    }
+}
+
+struct AlertCard: View {
+    let alert: VPNAlertInfo
+    var onEditPassword: (() -> Void)?
+    var onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: alert.kind.symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(alert.kind.tint)
+                Text(alert.title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Theme.primaryText)
             }
-        )
-        .animation(.easeInOut(duration: 0.3), value: state)
+
+            Text(alert.message)
+                .font(.system(size: 11.5))
+                .foregroundColor(Theme.primaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !alert.detail.isEmpty && alert.detail != alert.message {
+                Text(alert.detail)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(Theme.secondaryText)
+                    .lineLimit(2)
+                    .textSelection(.enabled)
+            }
+
+            if alert.kind == .authFailed {
+                HStack(spacing: 8) {
+                    if let onEditPassword {
+                        Button("Edit Password", action: onEditPassword)
+                            .buttonStyle(.borderedProminent)
+                    }
+                    Button("Dismiss", action: onDismiss)
+                        .buttonStyle(.bordered)
+                }
+                .controlSize(.small)
+                .focusable(false)
+                .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(CardBackground(fill: alert.kind.tint.opacity(0.08), stroke: alert.kind.tint.opacity(0.25)))
     }
 }
 
@@ -998,24 +1063,29 @@ struct MenuBarPopupView: View {
 
     @ViewBuilder private var profileList: some View {
         if vpn.profiles.isEmpty {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: "network.badge.shield.half.filled")
-                    .font(.system(size: 32))
-                    .foregroundColor(Color.gray.opacity(0.5))
-                    .padding(.top, 10)
+                    .font(.system(size: 26, weight: .light))
+                    .foregroundColor(Theme.tertiaryText)
+                    .padding(.bottom, 4)
                 Text("No VPN configurations")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.gray)
-                Text("Click \"+ Add\" to set up your first VPN.")
+                    .foregroundColor(Theme.primaryText)
+                Text("Add your L2TP/IPsec server to get started.")
                     .font(.system(size: 11))
-                    .foregroundColor(Color.gray.opacity(0.7))
+                    .foregroundColor(Theme.secondaryText)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
+                Button("Add Configuration…") { showingAddModal = true }
+                    .controlSize(.small)
+                    .focusable(false)
+                    .padding(.top, 6)
             }
-            .padding(.vertical, 20)
+            .padding(.vertical, 22)
             .frame(maxWidth: .infinity)
+            .background(CardBackground())
+            .padding(.horizontal, Theme.inset)
         } else {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 ForEach(vpn.profiles) { profile in
                     ProfileCardRow(
                         profile: profile,
@@ -1025,137 +1095,85 @@ struct MenuBarPopupView: View {
                     )
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Theme.inset)
+        }
+    }
+
+    private var currentAlert: VPNAlertInfo? {
+        // A stale ("already logged in") server session never reaches here — it's
+        // recovered silently, with no alert at all (see VPNManager.applyFailure) — so
+        // `.sessionStale` no longer appears as a real activeAlert.kind.
+        vpn.activeAlert ?? vpn.errorMessage.map {
+            VPNAlertInfo(kind: .generic, title: "Connection Error", message: $0, detail: "")
         }
     }
 
     var body: some View {
         let state = vpn.linkState
-        VStack(spacing: 0) {
-            // Header Bar (Clean, NO Settings Icon)
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.05, green: 0.16, blue: 0.22))
-                        .shadow(color: Color(red: 0.08, green: 0.72, blue: 0.82).opacity(0.25), radius: 8)
-
-                    StatusBorder(state: .idle, cornerRadius: 12,
-                                 idleColor: Color(red: 0.12, green: 0.55, blue: 0.65).opacity(0.6))
-
-                    if let logo = AppBranding.logo {
-                        Image(nsImage: logo)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
-                    } else {
-                        Image(systemName: "shield.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color(red: 0.2, green: 0.75, blue: 0.95))
-                    }
-                }
-                .frame(width: 40, height: 40)
-
-                HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: brand + overall link status.
+            HStack(spacing: 10) {
+                BrandTile(size: 30)
+                VStack(alignment: .leading, spacing: 2) {
                     Text("TMS VPN")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                    StatusDot(
-                        color: state == .connected ? VPNColors.green : (state == .connecting ? VPNColors.amber : Color.gray),
-                        size: 7,
-                        pulsing: state == .connecting,
-                        glowing: state == .connected
-                    )
-                    ZStack(alignment: .leading) {
-                        Text(state == .connected ? "Connected" : (state == .connecting ? (vpn.isReconnecting ? "Reconnecting..." : "Connecting...") : "Not Connected"))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(state == .connected ? VPNColors.green : (state == .connecting ? VPNColors.amber : Color.gray))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Theme.primaryText)
+                    HStack(spacing: 5) {
+                        StatusDot(color: Theme.color(for: state), size: 6, pulsing: state == .connecting)
+                        Text(Theme.statusText(for: state, reconnecting: vpn.isReconnecting))
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.secondaryText)
                             .id(state)
                             .transition(.opacity)
                     }
                 }
-
                 Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.horizontal, Theme.inset)
+            .padding(.top, 14)
             .padding(.bottom, 12)
 
-            Divider().background(Color.white.opacity(0.08))
-
-            if let note = vpn.reconnectNote {
-                Text(note)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(VPNColors.amberBright)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color(red: 0.22, green: 0.14, blue: 0.04))
+            if state == .connected && !(vpn.currentIP.isEmpty && vpn.currentTunDevice.isEmpty) {
+                ConnectionDetails(ip: vpn.currentIP, device: vpn.currentTunDevice)
+                    .padding(.horizontal, Theme.inset)
+                    .padding(.bottom, 12)
                     .transition(.opacity)
             }
 
-            // Active Connection Info Banner when connected
-            if state == .connected {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("ACTIVE")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.55))
-                        HStack(spacing: 8) {
-                            if !vpn.currentIP.isEmpty {
-                                Text("IP: \(vpn.currentIP)")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.white)
-                            }
-                            if !vpn.currentTunDevice.isEmpty {
-                                Text("(\(vpn.currentTunDevice))")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    Spacer()
+            if let note = vpn.reconnectNote {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Theme.connecting)
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(red: 0.04, green: 0.15, blue: 0.1))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(CardBackground(fill: Theme.connecting.opacity(0.08), stroke: Theme.connecting.opacity(0.25)))
+                .padding(.horizontal, Theme.inset)
+                .padding(.bottom, 12)
                 .transition(.opacity)
-
-                Divider().background(Color.white.opacity(0.08))
             }
 
-            // Subheader: Profile List Header
+            Divider()
+
             HStack {
-                Text("CONFIGURATIONS")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(red: 0.52, green: 0.58, blue: 0.66))
+                Text("Configurations")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.secondaryText)
                 Spacer()
-                Button(action: { showingAddModal = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
-                        Text("Add")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(red: 0.05, green: 0.16, blue: 0.22))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(red: 0.12, green: 0.55, blue: 0.65).opacity(0.6), lineWidth: 1))
-                    )
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
+                IconButton(systemName: "plus", help: "Add configuration") { showingAddModal = true }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
+            .padding(.leading, Theme.inset)
+            .padding(.trailing, Theme.inset - 4)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
 
-            // Profile List or Empty State
             // The window passes a fixed list height (room for about 5 profiles, scrolls
-            // beyond that); the menu bar popover keeps its original content-sized list.
+            // beyond that); the menu bar popover keeps its content-sized list.
             if let listHeight {
                 ScrollView(showsIndicators: false) { profileList }
                     .frame(height: listHeight)
@@ -1163,144 +1181,38 @@ struct MenuBarPopupView: View {
                 profileList
             }
 
-            // Error Notice / Alert Card. A stale ("already logged in") server
-            // session never reaches here — it's recovered silently, with no
-            // alert at all (see VPNManager.applyFailure) — so `.sessionStale`
-            // no longer appears as a real activeAlert.kind.
-            if let alert = vpn.activeAlert ?? (vpn.errorMessage != nil ? VPNAlertInfo(kind: .generic, title: "Connection Error", message: vpn.errorMessage ?? "", detail: "") : nil) {
-                VStack(alignment: .leading, spacing: 8) {
-                    // Header Badge & Title
-                    HStack(spacing: 6) {
-                        Image(systemName: alert.kind == .sessionStale ? "clock.arrow.circlepath" : (alert.kind == .authFailed ? "lock.slash.fill" : "exclamationmark.triangle.fill"))
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(alert.kind == .sessionStale ? Color.orange : (alert.kind == .authFailed ? Color(red: 1.0, green: 0.35, blue: 0.35) : Color.yellow))
-
-                        Text(alert.title)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(alert.kind == .sessionStale ? Color.orange : (alert.kind == .authFailed ? Color(red: 1.0, green: 0.45, blue: 0.45) : Color.yellow))
-
-                        Spacer()
-
-                        Text(alert.kind == .sessionStale ? "Stale Session" : (alert.kind == .authFailed ? "Credentials" : "Warning"))
-                            .font(.system(size: 9.5, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(alert.kind == .sessionStale ? Color.orange.opacity(0.2) : (alert.kind == .authFailed ? Color.red.opacity(0.2) : Color.yellow.opacity(0.2)))
-                            )
-                            .foregroundColor(alert.kind == .sessionStale ? Color.orange : (alert.kind == .authFailed ? Color(red: 1.0, green: 0.5, blue: 0.5) : Color.yellow))
+            if let alert = currentAlert {
+                AlertCard(
+                    alert: alert,
+                    onEditPassword: vpn.profiles.first(where: { $0.name == vpn.activeProfileName })
+                        .map { profile in { editingProfile = profile } },
+                    onDismiss: {
+                        vpn.errorMessage = nil
+                        vpn.activeAlert = nil
                     }
-
-                    // Message & Detail
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(alert.message)
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundColor(Color.white.opacity(0.92))
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        if !alert.detail.isEmpty && alert.detail != alert.message {
-                            Text(alert.detail)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(Color.gray)
-                                .lineLimit(2)
-                        }
-
-                    }
-
-                    // Action Controls
-                    if alert.kind == .authFailed {
-                        HStack(spacing: 8) {
-                            if let actProf = vpn.profiles.first(where: { $0.name == vpn.activeProfileName }) {
-                                Button(action: {
-                                    editingProfile = actProf
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "pencil")
-                                        Text("Edit Password")
-                                    }
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color(red: 0.8, green: 0.25, blue: 0.25))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .focusable(false)
-                            }
-
-                            Button(action: {
-                                vpn.errorMessage = nil
-                                vpn.activeAlert = nil
-                            }) {
-                                Text("Dismiss")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.gray)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 5)
-                            }
-                            .buttonStyle(.plain)
-                            .focusable(false)
-                        }
-                        .padding(.top, 2)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(alert.kind == .sessionStale ? Color(red: 0.22, green: 0.14, blue: 0.04) : (alert.kind == .authFailed ? Color(red: 0.24, green: 0.07, blue: 0.07) : Color(red: 0.18, green: 0.12, blue: 0.05)))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(alert.kind == .sessionStale ? Color.orange.opacity(0.4) : (alert.kind == .authFailed ? Color.red.opacity(0.4) : Color.yellow.opacity(0.3)), lineWidth: 1)
-                        )
                 )
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, Theme.inset)
+                .padding(.top, 10)
+                .transition(.opacity)
             }
 
-            Divider().background(Color.white.opacity(0.08)).padding(.top, 12)
+            Divider().padding(.top, 12)
 
-            // Footer bar: settings (MTU, logging, kill switch) open in a sheet like the profile form.
-            HStack {
+            // Footer: settings (MTU, logging, kill switch) open in a sheet like the profile form.
+            HStack(spacing: 2) {
                 Text("TMS VPN Client")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color.gray.opacity(0.7))
-
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.tertiaryText)
                 Spacer()
-
-                Button(action: { showingSettings = true }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(red: 0.7, green: 0.74, blue: 0.8))
-                        .padding(5)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .help("Settings")
-                .padding(.trailing, 6)
-
-                Button(action: { NSApplication.shared.terminate(nil) }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Quit").font(.system(size: 12, weight: .medium))
-                        Text("⌘Q").font(.system(size: 10, weight: .semibold)).foregroundColor(Color.gray.opacity(0.6))
-                    }
-                    .foregroundColor(Color(red: 0.7, green: 0.74, blue: 0.8))
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
+                IconButton(systemName: "gearshape", help: "Settings") { showingSettings = true }
+                IconButton(systemName: "power", help: "Quit TMS VPN (⌘Q)") { NSApplication.shared.terminate(nil) }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.leading, Theme.inset)
+            .padding(.trailing, Theme.inset - 4)
+            .padding(.vertical, 8)
         }
-        .frame(width: 400)
-        .background(Color(red: 0.07, green: 0.09, blue: 0.12))
-        .animation(.easeInOut(duration: 0.3), value: state)
+        .frame(width: 340)
+        .animation(.easeInOut(duration: 0.25), value: state)
         .animation(.easeInOut(duration: 0.25), value: vpn.activeAlert)
         .sheet(isPresented: $showingSettings) {
             SettingsSheet(isPresented: $showingSettings)
@@ -1314,74 +1226,43 @@ struct MenuBarPopupView: View {
     }
 }
 
-// MARK: - Add / Edit Profile Sheet (Polished Dark Theme matching Web Demo exactly)
+// MARK: - Sheets
 
-struct CleanDarkTextField: View {
-    var placeholder: String
-    @Binding var text: String
-    var isDisabled: Bool = false
+/// Title row shared by the settings and profile sheets.
+struct SheetHeader: View {
+    var title: String
+    var subtitle: String
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            if text.isEmpty {
-                Text(placeholder)
-                    .foregroundColor(Color(red: 0.4, green: 0.48, blue: 0.58))
-                    .font(.system(size: 12.5))
-                    .padding(.horizontal, 12)
-            }
-            TextField("", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundColor(isDisabled ? Color.gray : Color.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .disabled(isDisabled)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(Theme.primaryText)
+            Text(subtitle)
+                .font(.system(size: 11))
+                .foregroundColor(Theme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(red: 0.05, green: 0.07, blue: 0.1).opacity(0.85))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-        )
     }
 }
 
-struct CleanDarkSecureField: View {
-    var placeholder: String
-    @Binding var text: String
+/// Label above a native text field.
+struct FormField<Field: View>: View {
+    var label: String
+    @ViewBuilder var field: () -> Field
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            if text.isEmpty {
-                Text(placeholder)
-                    .foregroundColor(Color(red: 0.4, green: 0.48, blue: 0.58))
-                    .font(.system(size: 12.5))
-                    .padding(.horizontal, 12)
-            }
-            SecureField("", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundColor(Color.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Theme.secondaryText)
+            field()
+                .textFieldStyle(.roundedBorder)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(red: 0.05, green: 0.07, blue: 0.1).opacity(0.85))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-        )
     }
 }
 
-// MARK: - Settings Sheet
-
-/// One settings card: title + explanation on the left, the control on the right —
-/// the same look as the "Send all traffic over VPN" card in the profile form.
+/// One settings card: title + explanation on the left, the control on the right.
 struct SettingCard<Control: View>: View {
     var title: String
     var detail: String
@@ -1392,20 +1273,17 @@ struct SettingCard<Control: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.96))
+                    .foregroundColor(Theme.primaryText)
                 Text(detail)
-                    .font(.system(size: 10))
-                    .foregroundColor(Color.gray)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             control()
         }
         .padding(11)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.04))
-        )
+        .background(CardBackground())
     }
 }
 
@@ -1414,23 +1292,10 @@ struct SettingsSheet: View {
     @Binding var isPresented: Bool
     @ObservedObject var vpn = VPNManager.shared
 
-    private let tint = Color(red: 0.2, green: 0.85, blue: 0.95)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Settings")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                Spacer()
-                Button(action: { isPresented = false }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(Color.gray.opacity(0.7))
-                        .font(.system(size: 16))
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            SheetHeader(title: "Settings", subtitle: "Changes apply on the next connection.")
+                .padding(.bottom, 4)
 
             SettingCard(
                 title: "MTU",
@@ -1450,7 +1315,8 @@ struct SettingsSheet: View {
                 detail: "Detailed protocol logging to /var/log/vpn.log (view with `vpn logs`). Milestones and errors are always logged."
             ) {
                 Toggle("", isOn: Binding(get: { vpn.verbose }, set: { vpn.setVerbose($0) }))
-                    .toggleStyle(SwitchToggleStyle(tint: tint))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
                     .labelsHidden()
             }
 
@@ -1459,26 +1325,22 @@ struct SettingsSheet: View {
                 detail: "If a full-tunnel VPN drops, block internet traffic until it reconnects instead of letting it leak. If stuck, turn the VPN off or run `vpn repair`."
             ) {
                 Toggle("", isOn: Binding(get: { vpn.killSwitch }, set: { vpn.setKillSwitch($0) }))
-                    .toggleStyle(SwitchToggleStyle(tint: tint))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
                     .labelsHidden()
             }
-
-            Text("Changes apply on the next connection.")
-                .font(.system(size: 10))
-                .foregroundColor(Color.gray)
 
             HStack {
                 Spacer()
                 Button("Done") { isPresented = false }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(.borderedProminent)
                     .focusable(false)
             }
-            .padding(.top, 2)
+            .padding(.top, 6)
         }
-        .padding(22)
+        .padding(20)
         .frame(width: 380)
-        .background(Color(red: 0.08, green: 0.1, blue: 0.14))
     }
 }
 
@@ -1495,93 +1357,59 @@ struct ProfileFormSheet: View {
 
     var isEdit: Bool { initialProfile != nil }
 
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty &&
+            !server.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(isEdit ? "Edit VPN Configuration" : "Add L2TP VPN Configuration")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                Spacer()
-                Button(action: { isPresented = false }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(Color.gray.opacity(0.7))
-                        .font(.system(size: 16))
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Display name")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                CleanDarkTextField(placeholder: "Required", text: $name)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Server address")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                CleanDarkTextField(placeholder: "vpn.example.com or 1.2.3.4", text: $server)
-            }
-
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Account name")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                    CleanDarkTextField(placeholder: "Required", text: $user)
-                }
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Password")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                    CleanDarkSecureField(placeholder: "Required", text: $password)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Shared secret")
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.95))
-                CleanDarkSecureField(placeholder: "Required", text: $psk)
-            }
-
-            // Native macOS Switch Toggle for Send All Traffic
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Send all traffic over VPN")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color(red: 0.88, green: 0.92, blue: 0.96))
-                    Text("Route all internet traffic through the VPN")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color.gray)
-                }
-                Spacer()
-                Toggle("", isOn: $isFullTunnel)
-                    .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.2, green: 0.85, blue: 0.95)))
-                    .labelsHidden()
-            }
-            .padding(11)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.white.opacity(0.04))
+        VStack(alignment: .leading, spacing: 12) {
+            SheetHeader(
+                title: isEdit ? "Edit Configuration" : "New Configuration",
+                subtitle: "L2TP over IPsec. Ask your network administrator for these details."
             )
+            .padding(.bottom, 4)
+
+            FormField(label: "Display name") {
+                TextField("", text: $name, prompt: Text("Office VPN"))
+            }
+
+            FormField(label: "Server address") {
+                TextField("", text: $server, prompt: Text("vpn.example.com or 1.2.3.4"))
+            }
 
             HStack(spacing: 10) {
+                FormField(label: "Account name") {
+                    TextField("", text: $user, prompt: Text("Required"))
+                }
+                FormField(label: "Password") {
+                    SecureField("", text: $password, prompt: Text("Required"))
+                }
+            }
+
+            FormField(label: "Shared secret") {
+                SecureField("", text: $psk, prompt: Text("Required"))
+            }
+
+            SettingCard(title: "Send all traffic over VPN", detail: "Route all internet traffic through the VPN.") {
+                Toggle("", isOn: $isFullTunnel)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
+            .padding(.top, 2)
+
+            HStack(spacing: 8) {
                 Spacer()
                 Button("Cancel") {
                     isPresented = false
                 }
                 .keyboardShortcut(.cancelAction)
-                .buttonStyle(SecondaryButtonStyle())
                 .focusable(false)
 
                 Button(isEdit ? "Save" : "Create") {
-                    guard !name.trimmingCharacters(in: .whitespaces).isEmpty,
-                          !server.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    
+                    guard canSave else { return }
+
                     VPNManager.shared.saveProfile(
                         name: initialProfile?.name ?? name.trimmingCharacters(in: .whitespaces),
                         displayName: isEdit ? name.trimmingCharacters(in: .whitespaces) : nil,
@@ -1595,14 +1423,14 @@ struct ProfileFormSheet: View {
                     isPresented = false
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSave)
                 .focusable(false)
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
-        .padding(22)
+        .padding(20)
         .frame(width: 380)
-        .background(Color(red: 0.08, green: 0.1, blue: 0.14))
         .onAppear {
             if let p = initialProfile {
                 name = p.title
@@ -1614,34 +1442,6 @@ struct ProfileFormSheet: View {
     }
 }
 
-// MARK: - Custom UI Styles
-
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.black)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color(red: 0.2, green: 0.85, blue: 0.95))
-            .cornerRadius(9)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-    }
-}
-
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .medium))
-            .foregroundColor(Color(red: 0.85, green: 0.88, blue: 0.92))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(9)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-    }
-}
-
 // MARK: - App Delegate & Menu Bar Setup
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate {
@@ -1649,33 +1449,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     var statusItem: NSStatusItem?
     var popover = NSPopover()
     var mainWindow: NSWindow?
-    var hostingView: NSHostingView<MacOSMenuBar>?
+    private var linkStateObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
         installEditMenu()
-        statusItem = NSStatusBar.system.statusItem(withLength: 28)
-        
-        // Host the live SwiftUI MacOSMenuBar component (with 2.0s linear rotation & pulse)
-        let menuBarView = MacOSMenuBar()
-        let hosting = NSHostingView(rootView: menuBarView)
-        hosting.frame = NSRect(x: 0, y: 0, width: 28, height: 22)
-        
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.addSubview(hosting)
-            hosting.autoresizingMask = [.width, .height]
+            button.imagePosition = .imageOnly
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
-        self.hostingView = hosting
+        MainActor.assumeIsolated {
+            updateStatusIcon(VPNManager.shared.linkState)
+            // objectWillChange fires before the new value is stored; hopping to the next
+            // main-loop turn reads the value after the change.
+            linkStateObserver = VPNManager.shared.objectWillChange
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in
+                    MainActor.assumeIsolated { self?.updateStatusIcon(VPNManager.shared.linkState) }
+                }
+        }
 
         popover.behavior = .transient
         popover.delegate = self
-        // The UI is drawn for a dark surface (white text, hand-picked dark fills).
-        // Pin the popover to Dark Aqua so system controls (dividers, text fields,
-        // sheets, the popover arrow) look the same on every Mac instead of
-        // following each machine's Light/Dark setting.
-        popover.appearance = NSAppearance(named: .darkAqua)
         let popupController = NSHostingController(rootView: MenuBarPopupView())
         popover.contentViewController = popupController
         // Size to the view's actual content first, same reasoning as showMainWindow()
@@ -1719,7 +1516,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             let window = NSWindow(contentViewController: controller)
             window.title = "TMS VPN"
             window.styleMask = [.titled, .closable, .miniaturizable]
-            window.appearance = NSAppearance(named: .darkAqua)
             window.isReleasedWhenClosed = false
             window.delegate = self
             // Size the window to its content first: center() uses the current frame,
@@ -1788,6 +1584,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     func popoverDidClose(_ notification: Notification) {
         MainActor.assumeIsolated { VPNManager.shared.setPopoverVisible(false) }
+    }
+
+    /// Status item shows the outline mark when idle, dimmed while a connection is
+    /// being set up, and the solid mark once connected.
+    @MainActor private func updateStatusIcon(_ state: LinkState) {
+        guard let button = statusItem?.button else { return }
+        button.image = state == .connected ? AppBranding.menuBarConnected : AppBranding.menuBarIdle
+        button.appearsDisabled = state == .connecting
+        button.toolTip = "TMS VPN — \(Theme.statusText(for: state, reconnecting: VPNManager.shared.isReconnecting))"
     }
 
     @objc func togglePopover(_ sender: AnyObject?) {

@@ -40,7 +40,9 @@ mkdir -p "$BUILD_DIR/$APP_NAME/Contents/Resources"
 cp "$BUILD_DIR/$OUTPUT_NAME" "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
 chmod +x "$BUILD_DIR/$APP_NAME/Contents/MacOS/TMS VPN"
 cp "assets/AppIcon.icns" "$BUILD_DIR/$APP_NAME/Contents/Resources/AppIcon.icns"
+# Logo and status item artwork come from assets/render-icons.swift.
 cp "assets/logo.png" "$BUILD_DIR/$APP_NAME/Contents/Resources/Logo.png"
+cp assets/menubar-*.png "$BUILD_DIR/$APP_NAME/Contents/Resources/"
 
 cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
