@@ -90,12 +90,34 @@ func sign(args []string) error {
 		return err
 	}
 	// Refuse to publish anything the shipped binaries would then reject
-	// (e.g. the secret holding a key other than release.PublicKey).
-	if _, err := release.Verify(manifest, sig); err != nil {
-		return fmt.Errorf("signing key does not match release.PublicKey: %w", err)
+	// (e.g. the secret holding some other key). Binaries verify with
+	// release.PublicKey; during a key rotation, those already installed
+	// still verify with release.PreviousPublicKey, and the rotation release
+	// is signed with that one.
+	if err := checkSigningKey(manifest, sig); err != nil {
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(*outDir, release.ManifestName), manifest, 0o644); err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(*outDir, release.SignatureName), sig, 0o644)
+}
+
+// checkSigningKey accepts a signature that verifies with release.PublicKey or,
+// while one is set, release.PreviousPublicKey (see its comment).
+func checkSigningKey(manifest, sig []byte) error {
+	return checkSigningKeyWith(release.PublicKey, release.PreviousPublicKey, manifest, sig)
+}
+
+func checkSigningKeyWith(current, previous string, manifest, sig []byte) error {
+	if _, err := release.VerifyWith(current, manifest, sig); err == nil {
+		return nil
+	}
+	if previous != "" {
+		if _, err := release.VerifyWith(previous, manifest, sig); err == nil {
+			fmt.Fprintln(os.Stderr, "releasesign: signed with release.PreviousPublicKey — the key-rotation release")
+			return nil
+		}
+	}
+	return fmt.Errorf("signing key matches neither release.PublicKey nor release.PreviousPublicKey")
 }
