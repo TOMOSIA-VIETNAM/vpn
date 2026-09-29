@@ -1,6 +1,6 @@
 # TOMOSIA VPN promo video
 
-A 50 s, 1920×1080 promo video. The Vietnamese edition is the first one: Vietnamese voice, captions and
+A 40 s, 1920×1080 promo video. The Vietnamese edition is the first one: Vietnamese voice, captions and
 on-screen text. `index.html` is a HyperFrames composition (HTML + GSAP). Audio, voice-over and renders are
 generated files and are not committed (see `.gitignore`).
 
@@ -23,7 +23,14 @@ node scripts/plan-schedule.mjs --voice=vi --write                  # scene cuts 
 node scripts/build-timeline.mjs --voice=vi --caption=vi            # mix + timing injected into index.html
 npx --yes hyperframes@0.7.99 render -q high -f 30 --strict -o renders/tomosia-vpn-promo-vi.mp4
 scripts/finish-render.sh renders/tomosia-vpn-promo-vi.mp4 assets/audio/mix-vi.m4a
+scripts/encode-web.sh renders/tomosia-vpn-promo-vi.mp4 vi                  # hero video files for webapp/
 ```
+
+`web/` is committed: it holds the encodes the landing page plays in its hero (`webapp/scripts/copy-assets.mjs`
+copies them into the site). Re-run `scripts/encode-web.sh` after every new render; its header lists the files.
+
+A scene may have no spoken lines: `"lines": []` with `"hold": <seconds>` keeps it on screen over the music
+(the error windows scene does this; its windows follow the clicks in `data/cues.json`).
 
 `plan-schedule.mjs` writes the scene anchors into `data/voices.json`; the anchors in it come straight from the
 planner. `assets/bg/` holds the two background photos (see `SOURCES.md`).

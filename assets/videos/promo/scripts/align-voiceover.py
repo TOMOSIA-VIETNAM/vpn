@@ -170,7 +170,8 @@ def main():
     cache.mkdir(parents=True, exist_ok=True)
     model = None
     result = {}
-    for s in [x for x in script["scenes"] if not ONLY or x["id"] in ONLY]:
+    # a silent "hold" scene has no voice clip to align
+    for s in [x for x in script["scenes"] if x["lines"] and (not ONLY or x["id"] in ONLY)]:
         wav = ROOT / V["vo"] / f"{s['id']}.wav"
         raw = cache / f"{s['id']}.json"
         if FORCE or not raw.exists() or raw.stat().st_mtime < wav.stat().st_mtime:

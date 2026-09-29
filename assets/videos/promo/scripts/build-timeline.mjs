@@ -85,7 +85,7 @@ let prevVoEnd = 0;
 for (const s of script.scenes) {
   const a = ANCHORS[s.id] || {};
   const tempo = s.outro ? 1 : TEMPO;
-  const src = vo[s.id].lines;
+  const src = vo[s.id]?.lines || []; // a silent "hold" scene has none (see scripts/plan-schedule.mjs)
   // Segment bounds: pad each line, but never cross the midpoint of the gap to its neighbour.
   const segs = src.map((l, i) => {
     const prevMid = i ? (src[i - 1].end + l.start) / 2 : 0;
@@ -118,8 +118,10 @@ for (const s of script.scenes) {
       caption: s.lines[i][CAPTION] && untag(s.lines[i][CAPTION]),
     });
   });
-  prevVoEnd = lines[lines.length - 1].segEnd;
-  prevOff = lines[lines.length - 1].off;
+  if (lines.length) {
+    prevVoEnd = lines[lines.length - 1].segEnd;
+    prevOff = lines[lines.length - 1].off;
+  } else prevOff = sceneAt + s.hold - CUT_AFTER;
   scenes.push({ id: s.id, start: sceneAt, lines });
 }
 scenes.forEach((s, i) => (s.end = i < scenes.length - 1 ? scenes[i + 1].start : DURATION));
@@ -235,6 +237,7 @@ if (!noAudio) {
   // voice: one input per scene file, split into its line segments
   const voLabels = [];
   for (const s of scenes) {
+    if (!s.lines.length) continue;
     const file = join(root, V.vo, `${s.id}.wav`);
     const idx = inputs.push(file) - 1;
     const g = gainFor(file, -16);

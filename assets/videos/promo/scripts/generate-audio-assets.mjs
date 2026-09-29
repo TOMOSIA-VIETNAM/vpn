@@ -104,7 +104,8 @@ function silences(pcm) {
   return starts.map((a, i) => [a, ends[i] ?? secs(pcm)]);
 }
 
-const todo = script.scenes.filter((x) => (!only.length || only.includes(x.id)) && (force || !existsSync(join(dir, `${x.id}.wav`))));
+// a silent "hold" scene has no lines and no clip
+const todo = script.scenes.filter((x) => x.lines.length && (!only.length || only.includes(x.id)) && (force || !existsSync(join(dir, `${x.id}.wav`))));
 for (const x of script.scenes.filter((x) => !todo.includes(x) && (!only.length || only.includes(x.id)))) console.log(`skip vo ${x.id}`);
 // Sequential on purpose: the free tier allows only a few requests per minute.
 for (let i = 0; i < todo.length; i++) {

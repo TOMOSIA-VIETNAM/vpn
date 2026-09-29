@@ -14,7 +14,10 @@
     <title>TOMOSIA VPN</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
-      @font-face { font-family: "Inter"; src: url("assets/fonts/Inter.ttf") format("truetype"); font-weight: 100 900; font-display: block; }
+      @font-face { font-family: "Be Vietnam Pro"; src: url("assets/fonts/BeVietnamPro-Regular.ttf") format("truetype"); font-weight: 400; font-display: block; }
+      @font-face { font-family: "Be Vietnam Pro"; src: url("assets/fonts/BeVietnamPro-Medium.ttf") format("truetype"); font-weight: 500; font-display: block; }
+      @font-face { font-family: "Be Vietnam Pro"; src: url("assets/fonts/BeVietnamPro-SemiBold.ttf") format("truetype"); font-weight: 600; font-display: block; }
+      @font-face { font-family: "Be Vietnam Pro"; src: url("assets/fonts/BeVietnamPro-Bold.ttf") format("truetype"); font-weight: 700; font-display: block; }
       @font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/JetBrainsMono-Medium.ttf") format("truetype"); font-weight: 500; font-display: block; }
       :root {
         --dark: #1c1c1e; --dark-2: #2c2c2e; --dark-3: #3a3a3c; --dark-ink: #f5f5f7; --dark-mute: #98989d;
@@ -23,7 +26,7 @@
       }
       * { box-sizing: border-box; font-variant-ligatures: none !important; font-feature-settings: "calt" 0, "liga" 0 !important; }
       html, body { margin: 0; background: var(--dark); }
-      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #111113; color: var(--dark-ink); font-family: "Inter", sans-serif; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #111113; color: var(--dark-ink); font-family: "Be Vietnam Pro", sans-serif; }
       .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
       .abs { position: absolute; }
       .scene { opacity: 0; visibility: hidden; }
@@ -42,7 +45,7 @@
       .net line { stroke-linecap: round; }
 
       /* macOS menu bar */
-      .menubar { left: 0; top: 0; width: 1920px; height: 44px; display: flex; align-items: center; justify-content: flex-end; gap: 30px; padding-right: 30px; font: 500 21px/1 "Inter"; }
+      .menubar { left: 0; top: 0; width: 1920px; height: 44px; display: flex; align-items: center; justify-content: flex-end; gap: 30px; padding-right: 30px; font: 500 21px/1 "Be Vietnam Pro"; }
       .menubar.dark { background: rgba(30, 30, 32, 0.72); color: #f5f5f7; }
       .menubar.light { background: rgba(255, 255, 255, 0.62); color: #1d1d1f; border-bottom: 1px solid var(--hair); }
       .mb-icon { position: relative; width: 24px; height: 24px; }
@@ -58,7 +61,7 @@
 
       /* macOS window */
       .win { border-radius: 20px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08); }
-      .win-bar { height: 52px; display: flex; align-items: center; gap: 10px; padding-left: 20px; background: #323234; color: #a1a1a6; font: 600 20px/1 "Inter"; }
+      .win-bar { height: 52px; display: flex; align-items: center; gap: 10px; padding-left: 20px; background: #323234; color: #a1a1a6; font: 600 20px/1 "Be Vietnam Pro"; }
       .win-bar.light { background: #ececee; color: #6e6e73; height: 44px; }
       .dot3 { width: 14px; height: 14px; border-radius: 50%; }
       .win-title { flex: 1; text-align: center; margin-right: 90px; }
@@ -66,13 +69,13 @@
       /* call window */
       .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px; background: #1a1a1a; }
       .tile { position: relative; height: 230px; border-radius: 14px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; }
-      .avatar { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 600 48px/1 "Inter"; color: #fff; }
-      .tile-name { position: absolute; left: 16px; bottom: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); font: 500 20px/1 "Inter"; color: #fff; }
+      .avatar { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 600 48px/1 "Be Vietnam Pro"; color: #fff; }
+      .tile-name { position: absolute; left: 16px; bottom: 14px; padding: 6px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); font: 500 20px/1 "Be Vietnam Pro"; color: #fff; }
       .call-bar { height: 86px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 22px; }
       .call-btn { width: 56px; height: 56px; border-radius: 50%; background: #3a3a3c; }
       .call-btn.end { background: var(--red); width: 76px; border-radius: 28px; }
       #freeze { background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; }
-      .pill { padding: 14px 26px; border-radius: 999px; background: rgba(28, 28, 30, 0.9); font: 600 26px/1 "Inter"; color: #fff; display: flex; align-items: center; gap: 14px; }
+      .pill { padding: 14px 26px; border-radius: 999px; background: rgba(28, 28, 30, 0.9); font: 600 26px/1 "Be Vietnam Pro"; color: #fff; display: flex; align-items: center; gap: 14px; }
       .spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; }
 
       /* notification banner */
@@ -81,66 +84,66 @@
       .notif.light { background: rgba(255, 255, 255, 0.97); color: #1d1d1f; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--hair); }
       .notif img, .notif .n-icon { width: 58px; height: 58px; border-radius: 13px; flex: none; }
       .n-icon { background: #636366; display: flex; align-items: center; justify-content: center; }
-      .n-app { font: 500 17px/1.2 "Inter"; opacity: 0.6; display: flex; justify-content: space-between; }
-      .n-title { font: 700 23px/1.3 "Inter"; margin-top: 4px; }
-      .n-body { font: 400 21px/1.35 "Inter"; opacity: 0.8; }
+      .n-app { font: 500 17px/1.2 "Be Vietnam Pro"; opacity: 0.6; display: flex; justify-content: space-between; }
+      .n-title { font: 700 23px/1.3 "Be Vietnam Pro"; margin-top: 4px; }
+      .n-body { font: 400 21px/1.35 "Be Vietnam Pro"; opacity: 0.8; }
       .n-text { flex: 1; }
 
       /* system settings mock */
       .settings { display: flex; height: 540px; background: #262628; }
-      .side { width: 260px; background: #2c2c2e; padding: 22px 14px; font: 500 22px/1 "Inter"; color: #d1d1d6; }
+      .side { width: 260px; background: #2c2c2e; padding: 22px 14px; font: 500 22px/1 "Be Vietnam Pro"; color: #d1d1d6; }
       .side div { padding: 13px 16px; border-radius: 10px; }
       .side .sel { background: var(--blue); color: #fff; }
       .pane { flex: 1; padding: 34px 36px; }
-      .pane-title { font: 700 32px/1 "Inter"; color: #f5f5f7; margin-bottom: 30px; }
+      .pane-title { font: 700 32px/1 "Be Vietnam Pro"; color: #f5f5f7; margin-bottom: 30px; }
       .row { border-radius: 14px; background: #333335; padding: 24px 26px; display: flex; align-items: center; gap: 18px; }
       .row-main { flex: 1; }
-      .row-name { font: 600 25px/1.2 "Inter"; color: #f5f5f7; }
-      .row-sub { font: 400 20px/1.3 "Inter"; color: var(--dark-mute); margin-top: 4px; }
-      .status-red { font: 600 22px/1 "Inter"; color: var(--red); display: flex; align-items: center; gap: 10px; }
+      .row-name { font: 600 25px/1.2 "Be Vietnam Pro"; color: #f5f5f7; }
+      .row-sub { font: 400 20px/1.3 "Be Vietnam Pro"; color: var(--dark-mute); margin-top: 4px; }
+      .status-red { font: 600 22px/1 "Be Vietnam Pro"; color: var(--red); display: flex; align-items: center; gap: 10px; }
       .toggle { width: 60px; height: 34px; border-radius: 17px; background: #48484a; position: relative; }
       .toggle::after { content: ""; position: absolute; left: 3px; top: 3px; width: 28px; height: 28px; border-radius: 50%; background: #e5e5ea; }
-      .row-note { margin-top: 22px; font: 400 21px/1.3 "Inter"; color: #8e8e93; padding-left: 4px; }
+      .row-note { margin-top: 22px; font: 400 21px/1.3 "Be Vietnam Pro"; color: #8e8e93; padding-left: 4px; }
 
       /* cards */
       .card { border-radius: 24px; padding: 34px 36px; }
       .card.dark { background: rgba(44, 44, 46, 0.92); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.4); }
       .card.light { background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); }
       .c-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 26px; }
-      .c-title { font: 700 44px/1.2 "Inter"; letter-spacing: -0.02em; white-space: nowrap; }
-      .c-sub { font: 600 36px/1.25 "Inter"; margin-top: 8px; white-space: nowrap; }
+      .c-title { font: 700 44px/1.2 "Be Vietnam Pro"; letter-spacing: -0.02em; white-space: nowrap; }
+      .c-sub { font: 600 36px/1.25 "Be Vietnam Pro"; margin-top: 8px; white-space: nowrap; }
       .chip { font: 500 40px/1 "JetBrains Mono"; padding: 18px 30px; border-radius: 999px; background: var(--dark-3); color: #f5f5f7; }
 
       /* error windows (app strings, English as in the app) */
       .ewin { border-radius: 18px; overflow: hidden; background: var(--light-2); box-shadow: 0 22px 54px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--hair); }
       .ewin-body { padding: 28px 32px 32px; }
-      .err-title { font: 700 31px/1.2 "Inter"; color: var(--ink); white-space: nowrap; }
-      .err-msg { font: 400 24px/1.4 "Inter"; color: #58585d; margin-top: 10px; height: 102px; }
-      .btn { display: inline-block; margin-top: 18px; padding: 12px 24px; border-radius: 10px; background: #0068da; color: #fff; font: 600 22px/1 "Inter"; white-space: nowrap; }
+      .err-title { font: 700 31px/1.2 "Be Vietnam Pro"; color: var(--ink); white-space: nowrap; }
+      .err-msg { font: 400 24px/1.4 "Be Vietnam Pro"; color: #58585d; margin-top: 10px; height: 102px; }
+      .btn { display: inline-block; margin-top: 18px; padding: 12px 24px; border-radius: 10px; background: #0068da; color: #fff; font: 600 22px/1 "Be Vietnam Pro"; white-space: nowrap; }
 
       /* status widget */
       .status-card { display: flex; align-items: center; gap: 22px; }
       .s-dot { width: 26px; height: 26px; border-radius: 50%; flex: none; }
-      .s-main { font: 700 48px/1.15 "Inter"; letter-spacing: -0.02em; white-space: nowrap; }
-      .s-sub { font: 500 28px/1.3 "Inter"; color: var(--mute); margin-top: 6px; white-space: nowrap; }
+      .s-main { font: 700 48px/1.15 "Be Vietnam Pro"; letter-spacing: -0.02em; white-space: nowrap; }
+      .s-sub { font: 500 28px/1.3 "Be Vietnam Pro"; color: var(--mute); margin-top: 6px; white-space: nowrap; }
       .stack { position: relative; width: 520px; height: 140px; }
       .stack > div { position: absolute; left: 0; top: 0; }
 
-      .feat { display: flex; align-items: center; gap: 22px; padding: 26px 36px; border-radius: 22px; background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); font: 600 40px/1 "Inter"; white-space: nowrap; }
-      .dl { display: inline-flex; align-items: center; gap: 14px; padding: 22px 44px; border-radius: 16px; background: var(--blue); color: #fff; font: 600 38px/1 "Inter"; white-space: nowrap; }
-      .meta { font: 500 30px/1.3 "Inter"; color: var(--mute); white-space: nowrap; }
+      .feat { display: flex; align-items: center; gap: 22px; padding: 26px 36px; border-radius: 22px; background: var(--light-2); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.07), 0 0 0 1px var(--hair); color: var(--ink); font: 600 40px/1 "Be Vietnam Pro"; white-space: nowrap; }
+      .dl { display: inline-flex; align-items: center; gap: 14px; padding: 22px 44px; border-radius: 16px; background: var(--blue); color: #fff; font: 600 38px/1 "Be Vietnam Pro"; white-space: nowrap; }
+      .meta { font: 500 30px/1.3 "Be Vietnam Pro"; color: var(--mute); white-space: nowrap; }
       .url { font: 500 26px/1 "JetBrains Mono"; color: var(--mute); white-space: nowrap; }
 
       #cursor { width: 38px; height: 50px; }
 
       /* karaoke captions: a band above the Dock */
       .cap { position: absolute; left: 0; width: 1920px; bottom: 128px; display: flex; justify-content: center; }
-      .cap-box { max-width: 1500px; padding: 12px 30px; border-radius: 18px; background: rgba(28, 28, 30, 0.8); font: 600 42px/1.3 "Inter"; text-align: center; color: #fff; }
+      .cap-box { max-width: 1500px; padding: 12px 30px; border-radius: 18px; background: rgba(28, 28, 30, 0.8); font: 600 42px/1.3 "Be Vietnam Pro"; text-align: center; color: #fff; }
       .cw { color: rgba(255, 255, 255, 0.62); }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="50.5" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="40.3" data-width="1920" data-height="1080">
       <!-- backgrounds, cross-faded per scene -->
       <div id="bg-office" class="bg layer"><img class="photo" src="assets/bg/office.jpg" alt=""></div>
       <div id="bg-cafe" class="bg layer"><img class="photo" src="assets/bg/cafe.jpg" alt=""></div>
@@ -159,7 +162,7 @@
           <section id="sc01" class="scene layer">
             <div class="abs menubar dark">
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#f5f5f7" stroke-width="2.4" stroke-linecap="round" /></svg>
-              <span>Mon 10:02</span>
+              <span class="clock"></span>
             </div>
             <div class="abs" style="left: 0; width: 1920px; top: 92px; text-align: center"><div id="h01" class="hl" style="display: inline-block; font-size: 80px" data-fit-width="1180">VPN drops out of nowhere</div></div>
             <div id="call" class="abs win" style="left: 410px; top: 212px; width: 1100px">
@@ -187,11 +190,11 @@
           <section id="sc02" class="scene layer" data-manual-intro>
             <div class="abs menubar dark">
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#f5f5f7" stroke-width="2.4" stroke-linecap="round" /></svg>
-              <span>Mon 10:03</span>
+              <span class="clock"></span>
             </div>
             <div class="abs" style="left: 120px; top: 360px"><div id="h02" class="hl" style="font-size: 76px" data-fit-width="640">“Connection</div></div>
             <div class="abs" style="left: 120px; top: 460px"><div id="h02b" class="hl" style="font-size: 76px; color: var(--red)" data-fit-width="640">failed”</div></div>
-            <div id="shrug" class="abs label" style="left: 124px; top: 590px; font: 500 38px/1.3 Inter; color: #d1d1d6">What went wrong? No idea.</div>
+            <div id="shrug" class="abs label" style="left: 124px; top: 590px; font: 500 38px/1.3 'Be Vietnam Pro'; color: #d1d1d6">What went wrong? No idea.</div>
             <div id="set-win" class="abs win" style="left: 820px; top: 200px; width: 980px">
               <div class="win-bar"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">VPN</div></div>
               <div class="settings">
@@ -230,20 +233,20 @@
             <div class="abs menubar light">
               <div class="mb-icon"><img id="mb4-idle" src="assets/images/menubar-idle@2x.png" alt=""><img id="mb4-on" src="assets/images/menubar-connected@2x.png" alt="" style="opacity: 0"></div>
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
-              <span>Mon 10:04</span>
+              <span class="clock"></span>
             </div>
             <div id="brand" class="abs" style="left: 0; top: 0; width: 1920px; height: 1080px">
               <img id="logo4" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 832px; top: 250px; width: 256px; height: 256px; border-radius: 56px">
-              <div id="name4" class="abs label" style="left: 0; width: 1920px; top: 560px; text-align: center; font: 700 96px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
+              <div id="name4" class="abs label" style="left: 0; width: 1920px; top: 560px; text-align: center; font: 700 96px/1.1 'Be Vietnam Pro'; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
             </div>
             <div class="abs" style="left: 140px; top: 470px"><div id="h04" class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="800">Quick and easy</div></div>
             <div id="pop4" class="abs" style="left: 1000px; top: 50px; width: 824px; height: 736px">
               <img src="assets/images/popover-light.png" alt="" style="position: absolute; left: 0; top: 0; width: 824px; height: 736px">
               <!-- "not connected" patches over the real screenshot, lifted when the switch is flipped -->
               <div id="off-status" class="abs" style="left: 176px; top: 88px; width: 390px; height: 38px; background: rgb(220, 221, 217); display: flex; align-items: center; gap: 10px; padding-left: 4px">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #a1a1a6"></div><span style="font: 500 22px/1 Inter; color: #1d1d1f">Not Connected</span>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #a1a1a6"></div><span style="font: 500 22px/1 'Be Vietnam Pro'; color: #1d1d1f">Not Connected</span>
               </div>
-              <div id="off-ip" class="abs" style="left: 120px; top: 190px; width: 300px; height: 38px; background: rgb(211, 212, 208); font: 600 24px/38px Inter; color: #8e8e93; padding-left: 4px">—</div>
+              <div id="off-ip" class="abs" style="left: 120px; top: 190px; width: 300px; height: 38px; background: rgb(211, 212, 208); font: 600 24px/38px 'Be Vietnam Pro'; color: #8e8e93; padding-left: 4px">—</div>
               <div id="off-switch" class="abs" style="left: 574px; top: 368px; width: 76px; height: 48px; background: url(assets/images/popover-light.png) -574px -480px / 824px 736px"></div>
               <div id="off-dot" class="abs" style="left: 120px; top: 381px; width: 22px; height: 22px; background: url(assets/images/popover-light.png) -120px -493px / 824px 736px"></div>
             </div>
@@ -255,10 +258,10 @@
             <div class="abs menubar light">
               <div class="mb-icon"><img id="mb5-on" src="assets/images/menubar-connected@2x.png" alt=""><img id="mb5-lost" src="assets/images/menubar-lost@2x.png" alt="" style="opacity: 0"><img id="mb5-back" src="assets/images/menubar-connected@2x.png" alt="" style="opacity: 0"></div>
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
-              <span>Mon 10:31</span>
+              <span class="clock"></span>
             </div>
             <div class="abs" style="left: 140px; top: 380px"><div class="hl" style="font-size: 92px; color: var(--ink)" data-fit-width="820">Reconnects on its own</div></div>
-            <div id="sub05" class="abs label" style="left: 140px; top: 510px; font: 500 40px/1.3 Inter; color: var(--mute)">and tells you once it's back</div>
+            <div id="sub05" class="abs label" style="left: 140px; top: 510px; font: 500 40px/1.3 'Be Vietnam Pro'; color: var(--mute)">and tells you once it's back</div>
             <div id="status5" class="abs card light" style="left: 140px; top: 630px; width: 700px; padding: 30px 36px">
               <div class="stack" style="height: 110px" data-layout-allow-overlap>
                 <div id="st-lost" class="status-card"><div id="st-dot" class="s-dot" style="background: var(--orange)"></div><div><div class="s-main">Reconnecting…</div><div class="s-sub">Reconnecting to Office…</div></div></div>
@@ -275,14 +278,14 @@
             </div>
           </section>
 
-          <!-- s06: each error names its cause, with the fix one click away -->
+          <!-- s06: a silent beat over the music: each error names its cause, with the fix one click away -->
           <section id="sc06" class="scene layer">
             <div class="abs menubar light">
               <div class="mb-icon"><img src="assets/images/menubar-lost@2x.png" alt=""></div>
               <svg width="26" height="20" viewBox="0 0 26 20"><path d="M2,7 a16,16 0 0 1 22,0 M6,11 a10,10 0 0 1 14,0 M10,15 a4.5,4.5 0 0 1 6,0" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round" /></svg>
-              <span>Mon 10:40</span>
+              <span class="clock"></span>
             </div>
-            <div class="abs" style="left: 140px; top: 140px"><div class="hl" style="font-size: 88px; color: var(--ink)" data-fit-width="1640">Right cause, right error</div></div>
+            <div class="abs" style="left: 140px; top: 140px"><div class="hl" style="font-size: 88px; color: var(--ink)" data-fit-width="1640">Every error, spelled out</div></div>
             <div id="e1" class="abs ewin" style="left: 140px; top: 350px; width: 520px">
               <div class="win-bar light"><div class="dot3" style="background: #ff5f57"></div><div class="dot3" style="background: #febc2e"></div><div class="dot3" style="background: #28c840"></div><div class="win-title">TOMOSIA VPN</div></div>
               <div class="ewin-body">
@@ -312,15 +315,11 @@
             </div>
           </section>
 
-          <!-- s07: safety features, then the download -->
+          <!-- s07: the name, then the download -->
           <section id="sc07" class="scene layer" data-manual-intro>
-            <div id="feats" class="abs" style="left: 0; width: 1920px; top: 400px; display: flex; justify-content: center; gap: 40px">
-              <div id="f-kill" class="feat"><svg width="40" height="44" viewBox="0 0 40 44"><path d="M20,3 L36,9 V21 C36,31 29,38 20,41 C11,38 4,31 4,21 V9 Z" fill="none" stroke="#34c759" stroke-width="3.4" stroke-linejoin="round" /><path d="M13,22 L18,27 L28,16" fill="none" stroke="#34c759" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Kill switch</span></div>
-              <div id="f-key" class="feat"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="15" cy="22" r="9" fill="none" stroke="#007aff" stroke-width="3.4" /><path d="M24,22 H40 M34,22 V29 M40,22 V28" fill="none" stroke="#007aff" stroke-width="3.4" stroke-linecap="round" /></svg><span>Passwords in Keychain</span></div>
-            </div>
             <div id="end" class="abs" style="left: 0; top: 0; width: 1920px; height: 1080px">
               <img id="logo7" class="abs" src="assets/images/logo.png" alt="TOMOSIA VPN" style="left: 870px; top: 170px; width: 180px; height: 180px; border-radius: 40px">
-              <div id="name7" class="abs label" style="left: 0; width: 1920px; top: 390px; text-align: center; font: 700 92px/1.1 Inter; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
+              <div id="name7" class="abs label" style="left: 0; width: 1920px; top: 390px; text-align: center; font: 700 92px/1.1 'Be Vietnam Pro'; letter-spacing: -0.03em; color: var(--ink)">TOMOSIA VPN</div>
               <div id="dl7" class="abs" style="left: 0; width: 1920px; top: 550px; display: flex; justify-content: center">
                 <div class="dl"><svg width="30" height="30" viewBox="0 0 30 30"><path d="M15,4 V20 M8,13 L15,20 L22,13 M5,26 H25" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Download TOMOSIA VPN</span></div>
               </div>
@@ -339,10 +338,10 @@
       <div id="flash" class="layer"></div>
       <div id="captions" class="layer"></div>
       <div id="fade" class="layer"></div>
-      <audio id="mix" src="assets/audio/mix-vi.m4a" data-start="0" data-duration="50.5" data-track-index="10" data-volume="1"></audio>
+      <audio id="mix" src="assets/audio/mix-vi.m4a" data-start="0" data-duration="40.3" data-track-index="10" data-volume="1"></audio>
     </div>
 
-    <script>/*TIMING:BEGIN*/window.TIMING={"duration":50.5,"fps":30,"beat0":0,"beatLen":0.517241,"kick":[[10,28],[36,48],[48,74]],"drops":[36],"outroBeat":74,"scenes":{"s01-hook":{"start":0,"end":5.172,"lines":[{"on":1.034,"off":3.902,"words":[["~đang",1.034,1.198],["~họp",1.198,1.569],["~hăng",1.569,1.754],["~say",1.754,2.062],["~tự",2.648,2.759],["~nhiên",2.759,3.032],["drop",3.032,3.365],["vpn",3.365,3.902]]}]},"s02-pain":{"start":5.172,"end":11.379,"lines":[{"on":5.722,"off":8.044,"words":[["~hệ",5.722,6],["~thống",6,6.148],["~báo",6.148,6.452],["~connection",7.12,7.63],["failed",7.63,8.044]]},{"on":8.762,"off":9.596,"words":[["~lỗi",8.762,8.945],["~gì",8.945,9.148],["~thì",9.148,9.315],["why",9.315,9.596]]}]},"s03-why":{"start":11.379,"end":18.621,"lines":[{"on":11.929,"off":15.056,"words":[["protocol",11.929,13.013],["~mặc",13.311,14.059],["builtin",14.059,14.337],["~rất",14.337,14.596],["~hay",14.596,14.827],["~rớt",14.827,15.056]]},{"on":16.707,"off":18.529,"words":[["~dùng",16.707,16.881],["~app",16.881,17.066],["others",17.066,17.157],["~lại",17.157,17.225],["~vướng",17.533,18.214],["~chứng",18.214,18.362],["cert",18.362,18.529]]}]},"s04-reveal":{"start":18.621,"end":24.828,"lines":[{"on":18.971,"off":20.983,"words":[["~đã",18.971,19.248],["~có",19.248,19.508],["brand",19.508,20.415],["~vpn",20.415,20.983]]},{"on":21.808,"off":23.558,"words":[["~nằm",21.808,22.063],["~gọn",22.063,22.304],["switch",22.304,22.563],["~trên",22.563,22.934],["~menu",22.934,23.304],["menubar",23.304,23.558]]}]},"s05-reconnect":{"start":24.828,"end":31.034,"lines":[{"on":25.452,"off":29.639,"words":[["~mạng",25.452,25.805],["flaky",25.805,26.013],["~app",26.828,27.046],["~tự",27.046,27.213],["~động",27.213,27.416],["~kết",27.416,27.62],["~nối",27.62,27.824],["reconnect",27.824,28.042],["~xong",28.439,28.676],["~xuôi",28.676,28.972],["~sẽ",28.972,29.194],["notify",29.194,29.398],["~ngay",29.398,29.639]]}]},"s06-errors":{"start":31.034,"end":38.276,"lines":[{"on":31.584,"off":36.936,"words":[["~lỗi",31.584,31.973],["~gì",31.973,32.196],["~báo",32.196,32.473],["clear",32.473,32.754],["~kẹt",33.304,33.547],["~cổng",33.547,33.77],["udp",33.77,34.367],["~sai",34.772,34.992],["~mật",34.992,35.177],["password",35.177,35.458],["~hay",35.849,36.01],["~shared",36.01,36.436],["secret",36.436,36.936]]}]},"s07-outro":{"start":38.276,"end":50.5,"lines":[{"on":38.793,"off":43.253,"words":[["~trang",38.793,39.106],["~bị",39.106,39.374],["~kill",39.663,39.866],["kill",39.866,40.169],["~lưu",41.141,41.466],["~mật",41.466,41.626],["~khẩu",41.626,42.066],["~bằng",42.066,42.466],["keychain",42.466,43.253]]},{"on":44.483,"off":47.98,"words":[["brand",44.483,45.323],["~vpn",45.323,46.272],["~tải",47.401,47.523],["download",47.523,47.98]]}]}},"voice":"vi","captionLang":"vi","strings":{"Weekly sync":"Họp tuần","VPN drops out of nowhere":"VPN rớt bất ngờ","What went wrong? No idea.":"Lỗi gì? Không rõ.","No details.":"Không có chi tiết.","Certificates in the way":"Rào cản chứng chỉ phức tạp","Built-in VPN":"VPN mặc định","keeps dropping":"rất hay rớt","Other apps":"App khác","need certificates":"vướng chứng chỉ","Quick and easy":"Nhanh chóng, tiện lợi","Reconnects on its own":"Tự động kết nối lại","and tells you once it's back":"Xong xuôi, báo ngay","Right cause, right error":"Bắt đúng bệnh, báo đúng lỗi","Passwords in Keychain":"Mật khẩu trong Keychain","Download TOMOSIA VPN":"Tải TOMOSIA VPN ngay"},"captions":[{"start":0.914,"end":4.402,"words":[["Đang",1.034],["họp",1.198],["hăng",1.569],["say,",1.754],["tự",2.648],["nhiên",2.759],["rớt",3.032],["VPN.",3.365]]},{"start":5.602,"end":8.544,"words":[["Hệ",5.722],["thống",6],["báo",6.148],["“Connection",7.12],["failed”.",7.63]]},{"start":8.642,"end":10.096,"words":[["Lỗi",8.762],["gì",8.945],["thì",9.148],["chịu.",9.315]]},{"start":11.809,"end":15.556,"words":[["L2TP/IPsec",11.929],["mặc",13.311],["định",14.059],["rất",14.337],["hay",14.596],["rớt,",14.827]]},{"start":16.587,"end":18.811,"words":[["dùng",16.707],["app",16.881],["khác",17.066],["lại",17.157],["vướng",17.533],["chứng",18.214],["chỉ.",18.362]]},{"start":18.851,"end":21.483,"words":[["Đã",18.971],["có",19.248],["TOMOSIA",19.508],["VPN.",20.415]]},{"start":21.688,"end":24.058,"words":[["Nằm",21.808],["gọn",22.063],["gàng",22.304],["trên",22.563],["menu",22.934],["bar.",23.304]]},{"start":25.332,"end":28.279,"words":[["Mạng",25.452],["rớt?",25.805],["App",26.828],["tự",27.046],["động",27.213],["kết",27.416],["nối",27.62],["lại,",27.824]]},{"start":28.319,"end":30.139,"words":[["xong",28.439],["xuôi",28.676],["sẽ",28.972],["báo",29.194],["ngay.",29.398]]},{"start":31.464,"end":33.144,"words":[["Lỗi",31.584],["gì",31.973],["báo",32.196],["nấy:",32.473]]},{"start":33.184,"end":34.612,"words":[["kẹt",33.304],["cổng",33.547],["UDP,",33.77]]},{"start":34.652,"end":37.436,"words":[["sai",34.772],["mật",34.992],["khẩu",35.177],["hay",35.849],["shared",36.01],["secret.",36.436]]},{"start":38.673,"end":43.753,"words":[["Trang",38.793],["bị",39.106],["Kill",39.663],["switch.",39.866],["Lưu",41.141],["mật",41.466],["khẩu",41.626],["bằng",42.066],["Keychain.",42.466]]},{"start":44.363,"end":48.48,"words":[["TOMOSIA",44.483],["VPN.",45.323],["Tải",47.401],["ngay.",47.523]]}],"sfx":[{"sfx":"ding","vol":0.35,"t":3.032},{"sfx":"click","vol":0.25,"t":7.63},{"sfx":"riser","vol":0.22,"t":16.552},{"sfx":"click","vol":0.4,"t":22.304},{"sfx":"pop","vol":0.25,"t":25.805},{"sfx":"ding","vol":0.35,"t":29.194},{"sfx":"click","vol":0.2,"t":33.77},{"sfx":"click","vol":0.2,"t":35.177},{"sfx":"click","vol":0.2,"t":36.436},{"sfx":"click","vol":0.3,"t":47.523}],"env":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.29,0.74,0.6,0.57,0.59,0.55,0.55,0.46,0.33,0.28,0.7,0.82,0.65,0.26,0.01,0.14,0.23,0.4,0.66,0.91,0.96,0.86,0.64,0.5,0.48,0.63,0.64,0.73,0.72,0.56,0.28,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0,0,0.41,1,0.13,0.07,0.66,1,1,1,1,0.7,0.85,0.74,0.41,0.09,0,0,0.01,0.11,0.41,0.72,1,0.94,0.53,0.01,0.01,0.3,0.71,0.91,0.74,0.14,0.01,0.65,0.67,0.84,0.86,0.64,0.6,0.46,0.12,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.13,1,0.7,0.07,0.15,0.49,0.75,0.48,0.43,0.41,0.83,0.77,0.58,0.46,0.43,0.5,0.65,0.2,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.24,0.27,1,0.61,0.65,0.72,0.98,0.52,0.02,0.13,0.28,0.35,0.35,0.66,0.31,0.22,0.08,0.06,0.06,0.09,0.66,0.95,0.9,0.72,0.55,0.24,0.06,0.02,0.05,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,1,1,1,0.56,0.81,1,0.51,0.4,0.54,1,1,0.99,0.82,0.18,0.09,0.88,0.61,0.04,0.34,0.72,0.54,0.85,0.23,0.15,0.2,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.03,1,1,1,0.92,0.62,0.28,0.28,0.36,0.47,0.46,0.46,0.44,0.11,0.01,0.25,0.61,0.43,0.05,0.01,0.63,0.97,0.77,0.72,0.38,0.26,0.06,0,0,0,0,0,0,0,0,0.79,0.78,0.84,0.7,0.02,0.07,0.68,0.53,0.26,0.31,0.33,0.32,0.84,0.41,0.01,0.01,0.02,0.29,0.48,0.44,0.59,0.21,0.01,0.06,0.25,0.73,0.31,0.08,0,0,0,0,0,0.01,0.1,0.24,0.25,0.31,1,0.51,0.01,0,0.01,0.05,0.14,0.48,0.36,0.2,0.12,0.2,0.63,0.56,0.33,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.17,0.27,0.75,1,0.21,0.1,0.01,0.09,1,0.35,0.28,0.2,0.51,0.96,0.66,0.33,0.01,0,0,0,0,0,0.01,0,0.01,0.22,0.41,0.44,0.36,0.1,0.14,0.26,0.32,0.27,0.22,0.18,0.12,0.15,0.16,0.17,0.32,0.67,0.68,0.57,0.72,0.32,0.08,0.23,0.56,0.87,0.5,0.32,0.22,0.94,0.59,0.15,0.04,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.14,0.31,0.73,0.66,0.65,0.29,0,0.38,0.81,0.65,0.58,0.46,0.56,0.58,0.37,0.01,0,0,0,0,0,1,1,1,0.77,0.86,1,1,0.89,0.43,0.46,0.4,0.25,0.52,0.56,0.89,0.94,0.56,0.45,0.34,0.3,0.13,0.09,0.11,0.39,1,0.75,0.18,0,0.58,0.98,1,1,0.69,0.55,0.24,0.09,0.01,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.38,0.66,0.86,0.73,0.54,0.45,0.38,0.38,0.23,0.09,0.13,0.6,1,0.51,0.11,0.4,0.23,0.43,0.89,0.76,0.51,0.33,0.16,0.07,0.01,0.01,0,0,0,0,0.12,0.19,0.78,0.75,0.28,0.44,0.42,0.33,0.31,0.36,0.43,0.62,0.54,0.45,0.57,0.58,0.55,0.34,0.3,0.65,0.51,0.27,0.13,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.21,0.72,0.81,0.85,0.74,0.94,0.41,0.12,0.11,0.21,0.17,0.21,0.26,0.3,0.76,0.61,0.68,0.29,0,0,0,0,0,0,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.6,0.95,1,0.47,0.01,0,0,0,0.03,0.97,0.43,0.19,0.05,0.07,0.23,0.91,0.87,0.34,0.08,0.23,0.01,0.06,0.73,0.66,0.09,0,0.52,0.82,0.83,1,0.75,0.41,0.58,0.74,0.64,0.35,0.21,0.11,0.01,0,0,0,0,0,0,0,0,0,0,0.06,0.21,0.33,0.41,0.75,0.63,0.58,0.5,0.28,0.31,0.33,0.47,0.97,1,0.89,0.61,0.43,0.18,0.36,0.44,0.35,0.32,0.63,0.11,0.26,0.47,0.29,0.25,0.35,0.5,0.61,0.62,0.68,0.82,0.85,0.67,0.42,0.09,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.21,0.44,0.67,1,0.73,0.73,0.46,0.44,0.28,0.3,0.32,0.73,0.75,0.42,0.4,0.38,0.24,0.32,0.27,0.38,0.45,0.91,0.98,1,0.93,0.77,0.95,0.72,0.43,0.32,0.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.36,0.76,0.48,0.06,0,0.01,0,0.02,0.82,0.84,0.27,0.22,0.17,0.05,0.01,0.36,0.97,0.72,0.91,0.79,1,0.97,0.76,0.02,0,1,1,1,1,0.85,0.54,0.24,0.02,0,0,0,0,0,0,0,0,0,0,0.01,0.06,0.21,0.28,0.37,0.29,0.69,0.67,0.85,1,1,0.69,0.08,0.06,0.08,0.12,0.64,1,0.94,0.5,0.25,0.07,0.01,0,0,0,0,0,0,0,0,0,0,0.05,0.17,0.24,0.62,0.76,0.62,0.42,0.44,0.35,0.17,0.4,0.33,0.45,0.44,0.39,0.55,0.52,0.38,0.27,0.41,0.51,0.55,0.57,0.7,0.07,0,0.06,0.4,0.64,0.46,0.87,1,0.61,0.03,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.11,0.32,0.38,1,1,0.94,1,0.9,0.84,0.81,0.61,0.62,1,1,0.93,0.87,0.4,0.18,0.03,0,0,0,0,0,0,0,0.03,0.18,1,1,1,1,1,0.65,0.26,0.2,0.2,0.24,0.12,0.78,1,0.61,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.68,1,1,1,1,1,1,0.74,1,0.9,0.94,0.77,0.34,0.01,0.08,0.11,0.27,0.23,0.61,0.95,0.83,0.65,0.59,0.39,0.17,0.09,0.02,0,0,0,0,0,0.07,0.52,0.92,0.84,0.7,0.59,0.36,0.28,0.18,0.05,0.01,0,0,0,0.1,1,1,0.78,0.67,0.22,0,0.02,0.15,0.24,0.64,1,1,0.97,0.9,0.96,0.56,0.16,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.45,1,1,1,0.77,0.81,0.81,0.66,0.82,0.76,0.6,0.25,0.46,0.47,0.39,0.18,0.66,0.77,0.71,0.52,0.25,0.59,0.69,0.54,0.49,0.35,0.27,0.25,0.15,0.05,0.01,0.01,0.01,0.07,0.19,0.68,1,0.8,0.49,0.05,0,0.05,0.76,0.79,0.71,0.63,0.23,0.35,0.51,0.47,0.47,0.47,0.29,0.16,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.69,0.63,0.6,0.37,0.15,0.06,0.02,0.01,0.02,0.04,0.17,0.27,0.34,0.43,0.45,0.41,0.18,0.03,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};/*TIMING:END*/</script>
+    <script>/*TIMING:BEGIN*/window.TIMING={"duration":40.3,"fps":30,"beat0":0,"beatLen":0.517241,"kick":[[10,28],[36,48],[48,66]],"drops":[36],"outroBeat":66,"scenes":{"s01-hook":{"start":0,"end":5.172,"lines":[{"on":1.034,"off":3.902,"words":[["~đang",1.034,1.198],["~họp",1.198,1.569],["~hăng",1.569,1.754],["~say",1.754,2.062],["~tự",2.648,2.759],["~nhiên",2.759,3.032],["drop",3.032,3.365],["vpn",3.365,3.902]]}]},"s02-pain":{"start":5.172,"end":11.379,"lines":[{"on":5.722,"off":8.044,"words":[["~hệ",5.722,6],["~thống",6,6.148],["~báo",6.148,6.452],["~connection",7.12,7.63],["failed",7.63,8.044]]},{"on":8.762,"off":9.596,"words":[["~lỗi",8.762,8.945],["~gì",8.945,9.148],["~thì",9.148,9.315],["why",9.315,9.596]]}]},"s03-why":{"start":11.379,"end":18.621,"lines":[{"on":11.929,"off":15.056,"words":[["protocol",11.929,13.013],["~mặc",13.311,14.059],["builtin",14.059,14.337],["~rất",14.337,14.596],["~hay",14.596,14.827],["~rớt",14.827,15.056]]},{"on":16.707,"off":18.529,"words":[["~dùng",16.707,16.881],["~app",16.881,17.066],["others",17.066,17.157],["~lại",17.157,17.225],["~vướng",17.533,18.214],["~chứng",18.214,18.362],["cert",18.362,18.529]]}]},"s04-reveal":{"start":18.621,"end":24.828,"lines":[{"on":18.971,"off":20.983,"words":[["~đã",18.971,19.248],["~có",19.248,19.508],["brand",19.508,20.415],["~vpn",20.415,20.983]]},{"on":21.808,"off":23.558,"words":[["~nằm",21.808,22.063],["~gọn",22.063,22.304],["switch",22.304,22.563],["~trên",22.563,22.934],["~menu",22.934,23.304],["menubar",23.304,23.558]]}]},"s05-reconnect":{"start":24.828,"end":31.034,"lines":[{"on":25.452,"off":29.639,"words":[["~mạng",25.452,25.805],["flaky",25.805,26.013],["~app",26.828,27.046],["~tự",27.046,27.213],["~động",27.213,27.416],["~kết",27.416,27.62],["~nối",27.62,27.824],["reconnect",27.824,28.042],["~xong",28.439,28.676],["~xuôi",28.676,28.972],["~sẽ",28.972,29.194],["notify",29.194,29.398],["~ngay",29.398,29.639]]}]},"s06-errors":{"start":31.034,"end":34.138,"lines":[]},"s07-outro":{"start":34.138,"end":40.3,"lines":[{"on":34.655,"off":37.763,"words":[["brand",34.655,35.384],["~vpn",35.384,36.497],["~tải",37.244,37.371],["download",37.371,37.763]]}]}},"voice":"vi","captionLang":"vi","strings":{"Weekly sync":"Họp tuần","VPN drops out of nowhere":"VPN rớt bất ngờ","What went wrong? No idea.":"Lỗi gì? Không rõ.","No details.":"Không có chi tiết.","Certificates in the way":"Rào cản chứng chỉ phức tạp","Built-in VPN":"VPN mặc định","keeps dropping":"rất hay rớt","Other apps":"App khác","need certificates":"vướng chứng chỉ","Quick and easy":"Nhanh chóng, tiện lợi","Reconnects on its own":"Tự động kết nối lại","and tells you once it's back":"Xong xuôi, báo ngay","Download TOMOSIA VPN":"Tải TOMOSIA VPN ngay","Every error, spelled out":"Lỗi gì báo nấy"},"captions":[{"start":0.914,"end":4.402,"words":[["Đang",1.034],["họp",1.198],["hăng",1.569],["say,",1.754],["tự",2.648],["nhiên",2.759],["rớt",3.032],["VPN.",3.365]]},{"start":5.602,"end":8.544,"words":[["Hệ",5.722],["thống",6],["báo",6.148],["“Connection",7.12],["failed”.",7.63]]},{"start":8.642,"end":10.096,"words":[["Lỗi",8.762],["gì",8.945],["thì",9.148],["chịu.",9.315]]},{"start":11.809,"end":15.556,"words":[["L2TP/IPsec",11.929],["mặc",13.311],["định",14.059],["rất",14.337],["hay",14.596],["rớt,",14.827]]},{"start":16.587,"end":18.811,"words":[["dùng",16.707],["app",16.881],["khác",17.066],["lại",17.157],["vướng",17.533],["chứng",18.214],["chỉ.",18.362]]},{"start":18.851,"end":21.483,"words":[["Đã",18.971],["có",19.248],["TOMOSIA",19.508],["VPN.",20.415]]},{"start":21.688,"end":24.058,"words":[["Nằm",21.808],["gọn",22.063],["gàng",22.304],["trên",22.563],["menu",22.934],["bar.",23.304]]},{"start":25.332,"end":28.279,"words":[["Mạng",25.452],["rớt?",25.805],["App",26.828],["tự",27.046],["động",27.213],["kết",27.416],["nối",27.62],["lại,",27.824]]},{"start":28.319,"end":30.139,"words":[["xong",28.439],["xuôi",28.676],["sẽ",28.972],["báo",29.194],["ngay.",29.398]]},{"start":34.535,"end":38.263,"words":[["TOMOSIA",34.655],["VPN.",35.384],["Tải",37.244],["ngay.",37.371]]}],"sfx":[{"sfx":"ding","vol":0.35,"t":3.032},{"sfx":"click","vol":0.25,"t":7.63},{"sfx":"riser","vol":0.22,"t":16.552},{"sfx":"click","vol":0.4,"t":22.304},{"sfx":"pop","vol":0.25,"t":25.805},{"sfx":"ding","vol":0.35,"t":29.194},{"sfx":"click","vol":0.2,"t":31.384},{"sfx":"click","vol":0.2,"t":31.984},{"sfx":"click","vol":0.2,"t":32.584},{"sfx":"click","vol":0.3,"t":37.371}],"env":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.3,0.78,0.63,0.6,0.62,0.58,0.58,0.48,0.34,0.29,0.74,0.86,0.68,0.27,0.01,0.15,0.24,0.42,0.69,0.95,1,0.9,0.67,0.52,0.5,0.66,0.67,0.77,0.76,0.59,0.29,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0,0,0.43,1,0.14,0.07,0.69,1,1,1,1,0.73,0.89,0.77,0.43,0.09,0,0,0.01,0.12,0.43,0.76,1,0.99,0.55,0.01,0.01,0.31,0.75,0.96,0.78,0.15,0.01,0.68,0.7,0.88,0.9,0.67,0.63,0.48,0.13,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.01,0.14,1,0.74,0.07,0.15,0.52,0.79,0.5,0.45,0.43,0.87,0.81,0.61,0.48,0.45,0.53,0.68,0.21,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.25,0.29,1,0.64,0.68,0.75,1,0.54,0.02,0.13,0.3,0.37,0.37,0.69,0.32,0.23,0.09,0.06,0.07,0.09,0.69,1,0.94,0.75,0.58,0.25,0.06,0.02,0.05,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,1,1,1,0.58,0.85,1,0.54,0.42,0.57,1,1,1,0.86,0.19,0.1,0.92,0.64,0.04,0.35,0.75,0.57,0.89,0.24,0.15,0.21,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.03,1,1,1,0.97,0.65,0.29,0.29,0.38,0.49,0.48,0.48,0.46,0.12,0.01,0.26,0.64,0.45,0.05,0.01,0.66,1,0.81,0.75,0.4,0.27,0.06,0.01,0,0,0,0,0,0,0,0.83,0.82,0.88,0.73,0.02,0.07,0.72,0.56,0.28,0.32,0.35,0.34,0.88,0.43,0.01,0.01,0.02,0.3,0.5,0.46,0.62,0.22,0.01,0.06,0.26,0.76,0.32,0.09,0,0,0,0,0,0.01,0.1,0.25,0.26,0.33,1,0.53,0.01,0,0.02,0.05,0.14,0.51,0.37,0.21,0.12,0.21,0.66,0.59,0.35,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.18,0.28,0.78,1,0.22,0.11,0.01,0.09,1,0.37,0.29,0.21,0.53,1,0.69,0.35,0.01,0,0,0,0,0,0.01,0,0.01,0.23,0.43,0.46,0.37,0.11,0.15,0.28,0.34,0.28,0.23,0.19,0.13,0.15,0.16,0.18,0.34,0.71,0.71,0.59,0.76,0.34,0.08,0.24,0.59,0.91,0.53,0.33,0.23,0.98,0.62,0.15,0.04,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.14,0.32,0.77,0.69,0.68,0.3,0,0.39,0.85,0.69,0.61,0.48,0.59,0.6,0.38,0.01,0,0,0,0,0,1,1,1,0.8,0.9,1,1,0.93,0.45,0.49,0.42,0.27,0.55,0.59,0.93,0.99,0.58,0.48,0.35,0.31,0.13,0.1,0.11,0.4,1,0.78,0.19,0,0.61,1,1,1,0.73,0.58,0.25,0.1,0.01,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.4,0.7,0.9,0.76,0.57,0.48,0.4,0.39,0.24,0.09,0.14,0.63,1,0.54,0.11,0.42,0.24,0.45,0.93,0.8,0.54,0.34,0.17,0.07,0.01,0.01,0,0,0,0,0.12,0.2,0.81,0.78,0.3,0.46,0.44,0.34,0.33,0.38,0.45,0.65,0.56,0.48,0.59,0.61,0.57,0.36,0.31,0.68,0.54,0.28,0.14,0.02,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.01,0.22,0.75,0.84,0.89,0.77,0.99,0.43,0.13,0.11,0.22,0.18,0.22,0.27,0.32,0.8,0.64,0.72,0.3,0,0,0,0,0,0,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.63,0.99,1,0.49,0.01,0,0,0,0.03,1,0.45,0.2,0.06,0.08,0.25,0.96,0.91,0.36,0.09,0.24,0.01,0.07,0.76,0.69,0.09,0.01,0.54,0.85,0.87,1,0.79,0.43,0.61,0.78,0.68,0.37,0.22,0.12,0.01,0,0,0,0,0,0,0,0,0,0,0.06,0.22,0.35,0.43,0.79,0.66,0.61,0.52,0.29,0.33,0.35,0.49,1,1,0.93,0.64,0.45,0.19,0.38,0.46,0.37,0.34,0.66,0.11,0.27,0.49,0.31,0.26,0.37,0.52,0.64,0.65,0.71,0.86,0.89,0.7,0.44,0.1,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.54,1,1,1,0.78,0.73,1,1,1,1,1,0.84,0.85,0.85,0.38,0.57,0.52,0.56,0.43,0.5,0.76,0.64,0.6,0.61,0.29,0.03,0,0.39,0.73,0.65,0.67,0.76,0.69,0.17,0.03,0.38,0.89,0.67,0.25,0.01,0,0.47,0.69,0.63,0.29,0.05,0.27,0.64,0.83,0.82,0.72,0.82,0.34,0.01,0,0.01,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.71,0.71,0.52,0.25,0.16,0.17,0.32,0.6,0.78,0.81,0.83,0.93,1,1,0.77,0.14,0.01,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};/*TIMING:END*/</script>
     <script>
       (() => {
         const T = window.TIMING;
@@ -377,8 +376,17 @@
           if (d < 300 && rnd() < 0.72) links.push([i, j, d]);
         }));
         const BROKEN = new Set(links.map((_, i) => i).filter((i) => i % 7 === 3));
+        // does the link from node i to node j pass through one of the rects [x0, y0, x1, y1]? (sampled)
+        const crosses = (i, j, rects) => rects.some(([x0, y0, x1, y1]) => {
+          for (let t = 0; t <= 1; t += 0.05) {
+            const x = nodes[i][0] + (nodes[j][0] - nodes[i][0]) * t, y = nodes[i][1] + (nodes[j][1] - nodes[i][1]) * t;
+            if (x > x0 && x < x1 && y > y0 && y < y1) return true;
+          }
+          return false;
+        });
         const draw = (svg, style) => {
           links.forEach(([i, j, d], k) => {
+            if (style.clear && crosses(i, j, style.clear)) return;
             const l = document.createElementNS(SVGNS, "line");
             l.setAttribute("x1", nodes[i][0]); l.setAttribute("y1", nodes[i][1]);
             l.setAttribute("x2", nodes[j][0]); l.setAttribute("y2", nodes[j][1]);
@@ -398,7 +406,9 @@
             svg.append(c);
           });
         };
-        draw($("#net-dark"), { line: "rgba(255,255,255,0.10)", node: "rgba(255,255,255,0.28)", broken: true, brokenColor: (k) => (k % 2 ? "#ff9f0a" : "#ff3b30") });
+        draw($("#net-dark"), { line: "rgba(255,255,255,0.10)", node: "rgba(255,255,255,0.28)", broken: true, brokenColor: (k) => (k % 2 ? "#ff9f0a" : "#ff3b30"),
+          // s03 keeps its chip, headline and cards clear of lines (with room for the slow zoom)
+          clear: [[760, 120, 1160, 240], [300, 260, 1620, 420], [230, 450, 1690, 720]] });
         draw($("#net-green"), { line: "rgba(52,199,89,0.55)", node: "rgba(52,199,89,0.75)", drawable: true });
 
         // ---------- Dock: generic app tiles (drawn here once, cloned into both glass variants) ----------
@@ -406,7 +416,7 @@
           folder: '<svg width="36" height="30" viewBox="0 0 36 30"><path d="M2,6 a3,3 0 0 1 3,-3 H14 L18,7 H31 a3,3 0 0 1 3,3 V25 a3,3 0 0 1 -3,3 H5 a3,3 0 0 1 -3,-3 Z" fill="#fff" /></svg>',
           globe: '<svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#fff" stroke-width="3" /><path d="M4,18 H32 M18,4 C10,12 10,24 18,32 C26,24 26,12 18,4" fill="none" stroke="#fff" stroke-width="2.6" /></svg>',
           chat: '<svg width="38" height="34" viewBox="0 0 38 34"><path d="M19,3 C28,3 35,9 35,16 C35,23 28,29 19,29 C17,29 15,29 13,28 L5,31 L8,25 C5,23 3,20 3,16 C3,9 10,3 19,3 Z" fill="#fff" /></svg>',
-          cal: '<svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="6" fill="#fff" /><rect x="4" y="4" width="32" height="10" rx="4" fill="#ff3b30" /><text x="20" y="32" text-anchor="middle" font-family="Inter" font-weight="700" font-size="16" fill="#1d1d1f">29</text></svg>',
+          cal: '<svg width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="6" fill="#fff" /><rect x="4" y="4" width="32" height="10" rx="4" fill="#ff3b30" /><text x="20" y="32" text-anchor="middle" font-family="Be Vietnam Pro" font-weight="700" font-size="16" fill="#1d1d1f">29</text></svg>',
           note: '<svg width="34" height="38" viewBox="0 0 34 38"><rect x="3" y="3" width="28" height="32" rx="5" fill="#fff" /><path d="M9,14 H25 M9,20 H25 M9,26 H19" stroke="#c9a200" stroke-width="2.6" stroke-linecap="round" /></svg>',
           gear: '<svg width="38" height="38" viewBox="0 0 38 38"><circle cx="19" cy="19" r="8" fill="none" stroke="#fff" stroke-width="3.4" /><path d="M19,3 V9 M19,29 V35 M3,19 H9 M29,19 H35 M7.7,7.7 L12,12 M26,26 L30.3,30.3 M7.7,30.3 L12,26 M26,12 L30.3,7.7" stroke="#fff" stroke-width="3.4" stroke-linecap="round" /></svg>',
         };
@@ -460,7 +470,7 @@
         const spin = (el, t0, t1) => tl.fromTo(el, { rotation: 0 }, { rotation: 360 * Math.max(1, Math.round((t1 - t0) / 0.8)), duration: t1 - t0, ease: "none", immediateRender: false }, t0);
 
         // start states of elements revealed later
-        gsap.set(["#n-lost", "#h01 .w", "#h02 .w", "#h02b .w", "#shrug", "#nodetail", "#proto", "#h03 .w", "#card-builtin", "#card-cert", "#h04 .w", "#pop4", "#cursor", "#name4", "#sub05", "#status5", "#n5-lost", "#n5-back", "#sc05 .hl .w", "#sc06 .hl .w", "#e1", "#e2", "#e3", "#f-kill", "#f-key", "#end", "#dl7", "#meta7", "#url7"], { autoAlpha: 0 });
+        gsap.set(["#n-lost", "#h01 .w", "#h02 .w", "#h02b .w", "#shrug", "#nodetail", "#proto", "#h03 .w", "#card-builtin", "#card-cert", "#h04 .w", "#pop4", "#cursor", "#name4", "#sub05", "#status5", "#n5-lost", "#n5-back", "#sc05 .hl .w", "#sc06 .hl .w", "#e1", "#e2", "#e3", "#end", "#dl7", "#meta7", "#url7"], { autoAlpha: 0 });
         gsap.set(".vpn-app", { autoAlpha: 0, scale: 0.4 });
 
         tl.fromTo("#fade", { opacity: 1 }, { opacity: 0, duration: 0.25 }, 0);
@@ -474,6 +484,9 @@
 
         // ---------- backgrounds: [layer, from scene, to scene]; each drifts slowly while visible ----------
         const S = (sid) => SC[sid].start;
+        // one time on every menu bar clock: the story happens in a single moment of the morning
+        const CLOCK = "Mon 10:02";
+        $$(".clock").forEach((el) => (el.textContent = CLOCK));
         const BGS = [
           ["#bg-office", "s01-hook", "s02-pain"],
           ["#bg-cafe", "s02-pain", "s03-why"],
@@ -592,8 +605,8 @@
           rise("#status5", tl0 - 0.1);
           tl.fromTo("#st-dot", { opacity: 1 }, { opacity: 0.35, duration: 0.4, yoyo: true, repeat: 5, ease: "sine.inOut", immediateRender: false }, tl0);
           const tr = W(sid, "reconnect");
-          hide("#st-lost", tr, 0.2);
-          show("#st-back", tr, 0.3);
+          hide("#st-lost", tr - 0.2, 0.2);
+          show("#st-back", tr + 0.05, 0.3);
           show("#mb5-back", tr, 0.2);
           hide("#mb5-lost", tr, 0.2);
           tl.set("#net-green", { opacity: 0.55 }, tr - 0.6);
@@ -606,22 +619,20 @@
           rise("#sub05", tn - 0.1, { y: 16 });
         }
 
-        // ---------- s06: one error window per spoken error, in spoken order ----------
+        // ---------- s06: no voice; the error windows come in one after another ----------
         {
           const sid = "s06-errors";
-          rise("#e1", W(sid, "udp") - 0.4);
-          rise("#e2", W(sid, "password") - 0.3);
-          rise("#e3", W(sid, "secret") - 0.4);
+          // each window rises on its click (the s06 clicks in data/cues.json), slightly ahead of the sound
+          const clicks = T.sfx.filter((e) => e.sfx === "click" && e.t >= SC[sid].start && e.t < SC[sid].end).map((e) => e.t);
+          if (clicks.length !== 3) console.warn(`[timing] s06 expects 3 clicks, got ${clicks.length}`);
+          clicks.forEach((t, i) => rise(`#e${i + 1}`, t - 0.2));
         }
 
-        // ---------- s07: safety, then the download ----------
+        // ---------- s07: the name, then the download ----------
         {
           const sid = "s07-outro";
           tl.to("#net-green", { opacity: 0, duration: 0.6 }, SC[sid].start);
-          rise("#f-kill", W(sid, "kill") - 0.1);
-          rise("#f-key", W(sid, "keychain") - 0.25);
           const tb = W(sid, "brand");
-          hide("#feats", tb - 0.45, 0.3);
           show("#end", tb - 0.2, 0.01);
           pop("#logo7", tb - 0.2, { from: 0.7, d: 0.7, ease: "expo.out" });
           rise("#name7", tb, { y: 20 });

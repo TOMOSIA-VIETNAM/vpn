@@ -79,23 +79,13 @@
     },
     {
       "id": "s06-errors",
-      "lines": [
-        {
-          "en": "Every error says what it is: a blocked UDP port, a wrong password or shared secret.",
-          "vi": "Lỗi gì báo nấy{clear}: kẹt cổng UDP{udp}, sai mật khẩu{password} hay shared secret{secret}.",
-          "vi_say": "Lỗi gì báo nấy: kẹt cổng u đê pê, sai mật khẩu hay sheo sì cờ rít."
-        }
-      ]
+      "lines": [],
+      "hold": 2.8
     },
     {
       "id": "s07-outro",
       "outro": true,
       "lines": [
-        {
-          "en": "With a kill switch. Passwords kept in the Keychain.",
-          "vi": "Trang bị Kill switch{kill}. Lưu mật khẩu bằng Keychain{keychain}.",
-          "vi_say": "Trang bị kin suých. Lưu mật khẩu bằng ki chên."
-        },
         {
           "en": "TOMOSIA VPN. Download it now.",
           "vi": "TOMOSIA{brand} VPN. Tải ngay{download}.",

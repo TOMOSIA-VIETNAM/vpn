@@ -37,19 +37,19 @@
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "word": "udp",
+    "at": 0.35,
     "vol": 0.2
   },
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "word": "password",
+    "at": 0.95,
     "vol": 0.2
   },
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "word": "secret",
+    "at": 1.55,
     "vol": 0.2
   },
   {
