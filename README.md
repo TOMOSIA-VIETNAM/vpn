@@ -56,7 +56,7 @@ Kiểm tra xác nhận cài đặt thành công:
 ```bash
 vpn version    # Kết quả: vpn v0.6.1
 ```
-Phiên bản App Menu Bar hiển thị ở góc dưới bên trái popover (VD: `TMS VPN Client v0.6.1`).
+Phiên bản App Menu Bar hiển thị ở góc dưới bên trái popover (VD: `v0.6.1`, kèm dòng bản quyền).
 
 ---
 
