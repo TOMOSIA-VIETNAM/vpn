@@ -937,7 +937,7 @@ struct ProfileCardRow: View {
 
                 Text(subtitle(for: state))
                     .font(.system(size: 11))
-                    .foregroundColor(state == .connecting ? Theme.connecting : Theme.secondaryText)
+                    .foregroundColor(Theme.secondaryText)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .id(state == .connecting)
