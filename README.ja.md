@@ -18,8 +18,19 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshot-dark.png" />
-    <img src="assets/screenshot-light.png" width="412" alt="メニューバーの TOMOSIA VPN" />
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
+    <img src="assets/screenshots/popover-light.png" width="412" alt="メニューバーの TOMOSIA VPN" />
+  </picture>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+    <img src="assets/screenshots/settings-light.png" width="360" alt="設定" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="VPN 構成の追加" />
   </picture>
 </p>
 

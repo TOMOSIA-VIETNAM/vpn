@@ -18,8 +18,19 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshot-dark.png" />
-    <img src="assets/screenshot-light.png" width="412" alt="TOMOSIA VPN trên thanh Menu Bar" />
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
+    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN trên thanh Menu Bar" />
+  </picture>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+    <img src="assets/screenshots/settings-light.png" width="360" alt="Cài đặt" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Thêm cấu hình VPN" />
   </picture>
 </p>
 
