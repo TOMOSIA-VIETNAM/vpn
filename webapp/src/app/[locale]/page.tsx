@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { Parallax } from "@/components/motion/Parallax";
 import { RevealObserver } from "@/components/motion/RevealObserver";
 import { Features } from "@/components/sections/Features";
 import { Hero } from "@/components/sections/Hero";
@@ -30,6 +31,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       </main>
       <Footer dict={dict} />
       <RevealObserver />
+      <Parallax />
     </>
   );
 }

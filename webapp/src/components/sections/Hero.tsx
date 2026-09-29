@@ -1,41 +1,29 @@
+import { preload } from "react-dom";
+import { promoVideo } from "@/config/site";
 import type { Dictionary } from "@/i18n/dictionary";
-import { localeInfo, type Locale } from "@/i18n/locales";
+import type { Locale } from "@/i18n/locales";
 import { DownloadButton } from "../DownloadButton";
-import { Mark } from "../Mark";
-import { SplitText, splitCount } from "../motion/SplitText";
-import { stagger } from "../motion/stagger";
-import { PopoverDemo } from "../PopoverDemo";
+import { HeroVideo } from "../HeroVideo";
 
+/**
+ * Hero over the promo video. It is on screen at load, so nothing in it waits for a
+ * reveal: text and poster are complete on first paint, and the video fades in over
+ * the poster once it plays.
+ */
 export function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const byWord = localeInfo[locale].splitWords;
-  // Stagger order: headline words, then the lead, the download button and the desktop.
-  const afterTitle = splitCount(dict.hero.title, byWord);
+  const video = promoVideo(locale);
+  preload(video.poster, { as: "image", fetchPriority: "high" });
 
   return (
-    <section className="hero" aria-labelledby="hero-title" data-reveal>
-      <div className="container hero__inner">
-        <div className="hero__text">
-          <h1 id="hero-title" className="hero__title split">
-            <SplitText text={dict.hero.title} byWord={byWord} />
-          </h1>
-          <p className="hero__lead" data-item style={stagger(afterTitle + 1)}>
-            {dict.hero.lead}
-          </p>
-          <div data-item style={stagger(afterTitle + 2)}>
-            <DownloadButton dict={dict} />
-          </div>
-        </div>
-
-        {/* A slice of a Mac desktop: the menu bar with the app's status item, and
-            the popover opened under it. */}
-        <div className="desk" data-item style={stagger(afterTitle + 3)}>
-          <div className="desk__menubar" aria-hidden="true">
-            <span className="desk__status-item">
-              <Mark style="solid" size={15} />
-            </span>
-          </div>
-          <PopoverDemo label={dict.hero.popoverAlt} year={new Date().getFullYear()} />
-        </div>
+    <section className="hero" aria-labelledby="hero-title">
+      <HeroVideo sources={video} labels={dict.hero.video} />
+      <div className="hero__scrim" aria-hidden="true" />
+      <div className="container hero__inner" data-parallax="-0.08" data-parallax-range="60">
+        <h1 id="hero-title" className="hero__title">
+          {dict.hero.title}
+        </h1>
+        <p className="hero__lead">{dict.hero.lead}</p>
+        <DownloadButton dict={dict} />
       </div>
     </section>
   );

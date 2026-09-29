@@ -38,7 +38,6 @@
   --desk-1: light-dark(#dfe6f0, #1b2230);
   --desk-2: light-dark(#eceef3, #15171c);
   --desk-3: light-dark(#e3ebe8, #1a1f1f);
-  --texture: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.07));
 
   --shadow-panel: 0 0 0 1px light-dark(rgba(0, 0, 0, 0.04), rgba(255, 255, 255, 0.07)),
     0 1px 2px light-dark(rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.4)),
@@ -146,30 +145,36 @@ a:hover {
   padding-inline: var(--gutter);
 }
 
-/* Reveal animation. Only active under html.motion (see components/motion/motion.ts):
-   a [data-reveal] block's [data-item] children rise into place one after another,
-   ordered by --i, once the block is marked .is-in. Headline pieces also lose a blur. */
+/* Reveal and parallax (see components/motion/). Everything here is inside
+   prefers-reduced-motion: no-preference, and the hidden state only applies to
+   blocks RevealObserver marked .is-pending because they started below the fold. */
 
-.motion [data-reveal] [data-item] {
-  opacity: 0;
-  transform: translateY(28px);
-  transition:
-    opacity var(--reveal-duration) var(--ease-out),
-    transform var(--reveal-duration) var(--ease-out),
-    filter var(--reveal-duration) var(--ease-out);
-  transition-delay: calc(var(--i, 0) * var(--reveal-step));
-}
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] [data-item] {
+    transition:
+      opacity var(--reveal-duration) var(--ease-out),
+      transform var(--reveal-duration) var(--ease-out),
+      filter var(--reveal-duration) var(--ease-out);
+    transition-delay: calc(var(--i, 0) * var(--reveal-step));
+  }
 
-.motion [data-reveal] .split__piece {
-  display: inline-block;
-  transform: translateY(0.45em);
-  filter: blur(10px);
-}
+  [data-reveal].is-pending [data-item] {
+    opacity: 0;
+    transform: translateY(28px);
+  }
 
-.motion [data-reveal].is-in [data-item] {
-  opacity: 1;
-  transform: none;
-  filter: none;
+  [data-reveal] .split__piece {
+    display: inline-block;
+  }
+
+  [data-reveal].is-pending .split__piece {
+    transform: translateY(0.45em);
+    filter: blur(10px);
+  }
+
+  [data-parallax] {
+    transform: translate3d(0, var(--parallax-y, 0px), 0);
+  }
 }
 
 /* Status dots */
@@ -200,8 +205,10 @@ a:hover {
 }
 
 /* The halo the app draws around a dot while it connects. */
-.motion .status-dot.is-pulsing {
-  animation: dot-pulse 1.2s ease-out infinite;
+@media (prefers-reduced-motion: no-preference) {
+  .status-dot.is-pulsing {
+    animation: dot-pulse 1.2s ease-out infinite;
+  }
 }
 
 @keyframes dot-pulse {
@@ -401,51 +408,120 @@ a:hover {
   box-shadow: 0 0 0 0.5px var(--separator), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-/* Hero */
+/* Hero: the promo video full-bleed behind the text. The text is white in both
+   appearances, over a scrim that keeps it at AA contrast on the video's lightest
+   frames; the scrim is darkest where the text sits. */
 
 .hero {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
-  padding-block: 88px 104px;
+  display: flex;
+  align-items: center;
+  min-height: min(86vh, 820px);
+  padding-block: 96px 120px;
+  background: #0b0b0c;
+  color: #ffffff;
+  color-scheme: dark;
 }
 
-/* A faint dot grid behind the hero, fading out from the desktop side. */
-.hero::before {
-  content: "";
+/* Taller than the hero by more than its parallax range, so the shift never uncovers an edge. */
+.hero__media {
+  position: absolute;
+  inset: -18% 0;
+  z-index: -2;
+}
+
+/* Softened while muted, so the video's own captions do not compete with the headline. */
+.hero__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(6px);
+  transform: scale(1.04);
+  transition:
+    filter 500ms ease,
+    transform 500ms var(--ease-out);
+}
+
+.is-watching .hero__video {
+  filter: none;
+  transform: none;
+}
+
+.hero__scrim {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--texture) 1px, transparent 1.2px);
-  background-size: 22px 22px;
-  mask-image: radial-gradient(ellipse 70% 80% at 75% 40%, #000 0%, transparent 75%);
-  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.68) 45%, rgba(0, 0, 0, 0.4) 100%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0%, transparent 35%);
 }
 
 .hero__inner {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
-  align-items: center;
-  gap: 56px;
 }
 
 .hero__title {
-  font-size: clamp(44px, 6.2vw, 76px);
+  max-width: 11em;
+  font-size: clamp(44px, 7vw, 88px);
   font-weight: 700;
-  line-height: 1.03;
+  line-height: 1.02;
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
 .hero__lead {
-  max-width: 34em;
+  max-width: 32em;
   margin-top: 24px;
-  color: var(--label-secondary);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 21px;
   line-height: 1.5;
 }
 
 .hero .download {
   margin-top: 36px;
+}
+
+.hero .download__requirements {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.hero__video-controls {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 24px;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.video-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 980px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+
+.video-button:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.video-button[aria-pressed="true"] {
+  background: #ffffff;
+  color: #000000;
 }
 
 /* A slice of a Mac desktop: wallpaper-like soft field, menu bar, popover, banners. */
@@ -455,7 +531,7 @@ a:hover {
   overflow: hidden;
   min-height: 440px;
   padding: 0 0 28px;
-  border-radius: 20px;
+  border-radius: 16px;
   background: linear-gradient(155deg, var(--desk-1) 0%, var(--desk-2) 55%, var(--desk-3) 100%);
   box-shadow: inset 0 0 0 1px var(--separator);
 }
@@ -779,7 +855,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   font-size: 15px;
 }
 
@@ -858,7 +934,7 @@ a:hover {
   white-space: nowrap;
 }
 
-.motion [data-reveal]:not(.is-in) .alerts__item[data-item] {
+[data-reveal].is-pending .alerts__item[data-item] {
   transform: translateX(32px);
 }
 
@@ -887,13 +963,17 @@ a:hover {
   background: var(--bg-grouped);
 }
 
-.tile--menuBar,
-.tile--keychain {
+.tile--menuBar {
   grid-column: span 2;
+  grid-row: span 2;
 }
 
 .tile--reconnect {
   grid-row: span 2;
+}
+
+.tile--keychain {
+  grid-column: span 3;
 }
 
 .tile__title {
@@ -948,18 +1028,18 @@ a:hover {
   gap: 10px;
 }
 
-.motion [data-reveal] .tile__notice {
-  opacity: 0;
-  transform: translateX(48px);
-  transition:
-    opacity 700ms var(--ease-out),
-    transform 800ms var(--ease-out);
-  transition-delay: calc(400ms + var(--i, 0) * 450ms);
-}
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] .tile__notice {
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 800ms var(--ease-out);
+    transition-delay: calc(400ms + var(--i, 0) * 450ms);
+  }
 
-.motion [data-reveal].is-in .tile__notice {
-  opacity: 1;
-  transform: none;
+  [data-reveal].is-pending .tile__notice {
+    opacity: 0;
+    transform: translateX(48px);
+  }
 }
 
 .tile__alerts {
@@ -996,23 +1076,23 @@ a:hover {
   transform: translateX(16px);
 }
 
-/* With motion the kill switch starts off and flips on once the tile is revealed. */
-.motion [data-reveal] .tile__kill-switch {
-  background: var(--switch-off);
-  transition: background-color 250ms ease 900ms;
-}
+/* With motion the kill switch waits off below the fold and flips on once revealed. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] .tile__kill-switch {
+    transition: background-color 250ms ease 900ms;
+  }
 
-.motion [data-reveal] .tile__kill-switch .switch__knob {
-  transform: none;
-  transition: transform 350ms var(--ease-spring) 900ms;
-}
+  [data-reveal] .tile__kill-switch .switch__knob {
+    transition: transform 350ms var(--ease-spring) 900ms;
+  }
 
-.motion [data-reveal].is-in .tile__kill-switch {
-  background: var(--accent);
-}
+  [data-reveal].is-pending .tile__kill-switch {
+    background: var(--switch-off);
+  }
 
-.motion [data-reveal].is-in .tile__kill-switch .switch__knob {
-  transform: translateX(16px);
+  [data-reveal].is-pending .tile__kill-switch .switch__knob {
+    transform: none;
+  }
 }
 
 .tile__ip {
@@ -1207,27 +1287,22 @@ a:hover {
 
 @media (max-width: 960px) {
   .hero {
-    padding-block: 56px 80px;
+    padding-block: 72px 112px;
   }
 
-  .hero__inner,
   .compare,
   .setup {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .hero__inner {
-    gap: 48px;
-  }
-
-  .desk {
-    width: 100%;
-    max-width: 540px;
-    margin-inline: auto;
-  }
-
   .bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile--menuBar,
+  .tile--keychain {
+    grid-column: span 2;
+    grid-row: auto;
   }
 
   .tile--reconnect {
@@ -1277,6 +1352,14 @@ a:hover {
   .tile--menuBar,
   .tile--keychain {
     grid-column: auto;
+  }
+
+  .hero {
+    min-height: 0;
+  }
+
+  .hero__scrim {
+    background: rgba(0, 0, 0, 0.68);
   }
 
   .tile {

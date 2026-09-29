@@ -18,6 +18,12 @@ const en: Dictionary = {
     requirements: "macOS {version}+ · Apple Silicon & Intel",
     popoverAlt:
       "The TOMOSIA VPN menu: connected to Office, public IP 203.0.113.24, and a second configuration, Research Lab, switched off.",
+    video: {
+      pause: "Pause video",
+      play: "Play video",
+      soundOn: "Watch with sound",
+      soundOff: "Mute",
+    },
   },
   problem: {
     title: "The built-in VPN gives up without saying why.",

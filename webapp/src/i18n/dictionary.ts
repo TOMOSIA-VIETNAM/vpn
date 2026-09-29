@@ -26,6 +26,13 @@ export interface Dictionary {
     /** {version} is replaced by the minimum macOS version. */
     requirements: string;
     popoverAlt: string;
+    /** Controls of the promo video playing behind the hero. */
+    video: {
+      pause: string;
+      play: string;
+      soundOn: string;
+      soundOff: string;
+    };
   };
   problem: {
     title: string;

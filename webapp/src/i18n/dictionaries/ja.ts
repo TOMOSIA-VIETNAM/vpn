@@ -18,6 +18,12 @@ const ja: Dictionary = {
     requirements: "macOS {version} 以降 · Apple Silicon & Intel",
     popoverAlt:
       "TOMOSIA VPN のメニュー：Office に接続中、パブリック IP 203.0.113.24、2 つ目の構成 Research Lab はオフ。",
+    video: {
+      pause: "動画を一時停止",
+      play: "動画を再生",
+      soundOn: "音声付きで見る",
+      soundOff: "ミュート",
+    },
   },
   problem: {
     title: "標準の VPN は、理由を告げずに切れる。",

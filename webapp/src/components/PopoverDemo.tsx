@@ -13,6 +13,7 @@ import {
   type NotificationKind,
 } from "@/config/app-ui";
 import { site } from "@/config/site";
+import { Mark, type MarkStyle } from "./Mark";
 import { motionAllowed } from "./motion/motion";
 import { Notification } from "./Notification";
 
@@ -27,35 +28,48 @@ interface ShownNotice {
   leaving: boolean;
 }
 
-// The final state, rendered on the server and kept for reduced motion.
+// The final state, rendered on the server and kept for reduced motion and without JavaScript.
 const CONNECTED: DemoState = { active: "office", phase: "connected" };
 
-// The story played once on load, in ms from the start: the tunnel comes up, drops,
-// and the app brings it back on its own.
+// The story played once when the demo first comes into view, in ms from then: the
+// tunnel comes up, drops, and the app brings it back on its own.
 const STORY: { at: number; state?: DemoState; notice?: NotificationKind; clearNotices?: true }[] = [
-  { at: 0, state: { active: null, phase: "idle" } },
-  { at: 1900, state: { active: "office", phase: "connecting" } },
-  { at: 3400, state: CONNECTED },
-  { at: 5700, state: { active: "office", phase: "reconnecting" }, notice: "lost" },
-  { at: 7700, state: CONNECTED, notice: "back" },
-  { at: 11000, clearNotices: true },
+  { at: 900, state: { active: "office", phase: "connecting" } },
+  { at: 2400, state: CONNECTED },
+  { at: 4700, state: { active: "office", phase: "reconnecting" }, notice: "lost" },
+  { at: 6700, state: CONNECTED, notice: "back" },
+  { at: 10000, clearNotices: true },
 ];
+
+// Where the story starts; shown from load so the demo does not jump when it begins.
+const IDLE: DemoState = { active: null, phase: "idle" };
 
 // How long the app takes for the steps a visitor triggers with the switches.
 const CONNECT_MS = 1400;
 const DISCONNECT_MS = 700;
 const NOTICE_EXIT_MS = 300;
 
+// The status item image for each phase, as the app sets it (menubar-*.png).
+const statusItem: Record<LinkPhase, MarkStyle> = {
+  idle: "outline",
+  connecting: "outline",
+  reconnecting: "badged",
+  connected: "solid",
+  disconnecting: "outline",
+};
+
 const profileById = (id: DemoProfileId | null) => demoProfiles.find((p) => p.id === id) ?? null;
 
 /**
- * A working replica of the app's menu bar popover: the switches connect and
- * disconnect, and on load it plays a drop-and-reconnect with the app's notifications.
+ * A slice of a Mac desktop with a working replica of the app's menu bar popover:
+ * the switches connect and disconnect, and the first time it scrolls into view it
+ * plays a drop-and-reconnect with the app's notifications.
  */
 export function PopoverDemo({ label, year }: { label: string; year: number }) {
   const [state, setState] = useState<DemoState>(CONNECTED);
   const [notices, setNotices] = useState<ShownNotice[]>([]);
   const timers = useRef<number[]>([]);
+  const root = useRef<HTMLDivElement>(null);
   const noticeKey = useRef(0);
 
   const clearTimers = useCallback(() => {
@@ -73,18 +87,34 @@ export function PopoverDemo({ label, year }: { label: string; year: number }) {
   }, [later]);
 
   useEffect(() => {
-    if (!motionAllowed()) return;
-    for (const step of STORY) {
-      later(step.at, () => {
-        if (step.state) setState(step.state);
-        if (step.notice) {
-          const kind = step.notice;
-          setNotices((shown) => [{ key: ++noticeKey.current, kind, leaving: false }, ...shown]);
-        }
-        if (step.clearNotices) dismissNotices();
-      });
-    }
-    return clearTimers;
+    const el = root.current;
+    if (!el || !motionAllowed()) return;
+    later(0, () => setState(IDLE));
+    const play = () => {
+      for (const step of STORY) {
+        later(step.at, () => {
+          if (step.state) setState(step.state);
+          if (step.notice) {
+            const kind = step.notice;
+            setNotices((shown) => [{ key: ++noticeKey.current, kind, leaving: false }, ...shown]);
+          }
+          if (step.clearNotices) dismissNotices();
+        });
+      }
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        play();
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      clearTimers();
+    };
   }, [later, clearTimers, dismissNotices]);
 
   function toggle(id: DemoProfileId) {
@@ -106,7 +136,13 @@ export function PopoverDemo({ label, year }: { label: string; year: number }) {
   const messages = appNotifications(office);
 
   return (
-    <>
+    <div className="desk" ref={root}>
+      <div className="desk__menubar" aria-hidden="true">
+        <span className="desk__status-item">
+          <Mark style={statusItem[state.phase]} size={15} />
+        </span>
+      </div>
+
       <div className="notices" aria-hidden="true">
         {notices.map((n) => (
           <Notification
@@ -211,6 +247,6 @@ export function PopoverDemo({ label, year }: { label: string; year: number }) {
           </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

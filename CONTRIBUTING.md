@@ -174,8 +174,9 @@ npm run lint     # ESLint and the TypeScript check
 ```
 
 Copy lives in `webapp/src/i18n/dictionaries/`, links and product facts (download
-URL, uninstall command, minimum macOS) in `webapp/src/config/site.ts`. The logo and
-screenshots are copied from `assets/` at build time, so update them there. See
+URL, uninstall command, minimum macOS) in `webapp/src/config/site.ts`. The logo,
+screenshots and the promo video's web encodes (`assets/videos/promo/web/`) are copied
+from `assets/` at build time, so update them there. See
 [webapp/README.md](webapp/README.md) for details.
 
 It is deployed on Vercel from this repository with the project's **Root Directory**

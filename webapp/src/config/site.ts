@@ -1,5 +1,7 @@
 // Links and product facts shared by every locale. Change them here only.
 
+import type { Locale } from "@/i18n/locales";
+
 const repoSlug = "TOMOSIA-VIETNAM/vpn";
 
 export const site = {
@@ -34,3 +36,27 @@ export const screenshots = {
 } as const;
 
 export type ScreenshotKey = keyof typeof screenshots;
+
+/**
+ * Promo video editions, copied from ../assets/videos/promo/web into public/videos.
+ * Each edition is a set of files named <name>.mp4 (H.264), <name>.webm (VP9),
+ * <name>-mobile.mp4 (720p) and <name>-poster.jpg. A locale without its own
+ * edition shows the fallback locale's; add a line here when one is published.
+ */
+const promoEditions = { vi: "promo-vi" } satisfies Partial<Record<Locale, string>>;
+const promoFallback: keyof typeof promoEditions = "vi";
+
+export const promoVideoSize = { width: 1920, height: 1080 } as const;
+
+export function promoVideo(locale: Locale) {
+  const name = promoEditions[locale as keyof typeof promoEditions] ?? promoEditions[promoFallback];
+  return {
+    mp4: `/videos/${name}.mp4`,
+    webm: `/videos/${name}.webm`,
+    mobileMp4: `/videos/${name}-mobile.mp4`,
+    poster: `/videos/${name}-poster.jpg`,
+  };
+}
+
+/** Screens at most this wide get the 720p encode. */
+export const mobileVideoQuery = "(max-width: 640px)";

@@ -25,7 +25,9 @@ export function Screens({ locale, dict }: { locale: Locale; dict: Dictionary }) 
                 {caption}
               </figcaption>
               <div className="screens__shot" data-item style={stagger(1)}>
-                <Screenshot shot={shot} alt={alt} />
+                <div data-parallax="0.06">
+                  <Screenshot shot={shot} alt={alt} />
+                </div>
               </div>
             </figure>
           ))}

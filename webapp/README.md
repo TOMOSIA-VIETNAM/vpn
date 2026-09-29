@@ -15,8 +15,9 @@ npx serve out    # preview the exported site
 ```
 
 `npm run dev` and `npm run build` first run `scripts/copy-assets.mjs`, which copies
-`../assets/logo.png` and `../assets/screenshots/` into `public/`. Those copies are
-gitignored: change the files in `assets/`, not in `public/`. On Vercel this needs
+`../assets/logo.png`, `../assets/screenshots/` and the promo video's web encodes in
+`../assets/videos/promo/web/` into `public/`. Those copies are gitignored: change the
+files in `assets/`, not in `public/`. On Vercel this needs
 the default "Include files outside the Root Directory" setting.
 
 ## Where things live
@@ -26,11 +27,12 @@ the default "Include files outside the Root Directory" setting.
 | `src/i18n/dictionaries/{en,vi,ja}.ts` | All page copy, one file per locale |
 | `src/i18n/dictionary.ts` | The `Dictionary` type every locale must satisfy |
 | `src/i18n/locales.ts` | Locale list, default locale, `<html lang>` and Open Graph locale |
-| `src/config/site.ts` | Download URL, repository links, uninstall command, minimum macOS, screenshot sizes |
+| `src/config/site.ts` | Download URL, repository links, uninstall command, minimum macOS, screenshot sizes, promo video edition per locale |
 | `src/config/app-ui.ts` | Text quoted from the app's English UI (alerts, notifications, popover states) and the demo data |
 | `src/components/sections/` | Page sections; `src/app/[locale]/page.tsx` lists them in order |
-| `src/components/motion/` | Reveal animations: boot script, `RevealObserver`, `SplitText` |
-| `src/components/PopoverDemo.tsx` | Working replica of the menu bar popover in the hero |
+| `src/components/motion/` | `RevealObserver`, `Parallax`, `SplitText` |
+| `src/components/HeroVideo.tsx` | Promo video behind the hero, with pause and sound controls |
+| `src/components/PopoverDemo.tsx` | Working replica of the menu bar popover (first feature tile) |
 | `src/app/globals.css` | Design tokens (macOS system colors, light and dark) and all styles |
 
 Dictionary strings accept `**bold**`, `[[App UI label]]` (kept English and on one
@@ -41,16 +43,22 @@ switcher keeps the section being read (`/vi#features`).
 
 ## Motion
 
-No animation library: CSS transitions plus one IntersectionObserver.
+No animation library: CSS transitions, one IntersectionObserver and one
+requestAnimationFrame loop. With `prefers-reduced-motion` or without JavaScript,
+everything renders in its final state and the hero shows the video poster.
 
-- A block marked `data-reveal` animates its `data-item` children into place, in the
-  order of their `--i` (set with `stagger(n)`), the first time it scrolls into view.
+- A block marked `data-reveal` that starts below the fold waits hidden
+  (`is-pending`) and animates its `data-item` children in, ordered by `--i`
+  (`stagger(n)`), when it scrolls into view. Content on screen at load is never
+  hidden, so the first paint is complete.
 - Headlines use `SplitText`, word by word where the locale has `splitWords`.
-- The hero popover plays a connect, drop and reconnect once on load, with the app's
-  notifications; its switches work.
-- An inline script sets `html.motion` before first paint only when
-  `prefers-reduced-motion` is off. Without it (reduced motion, no JavaScript) every
-  element renders in its final state and the popover shows "Connected".
+- `data-parallax="<depth>"` shifts an element with the scroll, capped at
+  `data-parallax-range` px (default 16); keep the range below the free space around it.
+- The hero video (`promoVideo()` in `src/config/site.ts`) plays muted and looping,
+  pauses off screen, and gets the 720p file on narrow screens. Locales without their
+  own edition use the Vietnamese one.
+- The popover demo plays a connect, drop and reconnect once when it comes into view;
+  its switches work.
 
 ## Add a locale
 

@@ -18,6 +18,12 @@ const vi: Dictionary = {
     requirements: "macOS {version}+ · Apple Silicon & Intel",
     popoverAlt:
       "Menu TOMOSIA VPN: đang kết nối cấu hình Office, IP công khai 203.0.113.24, cấu hình thứ hai Research Lab đang tắt.",
+    video: {
+      pause: "Tạm dừng video",
+      play: "Phát video",
+      soundOn: "Xem có tiếng",
+      soundOff: "Tắt tiếng",
+    },
   },
   problem: {
     title: "VPN có sẵn của macOS ngắt mà không nói lý do.",

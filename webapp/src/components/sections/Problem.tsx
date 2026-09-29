@@ -32,7 +32,7 @@ export function Problem({ locale, dict }: { locale: Locale; dict: Dictionary }) 
               <span>{t.builtInCaption}</span>
             </figcaption>
             {/* The alert macOS shows, quoted in its original English. */}
-            <div className="mac-alert" lang="en">
+            <div className="mac-alert" lang="en" data-parallax="0.08">
               <p className="mac-alert__title">{builtInAlert.title}</p>
               <p className="mac-alert__message">{builtInAlert.message}</p>
               <span className="mac-alert__button">{builtInAlert.action}</span>
@@ -44,7 +44,7 @@ export function Problem({ locale, dict }: { locale: Locale; dict: Dictionary }) 
               <strong>{t.appLabel}</strong>
               <span>{t.appCaption}</span>
             </figcaption>
-            <ul className="alerts" lang="en">
+            <ul className="alerts" lang="en" data-parallax="0.03">
               {appAlerts.map((alert, i) => (
                 <li key={alert.title} className="alerts__item" data-item style={stagger(i + 2)}>
                   <span className={`status-dot status-dot--${alert.tone}`} aria-hidden="true" />
