@@ -1,12 +1,22 @@
 <p align="center">
-  <img src="assets/logo.png" width="96" height="96" alt="TOMOSIA VPN logo" />
+  <img src="assets/logo.png" width="88" height="88" alt="TOMOSIA VPN logo" />
 </p>
 
 <h1 align="center">TOMOSIA VPN</h1>
 
+<p align="center">The company VPN that reconnects by itself.</p>
+
 <p align="center">
-  <b>English</b> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a>
+  <a href="https://vpntms.vercel.app/en"><b>Website</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg"><b>Download</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases">Releases</a>
+  &nbsp;·&nbsp;
+  <a href="CONTRIBUTING.md">For developers</a>
 </p>
+
+<p align="center"><sub><b>English</b> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a></sub></p>
 
 <p align="center">
   <a href="https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest"><img src="https://img.shields.io/github/v/release/TOMOSIA-VIETNAM/vpn?label=release&color=blue" alt="Latest release" /></a>
@@ -19,20 +29,28 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/popover-dark.png" />
-    <img src="assets/screenshots/popover-light.png" width="412" alt="TOMOSIA VPN in the menu bar" />
+    <img src="assets/screenshots/popover-light.png" width="380" alt="TOMOSIA VPN in the menu bar" />
   </picture>
 </p>
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
-    <img src="assets/screenshots/settings-light.png" width="360" alt="Settings" />
-  </picture>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
-    <img src="assets/screenshots/new-configuration-light.png" width="360" alt="Adding a VPN configuration" />
-  </picture>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/settings-dark.png" />
+        <img src="assets/screenshots/settings-light.png" width="100%" alt="Settings" />
+      </picture>
+      <br /><sub>Settings</sub>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/new-configuration-dark.png" />
+        <img src="assets/screenshots/new-configuration-light.png" width="100%" alt="Adding a VPN configuration" />
+      </picture>
+      <br /><sub>Adding a VPN configuration</sub>
+    </td>
+  </tr>
+</table>
 
 ## Install
 
