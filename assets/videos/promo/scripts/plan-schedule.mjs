@@ -8,8 +8,6 @@
 //   lofi: true        the scene's groove is the dull "generic universe" sound
 //   outro: true       calm ending on the outro bed; the main track fades out under it
 //   stopLine: true    (on a line) the line lands in a short silence right before the next drop
-//   hold: <seconds>   a scene with no spoken lines ("lines": []) that stays on screen this long over the music;
-//                     only for a scene in the middle (not the first, a drop or the outro)
 // A scene after the outro that has drop: true is a post-credits scene: the music resumes for it.
 //
 // Usage: node scripts/plan-schedule.mjs --voice=<id> [--write]   (prints the plan; --write saves it)
@@ -64,8 +62,7 @@ const closeGroove = (to) => {
 };
 
 script.scenes.forEach((s, i) => {
-  const lines = vo[s.id]?.lines || [];
-  if (!s.lines.length && (i === 0 || s.drop || s.outro || !s.hold)) throw new Error(`${s.id}: a scene without lines needs "hold" and must sit in the middle`);
+  const lines = vo[s.id].lines;
   const tempo = s.outro ? 1 : V.tempo;
   const a = { lines: lines.map(() => null) };
   if (i === 0) {
@@ -98,7 +95,7 @@ script.scenes.forEach((s, i) => {
   if (s.drop) {
     // the drop needs a build (and, after a stopLine, a silence) before it
     const prev = script.scenes[i - 1];
-    const stop = !outroSeen && prev.lines.at(-1)?.stopLine ? STOP_BEATS : 0;
+    const stop = !outroSeen && prev.lines[prev.lines.length - 1].stopLine ? STOP_BEATS : 0;
     // after a stopLine the drop beat is already fixed (the line was placed to end in its silence)
     let drop = stop ? beat : up(Math.max(beat, toBeat(lastWord + CUT_AFTER)));
     if (outroSeen) {
@@ -125,8 +122,7 @@ script.scenes.forEach((s, i) => {
     anchors[s.id] = a;
   } else {
     a.scene = beat;
-    // a silent scene holds the screen for its "hold" seconds; the next cut lands on the beat after it
-    lastWord = lines.length ? beat * BEAT + VO_LEAD + (lines[lines.length - 1].end - lines[0].start) / tempo : beat * BEAT + s.hold - CUT_AFTER;
+    lastWord = beat * BEAT + VO_LEAD + (lines[lines.length - 1].end - lines[0].start) / tempo;
     if (!groove && sections.at(-1)?.role !== "drop") groove = { from: beat, lofi: !!s.lofi };
     else if (s.lofi && !groove) groove = { from: beat, lofi: true };
     anchors[s.id] = a;
@@ -134,7 +130,7 @@ script.scenes.forEach((s, i) => {
   // a stopLine ends right before the next drop: anchor it so its last word lands in the silence
   const last = s.lines.length - 1;
   const next = script.scenes[i + 1];
-  if (s.lines[last]?.stopLine && next?.drop) {
+  if (s.lines[last].stopLine && next?.drop) {
     const dur = lineLen(lines[last], tempo);
     const before = lastWord - dur; // when the natural schedule would start the line
     // the line keeps its natural start (delayed at most to the next 2-beat step); the build and the

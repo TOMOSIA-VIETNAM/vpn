@@ -37,19 +37,20 @@
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "at": 0.35,
+    "word": "errors",
+    "offset": 0.35,
     "vol": 0.2
   },
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "at": 0.95,
+    "word": "~bấm",
     "vol": 0.2
   },
   {
     "sfx": "click",
     "scene": "s06-errors",
-    "at": 1.55,
+    "word": "~một",
     "vol": 0.2
   },
   {

@@ -5,10 +5,10 @@
   "beat0": 0,
   "key": "F minor",
   "fadeOut": {
-    "beat": 66,
+    "beat": 70,
     "seconds": 5
   },
-  "outroBed": 32.3,
+  "outroBed": 34.4,
   "sections": [
     {
       "from": 0,
@@ -43,12 +43,12 @@
     },
     {
       "from": 48,
-      "to": 66,
+      "to": 70,
       "role": "groove"
     },
     {
-      "from": 66,
-      "to": 78,
+      "from": 70,
+      "to": 82,
       "role": "tail"
     }
   ]

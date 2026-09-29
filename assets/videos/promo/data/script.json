@@ -79,8 +79,13 @@
     },
     {
       "id": "s06-errors",
-      "lines": [],
-      "hold": 2.8
+      "lines": [
+        {
+          "en": "Every error says what it is — one click and you're done.",
+          "vi": "Lỗi gì báo nấy{errors}, bấm một nút{button} là xong.",
+          "vi_say": "Lỗi gì báo nấy, bấm một nút là xong."
+        }
+      ]
     },
     {
       "id": "s07-outro",

@@ -17,7 +17,7 @@
     "arrangement": "data/music-arrangement.vi.json",
     "musicDb": -4,
     "tempo": 1.08,
-    "duration": 43.8,
+    "duration": 45.8,
     "anchors": {
       "s01-hook": {
         "scene": 0,
@@ -52,9 +52,9 @@
         "scene": 60
       },
       "s07-outro": {
-        "scene": 66,
+        "scene": 70,
         "lines": [
-          67
+          71
         ]
       }
     }
