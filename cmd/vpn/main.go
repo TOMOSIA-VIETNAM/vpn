@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	version = "1.0.0" // override at build time via -ldflags "-X main.version=..."
+	version = "dev" // override at build time via -ldflags "-X main.version=..."
 )
 
 func main() {

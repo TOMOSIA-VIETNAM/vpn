@@ -59,7 +59,7 @@ jobs:
           done
 
       - name: Build TMS VPN.app (universal — arm64 + Intel)
-        run: bash build.sh
+        run: VERSION="${GITHUB_REF_NAME#v}" bash build.sh
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.

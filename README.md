@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.5.3-blue.svg" alt="Version 0.5.3" />
+  <img src="https://img.shields.io/badge/version-v0.6.1-blue.svg" alt="Version 0.6.1" />
   <img src="https://img.shields.io/badge/macOS-12.0+-black.svg" alt="macOS 12+" />
   <img src="https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-success.svg" alt="Architecture" />
   <img src="https://img.shields.io/badge/protocol-L2TP%20%2F%20IPsec-orange.svg" alt="L2TP/IPsec" />
@@ -44,8 +44,9 @@ curl -fsSL https://raw.githubusercontent.com/TOMOSIA-VIETNAM/vpn/main/install-in
 
 Kiểm tra xác nhận cài đặt thành công:
 ```bash
-vpn version    # Kết quả: vpn v0.5.3
+vpn version    # Kết quả: vpn v0.6.1
 ```
+Phiên bản App Menu Bar hiển thị ở góc dưới bên trái popover (VD: `TMS VPN Client v0.6.1`).
 
 ---
 
@@ -152,7 +153,7 @@ vpn logs -f       # Xem chi tiết gói tin giao thức
   ```bash
   vpn update          # Tự động kiểm tra chữ ký số ed25519 và cập nhật CLI
   ```
-  *(Để cập nhật cả App Menu Bar, chạy lại lệnh cài đặt nhanh 1 dòng ở đầu trang).*
+  *(Để cập nhật cả App Menu Bar, chạy lại lệnh cài đặt nhanh 1 dòng ở đầu trang. So sánh phiên bản ở footer của App với `vpn version` để chắc chắn cả hai đã cùng bản).*
 
 - **Gỡ cài đặt hoàn toàn**:
   ```bash
@@ -178,18 +179,20 @@ sudo install -o root -g wheel -m 4755 vpn /usr/local/bin/vpn
 id -u | sudo tee /etc/vpn-owner-uid >/dev/null && sudo chmod 600 /etc/vpn-owner-uid
 
 # Build Menu Bar App (Universal arm64 + Intel)
-bash build.sh
+# Phiên bản hiển thị trên App lấy từ biến VERSION; bỏ trống thì dùng git tag
+# mới nhất (không có tag hợp lệ → 0.0.0)
+bash build.sh                   # hoặc: VERSION=0.6.1 bash build.sh
 ditto "build/TMS VPN.app" "/Applications/TMS VPN.app"
 
 # Chạy Unit Tests
 go test ./...
 ```
 
-### Quy trình Release (v0.5.3)
-Tạo tag phiên bản mới và push lên GitHub để kích hoạt CI/CD tự động build & ký chữ ký số:
+### Quy trình Release
+Tạo tag phiên bản mới và push lên GitHub để kích hoạt CI/CD tự động build & ký chữ ký số. Tag này được gắn vào cả CLI (`vpn version`) và App (footer popover, `CFBundleShortVersionString`):
 ```bash
-git tag v0.5.3
-git push origin v0.5.3
+git tag v0.6.1
+git push origin v0.6.1
 ```
 
 ---

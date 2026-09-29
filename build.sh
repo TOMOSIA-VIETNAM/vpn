@@ -9,6 +9,15 @@ OUTPUT_NAME="tms-vpn-bar"
 APP_NAME="TMS VPN.app"
 BUILD_DIR="./build"
 
+# Version shown in the app footer (CFBundleShortVersionString). The release
+# workflow passes the tag without its "v" (VERSION=1.2.3); local builds fall
+# back to the latest tag reachable from HEAD, or 0.0.0 outside a tagged clone.
+VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || true)}"
+VERSION="${VERSION#v}"
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    VERSION="0.0.0"
+fi
+
 echo "🚀 [1/3] Chuẩn bị môi trường build..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
@@ -58,7 +67,9 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>${VERSION}</string>
+    <key>CFBundleVersion</key>
+    <string>${VERSION}</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
@@ -68,4 +79,4 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 EOF
 
 echo "✅ Đã build thành công Universal Binary tại: $BUILD_DIR/$OUTPUT_NAME"
-echo "✅ Đã tạo App bundle tại: $BUILD_DIR/$APP_NAME"
+echo "✅ Đã tạo App bundle tại: $BUILD_DIR/$APP_NAME (v$VERSION)"
