@@ -40,7 +40,12 @@ const STOP_BEATS = 2; // silence right before a drop that follows a stopLine
 const OUTRO_GAP = 0.8; // seconds between outro lines
 const POST_CREDITS_GAP = 3; // seconds of outro card before a post-credits scene
 const TAIL_BEATS = 12; // the music thins out and ends this long after the last word
-const END_PAD = 2.5; // seconds from the last word to the end of the video
+// the end: the end card finishes revealing END_REVEAL after the last word (index.html, s07), stays still for
+// END_HOLD, then the picture fades to black over END_FADE (index.html, the final "#fade" tween)
+const END_REVEAL = 1.0;
+const END_HOLD = 4;
+const END_FADE = 1.0;
+const END_PAD = END_REVEAL + END_HOLD + END_FADE; // seconds from the last word to the end of the video
 
 const up = (beats, step = 2) => Math.ceil(beats / step - 1e-9) * step;
 const toBeat = (t) => t / BEAT;

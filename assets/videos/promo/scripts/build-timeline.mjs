@@ -50,7 +50,7 @@ const DROPS = arrangement.sections.filter((x) => x.role === "drop").map((x) => x
 const OUTRO_BEAT = arrangement.fadeOut.beat; // the main track fades out from here (and resumes at fadeOut.resume for the post-credits)
 const OUTRO_BED = arrangement.outroBed; // the calm outro bed starts here, under the tail of the main track
 const DURATION = V.duration;
-const END_FADE = 2.5; // seconds of fade-out at the very end, after the last spoken line
+const END_FADE = 1.5; // audio fade-out at the very end, under the still end card (END_HOLD in scripts/plan-schedule.mjs)
 const FPS = 30;
 const TEMPO = V.tempo; // energetic lines play this much faster; outro lines keep their natural pace
 const CUT_AFTER = 0.9; // the next scene cuts on the first beat at least this long after the last spoken word
@@ -255,7 +255,9 @@ if (!noAudio) {
     });
   }
   const voOuts = stems ? "[vobus][voside][voenv][vostem]" : "[vobus][voside][voenv]";
-  graph.push(`${voLabels.join("")}amix=inputs=${voLabels.length}:normalize=0:dropout_transition=0,asplit=${stems ? 4 : 3}${voOuts}`);
+  // padded to the full length: the ducking below stops at the end of its sidechain, which would cut the
+  // music off at the last word
+  graph.push(`${voLabels.join("")}amix=inputs=${voLabels.length}:normalize=0:dropout_transition=0,apad=whole_dur=${DURATION},asplit=${stems ? 4 : 3}${voOuts}`);
   // moderate ducking: the music sits ~5 dB under speech and comes back to voice level in the gaps
   const duck = "sidechaincompress=threshold=0.03:ratio=3:attack=15:release=350:makeup=1";
   graph.push(stems ? `[mus][voside]${duck},asplit=2[musd][musstem]` : `[mus][voside]${duck}[musd]`);

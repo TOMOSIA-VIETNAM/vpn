@@ -1,5 +1,5 @@
 {
- "duration": 40.3,
+ "duration": 43.8,
  "fps": 30,
  "beat0": 0,
  "beatLen": 0.517241,
@@ -372,7 +372,7 @@
   },
   "s07-outro": {
    "start": 34.138,
-   "end": 40.3,
+   "end": 43.8,
    "lines": [
     {
      "on": 34.655,

@@ -6,7 +6,7 @@
 #   web/promo-<lang>-poster.jpg  first-paint and reduced-motion still, taken at POSTER_AT seconds
 # The web page starts the video muted; the audio stays so its unmute button works.
 #
-# Usage: scripts/encode-web.sh renders/tomosia-vpn-promo-vi-v3.mp4 vi [POSTER_AT]
+# Usage: scripts/encode-web.sh renders/tomosia-vpn-promo-vi.mp4 vi [POSTER_AT]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 src="$1"
