@@ -2,6 +2,7 @@ package dnsmgr
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -152,6 +153,11 @@ func TestAnswersFirst(t *testing.T) {
 	// Without the VPN entry the physical resolver answers first: that is the leak.
 	if answersFirst(dnsDisconnected, []string{"10.200.110.1"}) {
 		t.Fatal("reported no leak although the VPN resolver is absent")
+	}
+	// A VPN resolver that macOS prints with an if_index line is still the default one.
+	scoped := strings.Replace(dnsConnected, "  nameserver[0] : 10.200.110.1\n", "  nameserver[0] : 10.200.110.1\n  if_index : 22 (utun4)\n", 1)
+	if !answersFirst(scoped, []string{"10.200.110.1"}) {
+		t.Fatal("an interface-bound VPN resolver listed first was reported as a leak")
 	}
 	if answersFirst("", []string{"10.200.110.1"}) {
 		t.Fatal("empty output must not count as verified")

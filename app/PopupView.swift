@@ -134,11 +134,12 @@ struct ProfileCardRow: View {
 /// Details of the live tunnel, shown under the header while connected.
 struct ConnectionDetails: View {
     var ip: String
+    var showIP: Bool = true
     var warnings: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if VPNManager.publicIPLookupEnabled {
+            if showIP {
                 item("Public IP", ip.isEmpty ? "Checking…" : ip)
             }
             ForEach(warnings, id: \.self) { w in
@@ -348,8 +349,8 @@ struct MenuBarPopupView: View {
             .padding(.top, 14)
             .padding(.bottom, 12)
 
-            if state == .connected {
-                ConnectionDetails(ip: vpn.publicIP, warnings: vpn.warnings)
+            if state == .connected, vpn.showPublicIP || !vpn.warnings.isEmpty {
+                ConnectionDetails(ip: vpn.publicIP, showIP: vpn.showPublicIP, warnings: vpn.warnings)
                     .padding(.horizontal, Theme.inset)
                     .padding(.bottom, 12)
                     .transition(.opacity)

@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
-	"strconv"
 	"strings"
 	"time"
 
@@ -193,66 +192,49 @@ func restoreScript() string {
 	return fmt.Sprintf("remove %s\n", dnsStateKey)
 }
 
-// resolver is one block of `scutil --dns` output.
-type resolver struct {
-	servers []string
-	order   int
-	scoped  bool // bound to one interface (if_index): only used for queries scoped to it
-}
-
-// parseResolvers reads the "DNS configuration" section of `scutil --dns`
-// (the part before "for scoped queries"): one "resolver #N" block per entry,
-// with its nameserver[i] lines and its order.
-func parseResolvers(out string) []resolver {
-	var res []resolver
-	var cur *resolver
+// defaultResolverServers returns the nameservers of the resolver macOS uses
+// for an ordinary name: the first "resolver #N" block of `scutil --dns` that
+// has nameservers and is not tied to one domain (the mDNS and reverse-lookup
+// entries are). scutil lists resolvers in the order they are consulted, so
+// this does not depend on which optional fields (order, if_index) a given
+// macOS version prints. Only the main section is read, not the per-interface
+// "for scoped queries" one.
+func defaultResolverServers(out string) []string {
+	var servers []string
+	domain, inBlock := false, false
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "DNS configuration (for scoped queries)"):
-			return res
+			if !domain {
+				return servers
+			}
+			return nil
 		case strings.HasPrefix(line, "resolver #"):
-			res = append(res, resolver{order: -1})
-			cur = &res[len(res)-1]
-		case cur == nil:
+			if inBlock && !domain && len(servers) > 0 {
+				return servers
+			}
+			servers, domain, inBlock = nil, false, true
+		case !inBlock:
+		case strings.HasPrefix(line, "domain"):
+			domain = true
 		case strings.HasPrefix(line, "nameserver["):
 			if _, v, ok := strings.Cut(line, ":"); ok {
-				cur.servers = append(cur.servers, strings.TrimSpace(v))
+				servers = append(servers, strings.TrimSpace(v))
 			}
-		case strings.HasPrefix(line, "order"):
-			if _, v, ok := strings.Cut(line, ":"); ok {
-				if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-					cur.order = n
-				}
-			}
-		case strings.HasPrefix(line, "if_index"):
-			cur.scoped = true
 		}
 	}
-	return res
+	if inBlock && !domain {
+		return servers
+	}
+	return nil
 }
 
 // answersFirst reports whether the resolver macOS asks first for an ordinary
-// name (the lowest order among unscoped resolvers that have nameservers) is one
-// of pushed. If it is not, lookups go to the physical network's DNS and are
-// visible to it — a DNS leak.
+// name is one of pushed. If it is not, lookups go to the physical network's
+// DNS and are visible to it — a DNS leak.
 func answersFirst(out string, pushed []string) bool {
-	best := -1
-	var first *resolver
-	res := parseResolvers(out)
-	for i := range res {
-		r := &res[i]
-		if len(r.servers) == 0 || r.order < 0 || r.scoped {
-			continue
-		}
-		if best < 0 || r.order < best {
-			best, first = r.order, r
-		}
-	}
-	if first == nil {
-		return false
-	}
-	for _, s := range first.servers {
+	for _, s := range defaultResolverServers(out) {
 		for _, p := range pushed {
 			if s == p {
 				return true

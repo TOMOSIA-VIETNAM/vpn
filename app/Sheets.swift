@@ -74,7 +74,6 @@ struct SettingsSheet: View {
     @State private var notificationsOn = ConnectionNotifier.enabled
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var loginError: String?
-    @State private var publicIPLookup = VPNManager.publicIPLookupEnabled
 
     private func refreshNotifications() {
         ConnectionNotifier.permission { notifications = $0 }
@@ -136,7 +135,7 @@ struct SettingsSheet: View {
                 title: "Show public IP",
                 detail: "While connected, ask Cloudflare (1.1.1.1) which address your traffic leaves from. Turn off to make no request of its own."
             ) {
-                Toggle("", isOn: Binding(get: { publicIPLookup }, set: { publicIPLookup = $0; VPNManager.publicIPLookupEnabled = $0 }))
+                Toggle("", isOn: Binding(get: { vpn.showPublicIP }, set: { vpn.setShowPublicIP($0) }))
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .labelsHidden()
