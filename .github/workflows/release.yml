@@ -3,7 +3,7 @@ name: release
 # Publishes a release only for a pushed semver tag (vX.Y.Z), and only after
 # the test workflow passes on that exact commit. One macOS job builds
 # everything — the Go CLI cross-compiles for both architectures anywhere,
-# but TOMOSIA-VPN.app needs Apple's Swift toolchain — so the manifest below can
+# but "TOMOSIA VPN.app" needs Apple's Swift toolchain — so the manifest below can
 # cover every asset in a single place.
 #
 # Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip,
@@ -58,13 +58,13 @@ jobs:
               -o "vpn-darwin-$arch" ./cmd/vpn
           done
 
-      - name: Build TOMOSIA-VPN.app (universal — arm64 + Intel)
+      - name: Build TOMOSIA VPN.app (universal — arm64 + Intel)
         run: VERSION="${GITHUB_REF_NAME#v}" bash build.sh
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.
       - name: Zip the app bundle
-        run: ditto -c -k --sequesterRsrc --keepParent build/TOMOSIA-VPN.app TOMOSIA-VPN.app.zip
+        run: ditto -c -k --sequesterRsrc --keepParent "build/TOMOSIA VPN.app" TOMOSIA-VPN.app.zip
 
       # Drag-to-Applications disk image for people who don't use the install script.
       # The app inside carries the CLI and installs it on first launch.

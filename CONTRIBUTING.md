@@ -10,7 +10,7 @@ TOMOSIA VPN is two programs:
 | Part | Source | Installed at |
 |---|---|---|
 | `vpn` CLI and connection engine (IKEv1, ESP, L2TP, PPP), in Go | `cmd/vpn`, `internal/` | `/usr/local/bin/vpn`, setuid root |
-| Menu bar app, in SwiftUI (one file) | `main.swift` | `/Applications/TOMOSIA-VPN.app` |
+| Menu bar app, in SwiftUI (one file) | `main.swift` | `/Applications/TOMOSIA VPN.app` |
 
 The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
 files the CLI writes. Its only network request is the public IP shown while
@@ -62,16 +62,16 @@ prompt (`CLIInstaller` in `main.swift`).
 ```bash
 git clone https://github.com/TOMOSIA-VIETNAM/vpn.git && cd vpn
 
-bash build.sh                 # build/TOMOSIA-VPN.app, with the CLI bundled inside
+bash build.sh                 # "build/TOMOSIA VPN.app", with the CLI bundled inside
 VERSION=1.2.3 bash build.sh   # stamp a version (default: latest git tag, else 0.0.0)
-open build/TOMOSIA-VPN.app
+open "build/TOMOSIA VPN.app"
 
 ./install-local.sh            # build, then install the CLI and the app on this Mac (sudo)
 bash make-dmg.sh              # build/TOMOSIA-VPN.dmg
 ```
 
 Quitting the app disconnects an active VPN. To stop a test build without touching
-the connection, kill it instead: `pkill -9 -f build/TOMOSIA-VPN.app`.
+the connection, kill it instead: `pkill -9 -f "build/TOMOSIA VPN.app"`.
 
 ## Checks
 

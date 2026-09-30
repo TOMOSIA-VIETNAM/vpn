@@ -48,9 +48,18 @@
 
 1. [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg) をダウンロードします。
 2. 開いて **TOMOSIA VPN** を **アプリケーション** へドラッグします。
-3. アプリを開きます（macOS にブロックされた場合：アプリを右クリック → **開く**）。
+3. アプリを開きます。初回は macOS にブロックされることがあります。下の [macOS にブロックされたら](#macos-にブロックされたら) を参照してください（1 回だけ、1 分もかかりません）。
 
 動作環境：macOS 12 以降。
+
+### macOS にブロックされたら
+
+TOMOSIA VPN は有料の Apple Developer ID で署名されていないため、初回起動は macOS にブロックされます（"Apple could not verify…"）。**App Store と確認済みの開発元** を選んでいても同様です。アプリは安全です。1 回だけ許可してください。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/gatekeeper-steps-ja-dark.png" />
+  <img src="assets/screenshots/gatekeeper-steps-ja-light.png" alt="macOS が初回起動をブロック：1 Done をクリック、2 プライバシーとセキュリティで Open Anyway、3 もう一度 Open Anyway、4 Mac のパスワードを入力" />
+</picture>
 
 ## アンインストール
 

@@ -48,9 +48,18 @@
 
 1. Download [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
 2. Open it and drag **TOMOSIA VPN** into **Applications**.
-3. Open the app (if macOS blocks it: right-click the app → **Open**).
+3. Open the app. On first launch macOS will probably block it — see [If macOS blocks the app](#if-macos-blocks-the-app) below (one-time, takes under a minute).
 
 Requires macOS 12 or later.
+
+### If macOS blocks the app
+
+TOMOSIA VPN is not signed with a paid Apple Developer ID, so macOS blocks the first launch ("Apple could not verify…"), even with **App Store and Known Developers** on. The app is safe — approve it once:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/gatekeeper-steps-en-dark.png" />
+  <img src="assets/screenshots/gatekeeper-steps-en-light.png" alt="macOS blocks the first launch: 1 click Done, 2 open Privacy & Security and click Open Anyway, 3 click Open Anyway again, 4 enter your Mac password" />
+</picture>
 
 ## Uninstall
 

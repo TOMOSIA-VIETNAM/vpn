@@ -6,9 +6,10 @@
 set -euo pipefail
 
 OUTPUT_NAME="tms-vpn-bar"
-# The bundle and executable names carry no space, so paths need no quoting
-# or URL-encoding anywhere (install URLs, release assets, killall).
-APP_NAME="TOMOSIA-VPN.app"
+# Only the bundle folder carries the product name with a space, so Finder, the disk image
+# and macOS dialogs read "TOMOSIA VPN". The executable and the release assets stay
+# space-free: they appear in install URLs and killall.
+APP_NAME="TOMOSIA VPN.app"
 EXECUTABLE="TOMOSIA-VPN"
 DISPLAY_NAME="TOMOSIA VPN"
 BUILD_DIR="${BUILD_DIR:-./build}"

@@ -32,13 +32,13 @@ sudo chmod 600 /etc/vpn-owner-uid
 sudo chmod 755 /var/run/vpn 2>/dev/null || true
 sudo chmod 644 /var/run/vpn/state.json 2>/dev/null || true
 
-echo "==> [3/3] Installing app to /Applications/TOMOSIA-VPN.app"
-# Also drop the app installed under its name before the rename to TOMOSIA-VPN.
+echo "==> [3/3] Installing app to /Applications/TOMOSIA VPN.app"
+# Also drop the app installed under its earlier names (TMS VPN.app, TOMOSIA-VPN.app).
 killall "TOMOSIA-VPN" "TMS VPN" 2>/dev/null || true
-sudo rm -rf "/Applications/TMS VPN.app" "/Applications/TOMOSIA-VPN.app"
-sudo cp -R "./build/TOMOSIA-VPN.app" /Applications/
-sudo chown -R "$OWNER_UID:staff" "/Applications/TOMOSIA-VPN.app"
+sudo rm -rf "/Applications/TMS VPN.app" "/Applications/TOMOSIA-VPN.app" "/Applications/TOMOSIA VPN.app"
+sudo cp -R "./build/TOMOSIA VPN.app" /Applications/
+sudo chown -R "$OWNER_UID:staff" "/Applications/TOMOSIA VPN.app"
 
 echo "Installed TOMOSIA VPN from local build."
 echo "  CLI: /usr/local/bin/vpn"
-echo "  App: /Applications/TOMOSIA-VPN.app"
+echo "  App: /Applications/TOMOSIA VPN.app"

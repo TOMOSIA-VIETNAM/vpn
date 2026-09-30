@@ -48,9 +48,18 @@
 
 1. Tải [`TOMOSIA-VPN.dmg`](https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest/download/TOMOSIA-VPN.dmg).
 2. Mở file, kéo **TOMOSIA VPN** vào **Applications**.
-3. Mở app (nếu macOS chặn: chuột phải vào app → **Open**).
+3. Mở app. Lần đầu macOS thường sẽ chặn — xem [Nếu macOS chặn app](#nếu-macos-chặn-app) bên dưới (chỉ làm một lần, chưa đến một phút).
 
 Yêu cầu macOS 12 trở lên.
+
+### Nếu macOS chặn app
+
+TOMOSIA VPN chưa được ký bằng Apple Developer ID trả phí nên macOS chặn lần mở đầu ("Apple could not verify…"), kể cả khi đã bật **App Store and Known Developers**. App an toàn — chỉ cần cho phép một lần:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/gatekeeper-steps-vi-dark.png" />
+  <img src="assets/screenshots/gatekeeper-steps-vi-light.png" alt="macOS chặn lần mở đầu: 1 bấm Done, 2 vào Privacy & Security và bấm Open Anyway, 3 bấm Open Anyway lần nữa, 4 nhập mật khẩu máy Mac" />
+</picture>
 
 ## Gỡ cài đặt
 
