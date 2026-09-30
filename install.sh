@@ -26,8 +26,12 @@ APP_ASSET="TOMOSIA-VPN.app.zip"
 # install so an upgraded Mac does not keep two copies in the menu bar.
 LEGACY_APP_DIRS=("/Applications/TMS VPN.app" "/Applications/TOMOSIA-VPN.app")
 
-# PEM public key for SHA256SUMS.p256.sig (releasesign keygen-p256). Empty = not enforced yet.
-INSTALL_PUBKEY=''
+# PEM public key for SHA256SUMS.p256.sig (releasesign keygen-p256); its private half is the
+# INSTALL_SIGNING_KEY Actions secret. Empty = not enforced.
+INSTALL_PUBKEY='-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5QbGcKLH6tVbB/ZBTEsPHcfwo4uy
+3mRWPMIdEMDs8/ZpUSK9VYZFyBKCynI+SL+VzB88RF7h3VQ2z0tg2WYUOg==
+-----END PUBLIC KEY-----'
 
 ARCH="${VPN_ARCH:-}"
 if [ -z "$ARCH" ]; then
