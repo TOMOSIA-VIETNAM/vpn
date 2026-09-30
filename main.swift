@@ -1077,48 +1077,71 @@ enum ConnectionNotifier {
     }
 }
 
+/// What the update window shows; the window stays open through download and failure.
+final class DialogModel: ObservableObject {
+    @Published var title: String
+    @Published var text: String
+    @Published var note: String?
+    @Published var link: (label: String, url: URL)?
+    @Published var buttons: [String]
+    @Published var busy: String?
+    var choose: (Int) -> Void = { _ in }
+
+    init(title: String, text: String, note: String? = nil, link: (label: String, url: URL)? = nil, buttons: [String]) {
+        self.title = title
+        self.text = text
+        self.note = note
+        self.link = link
+        self.buttons = buttons
+    }
+}
+
 struct UpdateDialog: View {
-    let title: String
-    let text: String
-    var note: String? = nil
-    var link: (label: String, url: URL)? = nil
-    let buttons: [String]
-    let choose: (Int) -> Void
+    @ObservedObject var model: DialogModel
 
     var body: some View {
         VStack(spacing: 12) {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 64, height: 64)
-            Text(title)
+            Text(model.title)
                 .font(.system(size: 13, weight: .bold))
                 .multilineTextAlignment(.center)
-            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(model.text)
                 .font(.system(size: 11))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            if let note {
+            if let note = model.note {
                 Text(note)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let link {
+            if let link = model.link {
                 Button(link.label) { NSWorkspace.shared.open(link.url) }
                     .buttonStyle(.link)
                     .font(.system(size: 11))
             }
-            VStack(spacing: 8) {
-                ForEach(Array(buttons.enumerated()), id: \.offset) { index, label in
-                    Button(action: { choose(index) }) {
-                        Text(label).frame(maxWidth: .infinity)
-                    }
-                    .controlSize(.large)
-                    .modifier(DialogButtonStyle(primary: index == 0))
+            if let busy = model.busy {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(busy).font(.system(size: 11)).foregroundColor(.secondary)
                 }
+                .padding(.top, 6)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(model.buttons.enumerated()), id: \.offset) { index, label in
+                        Button(action: { model.choose(index) }) {
+                            Text(label).frame(maxWidth: .infinity)
+                        }
+                        .controlSize(.large)
+                        .modifier(DialogButtonStyle(primary: index == 0))
+                    }
+                }
+                .padding(.top, 6)
             }
-            .padding(.top, 6)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
@@ -2331,21 +2354,33 @@ enum AppUpdater {
     /// the rest of the app stay usable while it is open. (NSAlert's own buttons ignore real clicks
     /// when it is shown without runModal.) Button 0 is the default, the last one answers Escape.
     private static var dialog: NSPanel?
+    private static var dialogResize: AnyCancellable?
 
-    private static func present(title: String, text: String, note: String? = nil, link: (label: String, url: URL)? = nil,
-                                 buttons: [String], done: @escaping (Int) -> Void) {
+    private static func closeDialog() {
         dialog?.orderOut(nil)
+        dialog = nil
+        dialogResize = nil
+    }
+
+    private static func show(_ model: DialogModel) {
+        closeDialog()
         let panel = NSPanel(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
-        panel.contentView = NSHostingView(rootView: UpdateDialog(title: title, text: text, note: note, link: link, buttons: buttons) { index in
-            panel.orderOut(nil)
-            if dialog === panel { dialog = nil }
-            done(index)
-        })
-        panel.setContentSize(panel.contentView?.fittingSize ?? NSSize(width: 300, height: 260))
+        let host = NSHostingView(rootView: UpdateDialog(model: model))
+        panel.contentView = host
+        panel.setContentSize(host.fittingSize)
+        // The window follows its content as it goes from prompt to progress to error.
+        dialogResize = model.objectWillChange.receive(on: RunLoop.main).sink { [weak panel, weak host] _ in
+            guard let panel, let host else { return }
+            DispatchQueue.main.async {
+                let top = panel.frame.maxY
+                panel.setContentSize(host.fittingSize)
+                panel.setFrameTopLeftPoint(NSPoint(x: panel.frame.minX, y: top))
+            }
+        }
         panel.center()
         dialog = panel
         NSApp.activate(ignoringOtherApps: true)
@@ -2354,8 +2389,12 @@ enum AppUpdater {
 
     private static func inform(_ title: String, _ text: String) {
         bringAlertToFront()
-        present(title: title, text: text, buttons: ["OK"]) { _ in }
+        let model = DialogModel(title: title, text: text, buttons: ["OK"])
+        model.choose = { _ in closeDialog() }
+        show(model)
     }
+
+    private static let releasesURL = URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest")!
 
     private static func prompt(latest: String, current: String) {
         bringAlertToFront()
@@ -2363,29 +2402,45 @@ enum AppUpdater {
         let note = canSelfUpdate
             ? "Updating disconnects the VPN, then the app restarts by itself."
             : "Download the new version from the release page."
-        present(title: "\(AppBranding.name) \(version) is available",
-                text: "You're on \(current).",
-                note: note,
-                link: ("What's new", URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/tag/v\(version)")!),
-                buttons: [canSelfUpdate ? "Update" : "Open Release Page", "Remind Me Later"]) { index in
+        let model = DialogModel(
+            title: "\(AppBranding.name) \(version) is available",
+            text: "You're on \(current).",
+            note: note,
+            link: ("What's new", URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/tag/v\(version)")!),
+            buttons: [canSelfUpdate ? "Update" : "Open Release Page", "Remind Me Later"])
+
+        // Stays on screen while downloading, and shows why if it can't finish.
+        func startUpdate() {
+            model.busy = "Downloading the update…"
+            install(current: current, progress: { model.busy = $0 }) { message in
+                model.busy = nil
+                model.title = "Couldn't update"
+                model.text = message
+                model.note = nil
+                model.link = ("Download it manually", releasesURL)
+                model.buttons = ["Try Again", "Close"]
+                model.choose = { index in
+                    if index == 0 { startUpdate() } else { closeDialog() }
+                }
+            }
+        }
+
+        model.choose = { index in
             guard index == 0 else {
                 UserDefaults.standard.set(Date().addingTimeInterval(remindDelay), forKey: remindAfterKey)
-                return
+                return closeDialog()
             }
             UserDefaults.standard.removeObject(forKey: remindAfterKey)
             guard canSelfUpdate else {
-                NSWorkspace.shared.open(URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest")!)
+                closeDialog()
+                NSWorkspace.shared.open(releasesURL)
                 return
             }
-            install(current: AppBranding.version ?? "0.0.0")
+            startUpdate()
         }
+        show(model)
     }
 
-    private static func fail(_ message: String) {
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated { VPNManager.shared.showNotice(.error, "Couldn't update: \(message)") }
-        }
-    }
 
     private static func sha256(_ path: String) -> String? {
         let p = Process()
@@ -2401,10 +2456,10 @@ enum AppUpdater {
 
     private static func shellQuote(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
-    private static func install(current: String) {
-        guard !busy else { return }
+    private static func install(current: String, progress: @escaping (String) -> Void, failed: @escaping (String) -> Void) {
+        guard !busy else { return failed("Another update check is still running. Try again in a moment.") }
         busy = true
-        MainActor.assumeIsolated { VPNManager.shared.showNotice(.success, "Downloading the update…") }
+        func fail(_ message: String) { DispatchQueue.main.async { failed("\(message.prefix(1).uppercased())\(message.dropFirst())") } }
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
             let dest = Bundle.main.bundleURL
@@ -2441,6 +2496,7 @@ enum AppUpdater {
                 cleanUp(); return fail("the update package is not what the release lists.")
             }
             try? fm.removeItem(atPath: zip)
+            DispatchQueue.main.async { progress("Installing…") }
 
             // Runs after this process is gone: wait for the exit, swap the bundle, drop the
             // staging folder, then start the new app fresh. A failed swap restores the old app.
