@@ -67,7 +67,7 @@ type SA struct {
 	// The CBC modes are kept and re-keyed with SetIV per packet: building a new
 	// one for every packet was the last allocation on the hot path.
 	encMode cipher.BlockMode
-	dec     decState // Decrypt's own HMAC and CBC mode (see Decryptor for parallel use)
+	decMode cipher.BlockMode
 	ivBuf   [16]byte
 
 	// mu serializes Encrypt/Decrypt: several goroutines send on the same SA
@@ -125,7 +125,6 @@ func NewSA(spi uint32, c Cipher, i Integrity, encKey, authKey []byte) (*SA, erro
 		return nil, fmt.Errorf("ESP integrity key is %d bytes, want %d", len(authKey), keyLen)
 	}
 	sa.mac = hmac.New(sa.newHash, sa.AuthKey)
-	sa.dec.mac = hmac.New(sa.newHash, sa.AuthKey)
 	sa.ivPos = len(sa.ivPool) // force initial fill
 	return sa, nil
 }
@@ -273,50 +272,12 @@ func (sa *SA) EncryptIPPacket(srcPort, dstPort, tunnelID, sessionID uint16, ipPk
 	return out, nil
 }
 
-// decState is what verifying and decrypting one packet needs besides the keys:
-// a keyed HMAC and a CBC mode, neither safe for concurrent use. The SA has one
-// for Decrypt; every Decryptor has its own.
-type decState struct {
-	mac    hash.Hash
-	macBuf [64]byte
-	mode   cipher.BlockMode
-}
-
 // Decrypt reverses Encrypt: verifies the ICV, checks the replay window,
 // decrypts, strips padding, and returns the inner payload plus its
 // next-header protocol number.
 func (sa *SA) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
 	sa.mu.Lock()
 	defer sa.mu.Unlock()
-	return sa.open(pkt, &sa.dec, false)
-}
-
-// Decryptor decrypts packets of one SA from one goroutine, in parallel with
-// other Decryptors of the same SA: the expensive part (HMAC and cipher) runs
-// without the SA's lock, which is taken only around the replay window. With a
-// slow cipher (3DES costs ~25x what AES does) that spreads a download over
-// several cores instead of capping it at one.
-type Decryptor struct {
-	sa *SA
-	st decState
-}
-
-// NewDecryptor returns a Decryptor for sa. It is not safe for concurrent use;
-// make one per goroutine.
-func (sa *SA) NewDecryptor() *Decryptor {
-	sa.mu.Lock()
-	defer sa.mu.Unlock()
-	return &Decryptor{sa: sa, st: decState{mac: hmac.New(sa.newHash, sa.AuthKey)}}
-}
-
-// Decrypt is SA.Decrypt, callable concurrently with other Decryptors of the SA.
-func (d *Decryptor) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
-	return d.sa.open(pkt, &d.st, true)
-}
-
-// open is the body of Decrypt. With lock false the caller holds sa.mu; with
-// lock true it is taken only around the two replay-window steps.
-func (sa *SA) open(pkt []byte, st *decState, lock bool) (payload []byte, nextHeader byte, err error) {
 	blockLen := sa.block.BlockSize()
 	if len(pkt) < 8+blockLen+blockLen+sa.icvLen {
 		return nil, 0, fmt.Errorf("ESP packet too short: %d bytes", len(pkt))
@@ -326,23 +287,14 @@ func (sa *SA) open(pkt []byte, st *decState, lock bool) (payload []byte, nextHea
 		return nil, 0, fmt.Errorf("ESP SPI mismatch: got %08x want %08x", spi, sa.SPI)
 	}
 	seq := binary.BigEndian.Uint32(pkt[4:8])
-	// Cheap early rejection of replays and packets behind the window, before
-	// any cryptography is spent on them.
-	if lock {
-		sa.mu.Lock()
-	}
-	err = sa.replay.check(seq)
-	if lock {
-		sa.mu.Unlock()
-	}
-	if err != nil {
+	if err := sa.replay.check(seq); err != nil {
 		return nil, 0, err
 	}
 
 	icvOffset := len(pkt) - sa.icvLen
-	st.mac.Reset()
-	st.mac.Write(pkt[:icvOffset])
-	sum := st.mac.Sum(st.macBuf[:0])
+	sa.mac.Reset()
+	sa.mac.Write(pkt[:icvOffset])
+	sum := sa.mac.Sum(sa.macBuf[:0])
 	if !hmac.Equal(sum[:sa.icvLen], pkt[icvOffset:]) {
 		return nil, 0, fmt.Errorf("ESP ICV verification failed (wrong key, or corrupted/tampered packet)")
 	}
@@ -356,7 +308,7 @@ func (sa *SA) open(pkt []byte, st *decState, lock bool) (payload []byte, nextHea
 	// scratch copy, and the engine hands it back (bufpool.Put) once the packet
 	// is written to the tunnel device. Callers that keep it just let the GC have it.
 	plain := bufpool.Get(len(ciphertext))
-	sa.cbc(&st.mode, cipher.NewCBCDecrypter, iv).CryptBlocks(plain, ciphertext)
+	sa.cbc(&sa.decMode, cipher.NewCBCDecrypter, iv).CryptBlocks(plain, ciphertext)
 
 	padLen := int(plain[len(plain)-2])
 	nextHeader = plain[len(plain)-1]
@@ -364,22 +316,7 @@ func (sa *SA) open(pkt []byte, st *decState, lock bool) (payload []byte, nextHea
 		bufpool.Put(plain)
 		return nil, 0, fmt.Errorf("ESP padding length %d exceeds plaintext", padLen)
 	}
-	// Check again, atomically with recording the sequence number: two
-	// Decryptors may have been working on the same replayed packet, and only
-	// one of them may deliver it.
-	if lock {
-		sa.mu.Lock()
-	}
-	if err = sa.replay.check(seq); err == nil {
-		sa.replay.accept(seq)
-	}
-	if lock {
-		sa.mu.Unlock()
-	}
-	if err != nil {
-		bufpool.Put(plain)
-		return nil, 0, err
-	}
+	sa.replay.accept(seq)
 	return plain[:len(plain)-2-padLen], nextHeader, nil
 }
 
@@ -399,10 +336,7 @@ func (sa *SA) Zeroize() {
 	for i := range sa.encPlainBuf {
 		sa.encPlainBuf[i] = 0
 	}
-	sa.encMode, sa.dec.mode = nil, nil // they hold the last IV / ciphertext block
-	for i := range sa.dec.macBuf {
-		sa.dec.macBuf[i] = 0
-	}
+	sa.encMode, sa.decMode = nil, nil // they hold the last IV / ciphertext block
 	for i := range sa.ivPool {
 		sa.ivPool[i] = 0
 	}

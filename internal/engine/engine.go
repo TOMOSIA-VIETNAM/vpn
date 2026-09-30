@@ -984,17 +984,9 @@ func runDataPlane(ctx context.Context, dev *tun.Device, pppT *pppOverL2TP, lcpMa
 	// consuming it would steal the reply.
 	ctx, cancel := context.WithCancel(ctx)
 	var recvDone sync.WaitGroup
-	// With a slow cipher, decrypt on several cores (see parallelrx.go).
-	stopParallel := pppT.startParallelRecv(ctx)
-	if stopParallel != nil {
-		vpnlog.Info("ENGINE", "decrypting on several cores (3DES session)", vpnlog.Fields{"workers": parallelRxWorkers()})
-	}
 	defer func() {
 		cancel()
 		recvDone.Wait()
-		if stopParallel != nil {
-			stopParallel() // back to the plain path before teardown reads the stream
-		}
 	}()
 
 	// utun -> Send Queue (buffered) -> ESP send worker
