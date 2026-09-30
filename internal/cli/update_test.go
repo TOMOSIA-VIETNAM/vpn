@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -104,5 +105,41 @@ func TestDownloadVerifiedReportsUpToDate(t *testing.T) {
 	base := fakeRelease(t, "v1.0.0", []byte("genuine binary"), nil)
 	if _, _, err := downloadVerified(base, "vpn-darwin-arm64", false); !errors.Is(err, errUpToDate) {
 		t.Fatalf("same version: got %v, want errUpToDate (exit 0, not a failure)", err)
+	}
+}
+
+func TestDownloadAppSavesOnlyVerifiedZip(t *testing.T) {
+	withVersion(t, "v1.0.0")
+	zip := []byte("app zip")
+	sum := sha256.Sum256(zip)
+
+	serve := func(mutate func(map[string][]byte)) string {
+		return fakeRelease(t, "v1.1.0", []byte("bin"), func(f map[string][]byte) {
+			f[appAsset] = zip
+			// Re-sign a manifest that lists the zip.
+			seed := bytes.Repeat([]byte{3}, ed25519.SeedSize)
+			m := release.Format("v1.1.0", []string{appAsset}, map[string]string{appAsset: hex.EncodeToString(sum[:])})
+			f[release.ManifestName] = m
+			f[release.SignatureName], _ = release.Sign(seed, m)
+			if mutate != nil {
+				mutate(f)
+			}
+		})
+	}
+
+	path := t.TempDir() + "/app.zip"
+	if err := downloadApp(serve(nil), path); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); !bytes.Equal(got, zip) {
+		t.Fatalf("saved %q", got)
+	}
+
+	bad := t.TempDir() + "/app.zip"
+	if err := downloadApp(serve(func(f map[string][]byte) { f[appAsset] = []byte("tampered") }), bad); err == nil {
+		t.Fatal("accepted a zip that does not match the signed manifest")
+	}
+	if _, err := os.Stat(bad); err == nil {
+		t.Fatal("wrote an unverified zip to disk")
 	}
 }

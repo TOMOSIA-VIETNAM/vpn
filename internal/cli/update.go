@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,11 +32,28 @@ const (
 	maxDownload = 64 << 20
 )
 
+// appAsset is the release asset holding the menu bar app.
+const appAsset = "TOMOSIA-VPN.app.zip"
+
 func cmdUpdate(args []string) error {
 	fs := newFlagSet("update")
 	force := fs.Bool("force", false, "install even if the release is not newer than this binary")
+	check := fs.Bool("check", false, "print the latest signed release version as JSON and exit; installs nothing")
+	appZip := fs.String("download-app", "", "download the verified menu bar app zip to `path` and print its version and SHA-256 as JSON; installs nothing")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	// The two modes below are for the menu bar app's updater. They need no privileges and
+	// never compare against this binary's version: the app orders releases against its own.
+	switch {
+	case *check:
+		m, err := fetchManifest(releaseAssetBaseURL)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{"version": m.Version})
+	case *appZip != "":
+		return downloadApp(releaseAssetBaseURL, *appZip)
 	}
 
 	arch := runtime.GOARCH
@@ -108,15 +126,7 @@ func installedApp() (string, bool) {
 // unprivileged process could modify is ever read back by the privileged
 // install step.
 func downloadVerified(baseURL, asset string, force bool) (bin []byte, version string, err error) {
-	manifestBytes, err := fetch(baseURL + release.ManifestName)
-	if err != nil {
-		return nil, "", err
-	}
-	sig, err := fetch(baseURL + release.SignatureName)
-	if err != nil {
-		return nil, "", err
-	}
-	manifest, err := verifyManifest(manifestBytes, sig)
+	manifest, err := fetchManifest(baseURL)
 	if err != nil {
 		return nil, "", err
 	}
@@ -131,6 +141,43 @@ func downloadVerified(baseURL, asset string, force bool) (bin []byte, version st
 		return nil, "", err
 	}
 	return bin, manifest.Version, nil
+}
+
+// fetchManifest downloads the release manifest and its signature and returns the manifest
+// only if the signature verifies.
+func fetchManifest(baseURL string) (*release.Manifest, error) {
+	manifestBytes, err := fetch(baseURL + release.ManifestName)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := fetch(baseURL + release.SignatureName)
+	if err != nil {
+		return nil, err
+	}
+	return verifyManifest(manifestBytes, sig)
+}
+
+// downloadApp saves the signed release's app zip at path and prints its version and
+// SHA-256 as JSON. The zip is written only after it matches the signed manifest.
+func downloadApp(baseURL, path string) error {
+	manifest, err := fetchManifest(baseURL)
+	if err != nil {
+		return err
+	}
+	zip, err := fetch(baseURL + appAsset)
+	if err != nil {
+		return err
+	}
+	if err := manifest.CheckAsset(appAsset, zip); err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, zip, 0o600); err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]string{
+		"version": manifest.Version,
+		"sha256":  manifest.SHA256[appAsset],
+	})
 }
 
 // errUpToDate is checkNewer's "nothing to do" outcome — not a failure, so
