@@ -2377,8 +2377,8 @@ enum AppUpdater {
     /// A floating window instead of NSAlert.runModal: it is not app-modal, so the menu bar item and
     /// the rest of the app stay usable while it is open. (NSAlert's own buttons ignore real clicks
     /// when it is shown without runModal.) Button 0 is the default, the last one answers Escape.
-    private static var dialog: NSPanel?
-    private static var dialogResize: AnyCancellable?
+    nonisolated(unsafe) private static var dialog: NSPanel?
+    nonisolated(unsafe) private static var dialogResize: AnyCancellable?
 
     private static func closeDialog() {
         dialog?.orderOut(nil)
