@@ -1139,6 +1139,13 @@ struct UpdateDialog: View {
                         .controlSize(.large)
                         .modifier(DialogButtonStyle(primary: index == 0))
                     }
+                    if model.buttons.count == 1 {
+                        // A lone OK answers Esc too.
+                        Button("") { model.choose(0) }
+                            .keyboardShortcut(.cancelAction)
+                            .frame(width: 0, height: 0)
+                            .opacity(0)
+                    }
                 }
                 .padding(.top, 6)
             }
@@ -2384,6 +2391,8 @@ enum AppUpdater {
         let panel = NSPanel(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
         panel.isReleasedWhenClosed = false
         panel.level = .floating
+        // NSPanel hides itself when the app loses focus; this window carries download progress and errors.
+        panel.hidesOnDeactivate = false
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         let host = NSHostingView(rootView: UpdateDialog(model: model))
