@@ -165,15 +165,11 @@ func (s *Snapshot) Apply(servers []string) error {
 // Applied returns the DNS servers Apply installed.
 func (s *Snapshot) Applied() []string { return s.pushed }
 
-// Restore removes the dynamic DNS keys, exactly as before: the entry Apply
-// added and the computed global key, which makes macOS rebuild its resolver
-// list from the physical service at once. Both live only in the in-memory
-// DynamicStore.
-//
-// What it no longer does is touch networksetup. It used to reset the physical
-// service's DNS to "Empty" here to clean up after very old versions, which
-// also wiped DNS servers the user had set themselves (1.1.1.1, AdGuard, a
-// corporate resolver) on every disconnect and on every `repair`.
+// Restore removes the dynamic DNS keys: the entry Apply added and the computed
+// global key, which makes macOS rebuild its resolver list from the physical
+// service at once. Both live only in the in-memory DynamicStore. It never
+// touches networksetup, so DNS servers the user set on the physical service
+// (1.1.1.1, AdGuard, a corporate resolver) survive a disconnect and a `repair`.
 func (s *Snapshot) Restore() error {
 	cmd := exec.Command(sysbin.Scutil)
 	cmd.Stdin = strings.NewReader(restoreScript())

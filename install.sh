@@ -10,7 +10,7 @@
 # anything is installed as root: a party who can upload release assets but does
 # not hold the signing key then cannot get a binary onto a fresh Mac. While it is
 # empty, this script only guards against a corrupted download, not a compromised
-# repository (see CONTRIBUTING.md, "Release signing", to switch it on). Later
+# repository (see CONTRIBUTING.md, "Releasing", to switch it on). Later
 # `vpn update`s verify the release's ed25519 signature with a key compiled into
 # the installed binary either way.
 # ==============================================================================

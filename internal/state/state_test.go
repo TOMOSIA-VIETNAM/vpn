@@ -42,8 +42,81 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	if out.UpdatedAt.IsZero() {
 		t.Fatal("Save must stamp UpdatedAt")
 	}
-	if entries, _ := os.ReadDir(Dir); len(entries) != 1 {
-		t.Fatalf("expected only state.json in %s, got %d entries (a .tmp file was left behind)", Dir, len(entries))
+	if entries, _ := os.ReadDir(Dir); len(entries) != 2 {
+		t.Fatalf("expected only state.json and state.root.json in %s, got %d entries (a .tmp file was left behind)", Dir, len(entries))
+	}
+}
+
+// trustOwnFiles makes LoadTrusted accept files this test process wrote.
+func trustOwnFiles(t *testing.T) {
+	t.Helper()
+	old := trustedOwner
+	trustedOwner = uint32(os.Getuid())
+	t.Cleanup(func() { trustedOwner = old })
+}
+
+func TestLoadTrustedReadsTheRootOnlyCopy(t *testing.T) {
+	useTempDirs(t)
+	trustOwnFiles(t)
+	if err := (&State{Phase: PhaseConnected, PID: 4242, Server: "192.0.2.1"}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(trustedPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o600 {
+		t.Fatalf("root-only copy mode = %o, want 600", fi.Mode().Perm())
+	}
+	// What the installing user can do to their own state.json.
+	forged := []byte(`{"phase":"CONNECTED","pid":1,"server":"198.51.100.7"}`)
+	if err := os.WriteFile(path(), forged, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadTrusted()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.PID != 4242 || s.Server != "192.0.2.1" {
+		t.Fatalf("LoadTrusted followed the user-writable state.json: %+v", s)
+	}
+}
+
+func TestLoadTrustedIgnoresFilesRootDoesNotOwn(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("running as root: every file written here is root-owned")
+	}
+	useTempDirs(t)
+	if err := (&State{Phase: PhaseConnected, PID: 4242}).Save(); err != nil {
+		t.Fatal(err)
+	}
+	s, err := LoadTrusted()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Phase != PhaseDisconnected || s.PID != 0 {
+		t.Fatalf("LoadTrusted believed a file root does not own: %+v", s)
+	}
+}
+
+func TestLoadTrustedFallsBackToARootOwnedStateFile(t *testing.T) {
+	useTempDirs(t)
+	trustOwnFiles(t)
+	if err := os.MkdirAll(Dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := []byte(`{"phase":"CONNECTED","pid":4242}`)
+	if err := os.WriteFile(path(), legacy, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if s, err := LoadTrusted(); err != nil || s.PID != 4242 {
+		t.Fatalf("LoadTrusted = %+v, %v; want the owner-only-writable state.json", s, err)
+	}
+	if err := os.Chmod(path(), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if s, err := LoadTrusted(); err != nil || s.Phase != PhaseDisconnected {
+		t.Fatalf("LoadTrusted = %+v, %v; want DISCONNECTED for a file others can write", s, err)
 	}
 }
 

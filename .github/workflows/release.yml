@@ -9,10 +9,13 @@ name: release
 # Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip,
 # TOMOSIA-VPN.dmg, plus SHA256SUMS and its ed25519 signature SHA256SUMS.sig (see
 # internal/release). `vpn update` refuses a release whose signature does not
-# verify against the key compiled into the installed binary.
+# verify against the key compiled into the installed binary. install.sh checks
+# a second signature of SHA256SUMS, SHA256SUMS.p256.sig, with the system openssl.
 #
 # Requires the RELEASE_SIGNING_KEY secret: base64 ed25519 seed from
-# `go run ./cmd/releasesign keygen`, matching release.PublicKey.
+# `go run ./cmd/releasesign keygen`, matching release.PublicKey; and the
+# INSTALL_SIGNING_KEY secret from `go run ./cmd/releasesign keygen-p256`,
+# matching INSTALL_PUBKEY in install.sh.
 on:
   push:
     tags: ["v*.*.*"]
@@ -33,7 +36,7 @@ jobs:
     runs-on: macos-latest
     # Holds the signing secrets: give the "release" environment required
     # reviewers and a tag rule in the repository settings so a pushed tag alone
-    # cannot sign and publish (see CONTRIBUTING.md, "Release signing").
+    # cannot sign and publish (see CONTRIBUTING.md, "Releasing").
     environment: release
     permissions:
       contents: write
@@ -135,8 +138,8 @@ jobs:
       - name: Sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
-          # Optional until install.sh's INSTALL_PUBKEY is set: signs SHA256SUMS
-          # a second time, with a key openssl can verify (see CONTRIBUTING.md).
+          # Signs SHA256SUMS a second time, with a key openssl can verify:
+          # install.sh refuses a release without it (see CONTRIBUTING.md).
           INSTALL_SIGNING_KEY: ${{ secrets.INSTALL_SIGNING_KEY }}
         run: |
           go run ./cmd/releasesign sign -version "$GITHUB_REF_NAME" -out . \
@@ -149,8 +152,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=(vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig)
-          if [ -f SHA256SUMS.p256.sig ]; then assets+=(SHA256SUMS.p256.sig); fi
+          [ -s SHA256SUMS.p256.sig ] || { echo "error: SHA256SUMS.p256.sig is missing (is INSTALL_SIGNING_KEY set?): install.sh would refuse this release" >&2; exit 1; }
+          assets=(vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig SHA256SUMS.p256.sig)
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" "${assets[@]}" \
             --draft --verify-tag --title "$GITHUB_REF_NAME" \
             --notes "Built from ${GITHUB_SHA}. SHA256SUMS is signed with ed25519 (SHA256SUMS.sig)."

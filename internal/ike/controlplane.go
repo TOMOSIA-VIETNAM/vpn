@@ -102,9 +102,10 @@ func (s *Session) StartDataPhase(ctx context.Context, events Events) {
 }
 
 // espQueueLen bounds ESP packets buffered between the socket reader and the
-// decrypt loop. It used to be 32768 (~50 MB of pinned packets in a burst, and
-// seconds of queueing delay); the kernel's 8 MB socket buffer already absorbs
-// bursts, and a full queue just makes the reader wait.
+// decrypt loop. It is kept small: a queue tens of thousands deep pins tens of
+// megabytes of packets in a burst and adds seconds of queueing delay, while
+// the kernel's 8 MB socket buffer already absorbs bursts, and a full queue
+// just makes the reader wait.
 const espQueueLen = 1024
 
 func (s *Session) readLoop(ctx context.Context, dp *dataPlane) {

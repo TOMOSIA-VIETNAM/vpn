@@ -1305,17 +1305,19 @@ func ClaimNewConnect(childPID int, timeout time.Duration) error {
 // calls this on its own behalf, so it doesn't narrate a disconnect the
 // user never asked for. Callers must already hold WithConnectLock.
 func killExisting(verbose bool) error {
-	st, err := state.Load()
-	if err != nil {
-		return err
-	}
-	if st.Phase != state.PhaseConnected && st.Phase != state.PhaseConnecting {
-		if verbose {
-			fmt.Println("Already disconnected.")
-		}
-		return nil
-	}
 	return privilege.Elevate(func() error {
+		// The PID signalled and the routes and DNS restored below come from
+		// the root-only copy: state.json is the invoking user's to rewrite.
+		st, err := state.LoadTrusted()
+		if err != nil {
+			return err
+		}
+		if st.Phase != state.PhaseConnected && st.Phase != state.PhaseConnecting {
+			if verbose {
+				fmt.Println("Already disconnected.")
+			}
+			return nil
+		}
 		if st.PID > 0 && processAlive(st.PID) {
 			if err := syscall.Kill(st.PID, syscall.SIGTERM); err != nil {
 				return fmt.Errorf("signal running connect process (pid %d): %w", st.PID, err)
@@ -1359,14 +1361,15 @@ func killExisting(verbose bool) error {
 // use `disconnect` for that, which lets that process tear itself down
 // instead of racing it.
 func Repair() error {
-	st, err := state.Load()
-	if err != nil {
-		return err
-	}
-	if st.PID > 0 && processAlive(st.PID) {
-		return fmt.Errorf("connect (pid %d) is still running — use `vpn disconnect` instead", st.PID)
-	}
 	return privilege.Elevate(func() error {
+		// The root-only copy, for the same reason as in killExisting.
+		st, err := state.LoadTrusted()
+		if err != nil {
+			return err
+		}
+		if st.PID > 0 && processAlive(st.PID) {
+			return fmt.Errorf("connect (pid %d) is still running — use `vpn disconnect` instead", st.PID)
+		}
 		_ = (&dnsmgr.Snapshot{}).Restore() // only the DNS entry this client added
 		if st.Server == "" {
 			fmt.Println("Cleaned any leftover DNS and routes — network is clean.")

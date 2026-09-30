@@ -1,6 +1,6 @@
 // Package bufpool recycles the fixed-size packet buffers of the data plane.
-// Every tunnelled packet used to allocate (and later garbage-collect) two or
-// three slices; at line rate that is tens of thousands of short-lived
+// Without it every tunnelled packet allocates (and later garbage-collects) two
+// or three slices; at line rate that is tens of thousands of short-lived
 // allocations a second, which keeps the GC busy and the resident heap well
 // above what the live data needs.
 package bufpool

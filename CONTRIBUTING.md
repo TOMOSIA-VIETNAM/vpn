@@ -21,6 +21,7 @@ connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
 |---|---|---|
 | `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, strict encryption (`vpn strict`), verbose flag |
 | `/var/run/vpn/state.json` (0600, owned by the installing user) | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
+| `/var/run/vpn/state.root.json` (0600, owned by root) | Connection daemon | The same state, for the CLI's privileged steps: `disconnect` and `repair` act on the process ID, server and DNS service recorded here, never on the user-writable `state.json` |
 | `/var/log/vpn.log` | CLI and daemon | Log (`vpn logs`) |
 | macOS Keychain | CLI | Passwords and pre-shared keys |
 
@@ -176,7 +177,8 @@ the release. The tag becomes both `vpn version` and the version in the app foote
      public key on stderr.
   2. Store the private key as the `INSTALL_SIGNING_KEY` Actions secret.
   3. Paste the public key into `INSTALL_PUBKEY` in `install.sh` and release. From then on
-     `install.sh` refuses any release without a valid `SHA256SUMS.p256.sig`.
+     `install.sh` refuses any release without a valid `SHA256SUMS.p256.sig`, and the
+     release job stops before publishing when it could not produce one.
 - The release job runs in the `release` environment. In the repository settings give it
   required reviewers and restrict its deployment tags to `v*.*.*`, and protect the
   `v*` tags, so that pushing a tag alone cannot sign and publish a release.
