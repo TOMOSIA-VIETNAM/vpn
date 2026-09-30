@@ -5,6 +5,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"vpn/internal/bufpool"
@@ -69,6 +71,60 @@ func BenchmarkESPRoundTrip(b *testing.B) {
 				}
 				bufpool.Put(pkt)
 				bufpool.Put(plain)
+			}
+		})
+	}
+}
+
+// Several Decryptors work on one SA at once. Every genuine packet must come out
+// exactly once and intact, even when the same packet is handed to two of them
+// at the same moment (a replay racing the original).
+func TestParallelDecryptorsDeliverEachPacketOnce(t *testing.T) {
+	for _, s := range suites {
+		t.Run(s.String(), func(t *testing.T) {
+			out, in := s.pair(t)
+			const n = 600
+			pkts := make([][]byte, n)
+			for i := range pkts {
+				p, err := out.Encrypt(bytes.Repeat([]byte{byte(i)}, 64+i%700), 17)
+				if err != nil {
+					t.Fatal(err)
+				}
+				pkts[i] = append([]byte(nil), p...) // private copy: two workers read it
+				bufpool.Put(p)
+			}
+			// The unbuffered channel keeps the workers close together, well inside the replay window.
+			delivered := make([]atomic.Int32, n)
+			work := make(chan int)
+			var wg sync.WaitGroup
+			for w := 0; w < 4; w++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					d := in.NewDecryptor()
+					for i := range work {
+						got, nh, err := d.Decrypt(pkts[i])
+						if err != nil {
+							continue // the losing copy of a duplicate
+						}
+						if nh != 17 || !bytes.Equal(got, bytes.Repeat([]byte{byte(i)}, 64+i%700)) {
+							t.Errorf("packet %d corrupted", i)
+						}
+						delivered[i].Add(1)
+						bufpool.Put(got)
+					}
+				}()
+			}
+			for i := 0; i < n; i++ {
+				work <- i
+				work <- i // the replay
+			}
+			close(work)
+			wg.Wait()
+			for i := range delivered {
+				if c := delivered[i].Load(); c != 1 {
+					t.Fatalf("packet %d delivered %d times, want exactly once", i, c)
+				}
 			}
 		})
 	}

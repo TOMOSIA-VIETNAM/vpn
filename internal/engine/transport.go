@@ -12,6 +12,7 @@ import (
 
 	"vpn/internal/bufpool"
 	"vpn/internal/ike"
+	"vpn/internal/ipsec"
 	"vpn/internal/l2tp"
 	"vpn/internal/ppp"
 	"vpn/internal/vpnlog"
@@ -34,6 +35,9 @@ type espTransport struct {
 	// Only the goroutine calling Recv touches it (the data plane, or the
 	// negotiation before it) — see ReleaseLast.
 	lastPayload []byte
+	// par, while set, is the parallel receive pipeline Recv reads from (see
+	// startParallel). Set and cleared by the data plane around its own Recv loop.
+	par *parallelRx
 }
 
 // ReleaseLast returns the buffer of the message Recv last delivered to the
@@ -110,6 +114,9 @@ func sendWithRouteRetry(send func() error, repairRoute func() error) error {
 }
 
 func (t *espTransport) Recv(ctx context.Context) ([]byte, error) {
+	if t.par != nil {
+		return t.par.recv(ctx, t)
+	}
 	for {
 		pkt, err := t.mux.recv(ctx)
 		if err != nil {
@@ -121,45 +128,15 @@ func (t *espTransport) Recv(ctx context.Context) ([]byte, error) {
 	}
 }
 
-// process decrypts one inbound ESP datagram and returns the L2TP message it
-// carries, or ok=false for anything not to be delivered (keepalives, unknown
-// or expired SPIs, corrupt packets). A packet that authenticates counts as
-// proof the server is alive — the watchdog relies on exactly this.
+// process is the single-goroutine receive step: it decrypts one inbound ESP
+// datagram with the SA's own state (see open) and remembers the buffer for
+// ReleaseLast.
 func (t *espTransport) process(pkt []byte) (msg []byte, ok bool) {
-	if len(pkt) < 4 {
-		bufpool.Put(pkt)
-		return nil, false // e.g. the server's 1-byte NAT keepalive
+	msg, base, ok := t.open(pkt, func(sa *ipsec.SA, pkt []byte) ([]byte, byte, error) { return sa.Decrypt(pkt) })
+	if ok {
+		t.lastPayload = base
 	}
-	// pkt came from the reader's pool and Decrypt copies what it returns, so the
-	// datagram is dead once this function is done with it.
-	defer bufpool.Put(pkt)
-	in := t.sas.inbound(binary.BigEndian.Uint32(pkt[0:4]))
-	if in == nil {
-		t.noteDrop("ESP packet for an unknown SPI dropped (an SA already deleted/expired, or not ours)", nil)
-		return nil, false
-	}
-	payload, nextHeader, err := in.Decrypt(pkt)
-	if err != nil {
-		// A stray/replayed/corrupt ESP packet is not fatal to the session —
-		// count it and keep waiting rather than aborting the whole tunnel
-		// over one bad datagram.
-		t.noteDrop("ESP packet failed to decrypt — dropped", err)
-		return nil, false
-	}
-	// Authenticated: the server is alive, whatever this packet turns out to be.
-	if t.live != nil {
-		t.live.touch()
-	}
-	// Deliberately no per-packet log line: one write to the log (an SSD write,
-	// a map allocation, a syscall) per tunnelled packet cost more than the
-	// packet itself. Traffic is summarised by the periodic "tunnel alive"
-	// counters instead — and decrypted bytes are never logged, since this
-	// path carries the MS-CHAPv2 exchange and every user packet in cleartext.
-	if nextHeader != protoUDP || len(payload) < 8 {
-		return nil, false
-	}
-	t.lastPayload = payload
-	return payload[8:], true // strip the inner UDP header, keep the L2TP message
+	return msg, ok
 }
 
 // pppOverL2TP implements ppp.Transport over an established l2tp.Tunnel's
@@ -184,6 +161,16 @@ func (p *pppOverL2TP) releaseLast() {
 	if r, ok := p.tun.Transport().(interface{ ReleaseLast() }); ok {
 		r.ReleaseLast()
 	}
+}
+
+// startParallelRecv turns on the transport's parallel receive pipeline for the
+// life of ctx where that pays off; see espTransport.startParallel for the
+// contract of the returned stop function (nil when nothing was started).
+func (p *pppOverL2TP) startParallelRecv(ctx context.Context) (stop func()) {
+	if t, ok := p.tun.Transport().(*espTransport); ok {
+		return t.startParallel(ctx)
+	}
+	return nil
 }
 
 func (p *pppOverL2TP) SendFrame(protocol uint16, payload []byte) error {
