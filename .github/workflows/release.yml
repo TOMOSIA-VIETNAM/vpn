@@ -62,8 +62,53 @@ jobs:
               -o "vpn-darwin-$arch" ./cmd/vpn
           done
 
+      # Optional Developer ID signing and notarization (see CONTRIBUTING.md,
+      # "Developer ID and notarization"). Every step below that mentions it is
+      # skipped until the MACOS_CERT_P12 secret exists; the app is then ad-hoc
+      # signed exactly as before.
+      - name: Detect Developer ID credentials
+        id: devid
+        env:
+          CERT: ${{ secrets.MACOS_CERT_P12 }}
+        run: if [ -n "$CERT" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Import the Developer ID certificate
+        if: steps.devid.outputs.present == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_CERT_IDENTITY: ${{ secrets.MACOS_CERT_IDENTITY }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN"
+          echo "CODESIGN_IDENTITY=$MACOS_CERT_IDENTITY" >> "$GITHUB_ENV"
+
+      # build.sh signs with $CODESIGN_IDENTITY when the step above set it.
       - name: Build TOMOSIA VPN.app (universal — arm64 + Intel)
         run: VERSION="${GITHUB_REF_NAME#v}" bash build.sh
+
+      - name: Test the app logic
+        run: bash test-app.sh
+
+      - name: Notarize the app
+        if: steps.devid.outputs.present == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent "build/TOMOSIA VPN.app" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --wait \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          xcrun stapler staple "build/TOMOSIA VPN.app"
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.
@@ -74,6 +119,18 @@ jobs:
       # The app inside carries the CLI and installs it on first launch.
       - name: Build TOMOSIA-VPN.dmg
         run: bash make-dmg.sh && cp build/TOMOSIA-VPN.dmg TOMOSIA-VPN.dmg
+
+      - name: Sign and notarize the disk image
+        if: steps.devid.outputs.present == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          codesign --force --timestamp --sign "$CODESIGN_IDENTITY" TOMOSIA-VPN.dmg
+          xcrun notarytool submit TOMOSIA-VPN.dmg --wait \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          xcrun stapler staple TOMOSIA-VPN.dmg
 
       - name: Sign
         env:

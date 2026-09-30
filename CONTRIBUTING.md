@@ -41,10 +41,13 @@ prompt (`CLIInstaller` in `app/`).
 | `internal/engine` | Connect / reconnect loop, liveness, rekeying, network events |
 | `internal/ike`, `internal/ipsec`, `internal/l2tp`, `internal/ppp` | Protocol stages |
 | `internal/routing`, `internal/dnsmgr`, `internal/tun` | Routes, DNS, utun device |
+| `internal/pffw` | Packet-filter half of the kill switch (a `pf` sub-anchor) |
+| `internal/bufpool` | Recycled packet buffers for the data plane |
 | `internal/cli` | Command-line commands |
 | `internal/config`, `internal/state`, `internal/keychain` | Files and secrets described above |
 | `internal/release` | Signed release manifest used by `vpn update` |
 | `app/` | Menu bar app |
+| `app-tests/`, `test-app.sh` | Tests for the app's logic (no window needed) |
 | `assets/` | App icon, logo, status item images, and the script that renders them |
 | `build.sh`, `make-dmg.sh` | Build the app and the disk image |
 | `install.sh`, `install-arm64.sh`, `install-intel.sh`, `install-local.sh`, `uninstall.sh` | Install / uninstall |
@@ -92,9 +95,10 @@ CI (`.github/workflows/test.yml`) runs these on every pull request and on pushes
 
 ```bash
 gofmt -l .        # must print nothing
-go vet ./...
-go test ./...
+go vet ./cmd/... ./internal/...
+go test -race ./cmd/... ./internal/...
 bash build.sh     # the app must compile
+bash test-app.sh  # app logic and the bundle signature check
 ```
 
 The same workflow builds and lints the landing page:
@@ -177,6 +181,17 @@ the release. The tag becomes both `vpn version` and the version in the app foote
 - The release job runs in the `release` environment. In the repository settings give it
   required reviewers and restrict its deployment tags to `v*.*.*`, and protect the
   `v*` tags, so that pushing a tag alone cannot sign and publish a release.
+- **Developer ID and notarization (optional).** Until it is set up the app is ad-hoc signed
+  and macOS blocks its first launch (the "If macOS blocks the app" steps in the README).
+  With an Apple Developer ID the release job signs the app and the bundled `vpn` tool with
+  the hardened runtime, notarizes and staples the app and the disk image, and macOS both
+  opens them without that detour and stops other processes from modifying the installed
+  app. Add these Actions secrets to switch it on; nothing else changes:
+  `MACOS_CERT_P12` (base64 of the exported "Developer ID Application" certificate and key),
+  `MACOS_CERT_PASSWORD`, `MACOS_CERT_IDENTITY` (for example
+  `Developer ID Application: Example Inc (TEAMID1234)`), `APPLE_ID`, `APPLE_TEAM_ID` and
+  `APPLE_APP_PASSWORD` (an app-specific password). Locally:
+  `CODESIGN_IDENTITY="Developer ID Application: …" ./build.sh`.
 - `install.sh`, the README and the landing page download from
   `releases/latest/download/<asset>`. Renaming an asset breaks those links until a
   release that carries the new name is published.

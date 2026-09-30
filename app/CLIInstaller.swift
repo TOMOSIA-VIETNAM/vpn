@@ -110,6 +110,10 @@ enum CLIInstaller {
     /// root-owned staging directory and re-checked against the hash taken before the password
     /// prompt, so it can't be swapped in the (user-writable) app bundle in between.
     private static func install(bundled: String) -> String? {
+        // What gets installed runs as root: refuse a bundle that no longer matches its signature.
+        if let why = BundleIntegrity.problem(at: Bundle.main.bundleURL) {
+            return "this copy of \(AppBranding.name) is damaged or was modified (\(why)). Download it again."
+        }
         guard let digest = sha256(bundled) else { return "can't read the bundled tool" }
         let uid = getuid()
         let script = [

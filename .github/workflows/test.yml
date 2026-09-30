@@ -62,6 +62,11 @@ jobs:
       - name: Build TOMOSIA VPN.app
         run: bash build.sh
 
+      # Version ordering, the files the CLI writes, and the bundle signature check
+      # that guards the helper install.
+      - name: Test the app logic
+        run: bash test-app.sh
+
       - name: Build TOMOSIA-VPN.dmg
         run: bash make-dmg.sh
 

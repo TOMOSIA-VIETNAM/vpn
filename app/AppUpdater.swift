@@ -46,7 +46,7 @@ enum AppUpdater {
         return try? JSONDecoder().decode(Reply.self, from: data)
     }
 
-    private static func isNewer(_ latest: String, than current: String) -> Bool {
+    static func isNewer(_ latest: String, than current: String) -> Bool {
         guard let a = CLIInstaller.numbers(latest), let b = CLIInstaller.numbers(current) else { return false }
         for i in 0..<max(a.count, b.count) {
             let x = i < a.count ? a[i] : 0, y = i < b.count ? b[i] : 0

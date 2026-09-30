@@ -42,8 +42,8 @@ fi
 
 echo "==> [2/3] Compiling universal binary (arm64 + x86_64)"
 
-swiftc -O -target arm64-apple-macos12.0 -framework Cocoa -framework SwiftUI app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-arm64"
-swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-x86_64"
+swiftc -O -target arm64-apple-macos12.0 -framework Cocoa -framework SwiftUI -framework Security app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-arm64"
+swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI -framework Security app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-x86_64"
 
 lipo -create "$BUILD_DIR/${OUTPUT_NAME}-arm64" "$BUILD_DIR/${OUTPUT_NAME}-x86_64" -output "$BUILD_DIR/$OUTPUT_NAME"
 
@@ -110,6 +110,22 @@ cat <<EOF > "$BUILD_DIR/$APP_NAME/Contents/Info.plist"
 </dict>
 </plist>
 EOF
+
+# With CODESIGN_IDENTITY set (a "Developer ID Application: ..." identity in the keychain)
+# the app is signed for distribution: hardened runtime and a secure timestamp, which
+# notarization requires, on the bundled CLI first and then on the bundle. macOS then opens
+# it without the Gatekeeper detour and protects the bundle from being modified.
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+    if [[ "$BUNDLE_CLI" == 1 ]]; then
+        codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$BUILD_DIR/$APP_NAME/Contents/Resources/vpn"
+    fi
+    codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$BUILD_DIR/$APP_NAME"
+    codesign --verify --deep --strict "$BUILD_DIR/$APP_NAME" || { echo "error: $APP_NAME does not verify after signing" >&2; exit 1; }
+    echo "Signed with: $CODESIGN_IDENTITY"
+    echo "Built binary: $BUILD_DIR/$OUTPUT_NAME"
+    echo "Built app:    $BUILD_DIR/$APP_NAME (v$VERSION)"
+    exit 0
+fi
 
 # Ad-hoc signature over the finished bundle (keeps Apple Silicon happy about the added
 # resources). Not a Developer ID signature: first launch still needs right-click → Open.
