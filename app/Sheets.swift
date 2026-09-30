@@ -72,6 +72,9 @@ struct SettingsSheet: View {
     @State private var notifications: ConnectionNotifier.Permission?
     @State private var autoUpdate = AppUpdater.autoCheck
     @State private var notificationsOn = ConnectionNotifier.enabled
+    @State private var launchAtLogin = LoginItem.isEnabled
+    @State private var loginError: String?
+    @State private var publicIPLookup = VPNManager.publicIPLookupEnabled
 
     private func refreshNotifications() {
         ConnectionNotifier.permission { notifications = $0 }
@@ -82,6 +85,9 @@ struct SettingsSheet: View {
             SheetHeader(title: "Settings", subtitle: "Changes apply on the next connection.")
                 .padding(.bottom, 4)
 
+            // Scrolls once the list outgrows the popover, instead of pushing Done off screen.
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 12) {
             SettingCard(
                 title: "MTU",
                 detail: "Packet size for every profile. Use 1280 if transfers stall on hotspots or PPPoE."
@@ -113,6 +119,53 @@ struct SettingsSheet: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                     .labelsHidden()
+            }
+
+            SettingCard(
+                title: "Strict encryption",
+                detail: "Refuse VPN servers that only offer legacy algorithms (3DES, MD5, Diffie-Hellman under 2048 bits) instead of connecting with weak encryption."
+            ) {
+                Toggle("", isOn: Binding(get: { vpn.strictCrypto }, set: { vpn.setStrictCrypto($0) }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel("Strict encryption")
+            }
+
+            SettingCard(
+                title: "Show public IP",
+                detail: "While connected, ask Cloudflare (1.1.1.1) which address your traffic leaves from. Turn off to make no request of its own."
+            ) {
+                Toggle("", isOn: Binding(get: { publicIPLookup }, set: { publicIPLookup = $0; VPNManager.publicIPLookupEnabled = $0 }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel("Show public IP")
+            }
+
+            if LoginItem.isSupported {
+                SettingCard(
+                    title: "Open at login",
+                    detail: loginError.map { "Couldn't change this: \($0)" } ?? "Start \(AppBranding.name) in the menu bar when you log in."
+                ) {
+                    Toggle("", isOn: Binding(get: { launchAtLogin }, set: { on in
+                        loginError = LoginItem.set(on)
+                        launchAtLogin = LoginItem.isEnabled
+                    }))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel("Open at login")
+                }
+            }
+
+            SettingCard(
+                title: "Restore network",
+                detail: "If internet or DNS stays broken after a crash or with the kill switch on, put routes and DNS back. Not available while connected."
+            ) {
+                Button("Restore") { vpn.restoreNetwork() }
+                    .controlSize(.small)
+                    .disabled(vpn.isConnected || vpn.isConnecting)
             }
 
             SettingCard(
@@ -149,6 +202,10 @@ struct SettingsSheet: View {
                         .labelsHidden()
                 }
             }
+                }
+                .padding(.trailing, 4)
+            }
+            .frame(maxHeight: 420)
 
             HStack {
                 Spacer()

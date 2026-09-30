@@ -15,12 +15,12 @@ TOMOSIA VPN is two programs:
 The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
 files the CLI writes. Its only network request is the public IP shown while
 connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
-`app/`).
+`app/`); Settings → "Show public IP" turns it off.
 
 | File | Written by | Holds |
 |---|---|---|
-| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, verbose flag |
-| `/var/run/vpn/state.json` | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
+| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, strict encryption, verbose flag |
+| `/var/run/vpn/state.json` (0600, owned by the installing user) | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
 | `/var/log/vpn.log` | CLI and daemon | Log (`vpn logs`) |
 | macOS Keychain | CLI | Passwords and pre-shared keys |
 

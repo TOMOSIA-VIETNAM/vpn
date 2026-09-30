@@ -20,6 +20,11 @@ final class VPNManager: ObservableObject {
     @Published var isReconnecting: Bool = false
     /// Block traffic while a full-tunnel VPN reconnects (`vpn killswitch`); off by default.
     @Published var killSwitch: Bool = false
+    /// Refuse legacy algorithms (3DES, MD5, DH under 2048 bits) (`vpn strict`); off by default.
+    @Published var strictCrypto: Bool = false
+    /// Privacy or security caveats about the live connection, from the CLI's state file
+    /// (no DNS pushed, weak encryption negotiated).
+    @Published var warnings: [String] = []
     /// One line explaining what is happening (and to the traffic) while reconnecting.
     @Published var reconnectNote: String?
     @Published var isConnected: Bool = false
@@ -122,11 +127,19 @@ final class VPNManager: ObservableObject {
         if visible && isConnected { refreshPublicIP(maxAge: 60) }
     }
 
+    private static let publicIPLookupKey = "publicIPLookup"
+
+    /// The one request this app makes on its own (to Cloudflare); on by default, user can turn it off.
+    static var publicIPLookupEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: publicIPLookupKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: publicIPLookupKey) }
+    }
+
     /// Asks Cloudflare's trace endpoint which address our traffic leaves from: the VPN
     /// server's with "Send all traffic", the local network's otherwise. Skipped when the
     /// last answer is younger than `maxAge`; a failed lookup is retried once.
     func refreshPublicIP(maxAge: TimeInterval = 0, retry: Bool = true) {
-        guard isConnected else { return }
+        guard isConnected, Self.publicIPLookupEnabled else { return }
         if let at = publicIPCheckedAt, Date().timeIntervalSince(at) < maxAge, !publicIP.isEmpty { return }
         publicIPLookup?.cancel()
         var request = URLRequest(url: URL(string: "https://1.1.1.1/cdn-cgi/trace")!, timeoutInterval: 6)
@@ -234,6 +247,7 @@ final class VPNManager: ObservableObject {
         if let st = loadJSON(stateURL, cache: &stateCache) {
             phase = st.phase ?? "DISCONNECTED"
             reconnecting = st.reconnecting ?? false
+            update(\.warnings, phase == "CONNECTED" ? (st.warnings ?? []) : [])
             // CONNECTED is written once and only rewritten by the daemon itself, so
             // if that process is gone (crashed, killed) the file would otherwise stay
             // green forever. Ignored while a connect/disconnect we just asked for is
@@ -349,6 +363,7 @@ final class VPNManager: ObservableObject {
             update(\.mtu, cfg.mtu ?? 1280)
             update(\.verbose, cfg.verbose ?? false)
             update(\.killSwitch, cfg.kill_switch ?? false)
+            update(\.strictCrypto, cfg.strict_crypto ?? false)
 
             var items: [VPNProfileItem] = []
             for (pName, pVal) in cfg.profiles ?? [:] {
@@ -716,6 +731,29 @@ final class VPNManager: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             Self.run(cli, ["killswitch", on ? "on" : "off"])
             Task { @MainActor in self?.syncFromDisk() }
+        }
+    }
+
+    /// Applies to every profile; takes effect on the next connect.
+    func setStrictCrypto(_ on: Bool) {
+        update(\.strictCrypto, on)
+        let cli = self.cli
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            Self.run(cli, ["strict", on ? "on" : "off"])
+            Task { @MainActor in self?.syncFromDisk() }
+        }
+    }
+
+    /// Manual `vpn repair`: puts back the routes and DNS a crashed connection (or the kill
+    /// switch holding traffic) left behind. The CLI refuses while a connection is live.
+    func restoreNetwork() {
+        let cli = self.cli
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            Self.run(cli, ["repair"])
+            Task { @MainActor in
+                self?.syncFromDisk()
+                self?.showNotice(.success, "Network settings restored.")
+            }
         }
     }
 

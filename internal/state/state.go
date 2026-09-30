@@ -64,7 +64,12 @@ type State struct {
 
 // Dir is where the state file lives — exported so `uninstall` can remove it
 // without needing its own copy of the path.
-const Dir = "/var/run/vpn"
+//
+// A variable only so tests can point it at a temporary directory.
+var Dir = "/var/run/vpn"
+
+// ownerFile is where ownerUID reads the installing user's uid; a variable for the same reason.
+var ownerFile = privilege.OwnerFile
 
 // path is where the state file lives, without creating anything — used by
 // Load, which must work read-only and unprivileged (e.g. plain `vpn
@@ -134,7 +139,7 @@ func (s *State) Save() error {
 
 // ownerUID is the uid of whoever installed vpn (see privilege.OwnerFile).
 func ownerUID() (int, bool) {
-	data, err := os.ReadFile(privilege.OwnerFile)
+	data, err := os.ReadFile(ownerFile)
 	if err != nil {
 		return 0, false
 	}

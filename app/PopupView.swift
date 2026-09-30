@@ -80,7 +80,7 @@ struct ProfileCardRow: View {
         let state = profile.linkState
         let locked = vpn.isLocked(profile)
         HStack(spacing: 10) {
-            StatusDot(color: Theme.color(for: state), size: 7, pulsing: state == .connecting)
+            StatusDot(color: Theme.color(for: state), size: 7, pulsing: state == .connecting).accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(profile.title)
@@ -100,7 +100,7 @@ struct ProfileCardRow: View {
 
             Spacer(minLength: 8)
 
-            ConnectSwitch(isOn: state != .idle) { vpn.toggleConnect(profile: profile) }
+            ConnectSwitch(isOn: state != .idle, label: "VPN connection \(profile.title)") { vpn.toggleConnect(profile: profile) }
                 .help(state == .idle ? "Connect" : "Disconnect")
 
             CustomMenuButton(profileTitle: profile.title, locked: locked, onEdit: onEdit, onDelete: onDelete)
@@ -134,12 +134,29 @@ struct ProfileCardRow: View {
 /// Details of the live tunnel, shown under the header while connected.
 struct ConnectionDetails: View {
     var ip: String
+    var warnings: [String] = []
 
     var body: some View {
-        HStack {
-            item("Public IP", ip.isEmpty ? "Checking…" : ip)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 8) {
+            if VPNManager.publicIPLookupEnabled {
+                item("Public IP", ip.isEmpty ? "Checking…" : ip)
+            }
+            ForEach(warnings, id: \.self) { w in
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                        .accessibilityHidden(true)
+                    Text(w)
+                        .font(.system(size: 11))
+                        .foregroundColor(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Warning: \(w)")
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(CardBackground())
@@ -315,7 +332,7 @@ struct MenuBarPopupView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Theme.primaryText)
                     HStack(spacing: 5) {
-                        StatusDot(color: headerColor, size: 6, pulsing: state == .connecting || vpn.isDisconnecting)
+                        StatusDot(color: headerColor, size: 6, pulsing: state == .connecting || vpn.isDisconnecting).accessibilityHidden(true)
                         (Text(headerStatus).foregroundColor(Theme.primaryText)
                             + Text(" · \(headerDetail)").foregroundColor(Theme.secondaryText))
                             .font(.system(size: 11))
@@ -332,7 +349,7 @@ struct MenuBarPopupView: View {
             .padding(.bottom, 12)
 
             if state == .connected {
-                ConnectionDetails(ip: vpn.publicIP)
+                ConnectionDetails(ip: vpn.publicIP, warnings: vpn.warnings)
                     .padding(.horizontal, Theme.inset)
                     .padding(.bottom, 12)
                     .transition(.opacity)
