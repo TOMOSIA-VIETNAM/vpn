@@ -92,3 +92,68 @@ func TestRestoreScriptTouchesOnlyOwnKey(t *testing.T) {
 		t.Fatalf("restoreScript() = %q, want %q", got, want)
 	}
 }
+
+// Real `scutil --dns` output, captured on a Mac with the VPN connected: the
+// VPN's resolver (order 101400) comes before the Wi-Fi resolver (200000).
+const dnsConnected = `DNS configuration
+
+resolver #1
+  search domain[0] : home.arpa
+  nameserver[0] : 10.200.110.1
+  flags    : Supplemental, Request A records
+  reach    : 0x00000002 (Reachable)
+  order    : 101400
+
+resolver #2
+  nameserver[0] : 8.8.8.8
+  nameserver[1] : 8.8.4.4
+  nameserver[2] : 1.1.1.1
+  if_index : 6 (en0)
+  flags    : Request A records
+  reach    : 0x00000000 (Not Reachable)
+  order    : 200000
+
+resolver #3
+  domain   : local
+  options  : mdns
+  timeout  : 5
+  flags    : Request A records
+  order    : 300000
+
+DNS configuration (for scoped queries)
+
+resolver #1
+  nameserver[0] : 8.8.8.8
+  if_index : 6 (en0)
+  order    : 1
+`
+
+const dnsDisconnected = `DNS configuration
+
+resolver #1
+  search domain[0] : home.arpa
+  nameserver[0] : 8.8.8.8
+  nameserver[1] : 8.8.4.4
+  if_index : 6 (en0)
+  flags    : Request A records
+
+resolver #2
+  domain   : local
+  order    : 300000
+`
+
+func TestAnswersFirst(t *testing.T) {
+	if !answersFirst(dnsConnected, []string{"10.200.110.1"}) {
+		t.Fatal("the VPN resolver is first in real connected output, but answersFirst said no")
+	}
+	if answersFirst(dnsConnected, []string{"10.9.9.9"}) {
+		t.Fatal("reported a server that is not in the first resolver")
+	}
+	// Without the VPN entry the physical resolver answers first: that is the leak.
+	if answersFirst(dnsDisconnected, []string{"10.200.110.1"}) {
+		t.Fatal("reported no leak although the VPN resolver is absent")
+	}
+	if answersFirst("", []string{"10.200.110.1"}) {
+		t.Fatal("empty output must not count as verified")
+	}
+}

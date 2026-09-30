@@ -672,6 +672,14 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			st.DNSServers = snap.Servers
 			st.DNSApplied = true
 			vpnlog.Info("ENGINE", "DNS applied", vpnlog.Fields{"service": service, "servers": dnsServers})
+			// Confirm macOS really asks the pushed servers first. A failed check is
+			// only logged: it must never raise a false alarm.
+			if first, err := dnsmgr.VerifyPrimary(snap.Applied()); err != nil {
+				vpnlog.Info("ENGINE", "could not verify DNS order", vpnlog.Fields{"err": err})
+			} else if !first {
+				st.Warnings = append(st.Warnings, warnDNSNotFirst)
+				vpnlog.Error("ENGINE", warnDNSNotFirst, nil)
+			}
 		} else if cfg.FullTunnel {
 			// Not an error — some LNSes simply don't push DNS — but the
 			// system keeps its current resolvers, and one on the local
@@ -890,6 +898,10 @@ func weakCryptoWarning(ikeT, espT ike.Transform) string {
 	}
 	return "The VPN server negotiated weak encryption (" + strings.Join(weak, ", ") + "). Ask its administrator to enable AES with SHA-256 and a 2048-bit group, or turn on Strict encryption to refuse such servers"
 }
+
+// warnDNSNotFirst is surfaced when the pushed DNS servers were applied but macOS
+// still asks another resolver first (see dnsmgr.VerifyPrimary).
+const warnDNSNotFirst = "macOS is not asking the VPN's DNS servers first: some lookups may go to this network's resolvers and be visible to it"
 
 // warnNoPushedDNS is surfaced by connect/status when the LNS assigned no DNS
 // servers under full tunnel (see Connect).

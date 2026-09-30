@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"vpn/internal/sysbin"
 )
@@ -28,6 +30,7 @@ type Snapshot struct {
 	Service  string
 	Servers  []string
 	applied  bool
+	pushed   []string // the servers Apply installed, for VerifyPrimary
 	TunIface string
 }
 
@@ -134,6 +137,7 @@ func (s *Snapshot) Apply(servers []string) error {
 		return nil
 	}
 	serverList := strings.Join(ordered, " ")
+	s.pushed = ordered
 
 	var script strings.Builder
 	// Service-level DNS entry (bound to the utun interface with priority order)
@@ -157,6 +161,9 @@ func (s *Snapshot) Apply(servers []string) error {
 	FlushCache()
 	return nil
 }
+
+// Applied returns the DNS servers Apply installed.
+func (s *Snapshot) Applied() []string { return s.pushed }
 
 // Restore removes the DNS entry Apply added, and nothing else. The entry lives
 // only in the in-memory DynamicStore, so removing that one key puts macOS back
@@ -184,4 +191,93 @@ func (s *Snapshot) Restore() error {
 // restoreScript is the scutil input Restore runs.
 func restoreScript() string {
 	return fmt.Sprintf("remove %s\n", dnsStateKey)
+}
+
+// resolver is one block of `scutil --dns` output.
+type resolver struct {
+	servers []string
+	order   int
+	scoped  bool // bound to one interface (if_index): only used for queries scoped to it
+}
+
+// parseResolvers reads the "DNS configuration" section of `scutil --dns`
+// (the part before "for scoped queries"): one "resolver #N" block per entry,
+// with its nameserver[i] lines and its order.
+func parseResolvers(out string) []resolver {
+	var res []resolver
+	var cur *resolver
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "DNS configuration (for scoped queries)"):
+			return res
+		case strings.HasPrefix(line, "resolver #"):
+			res = append(res, resolver{order: -1})
+			cur = &res[len(res)-1]
+		case cur == nil:
+		case strings.HasPrefix(line, "nameserver["):
+			if _, v, ok := strings.Cut(line, ":"); ok {
+				cur.servers = append(cur.servers, strings.TrimSpace(v))
+			}
+		case strings.HasPrefix(line, "order"):
+			if _, v, ok := strings.Cut(line, ":"); ok {
+				if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+					cur.order = n
+				}
+			}
+		case strings.HasPrefix(line, "if_index"):
+			cur.scoped = true
+		}
+	}
+	return res
+}
+
+// answersFirst reports whether the resolver macOS asks first for an ordinary
+// name (the lowest order among unscoped resolvers that have nameservers) is one
+// of pushed. If it is not, lookups go to the physical network's DNS and are
+// visible to it — a DNS leak.
+func answersFirst(out string, pushed []string) bool {
+	best := -1
+	var first *resolver
+	res := parseResolvers(out)
+	for i := range res {
+		r := &res[i]
+		if len(r.servers) == 0 || r.order < 0 || r.scoped {
+			continue
+		}
+		if best < 0 || r.order < best {
+			best, first = r.order, r
+		}
+	}
+	if first == nil {
+		return false
+	}
+	for _, s := range first.servers {
+		for _, p := range pushed {
+			if s == p {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// VerifyPrimary reports whether the pushed DNS servers are the ones macOS asks
+// first, retrying briefly because configd publishes the new entry
+// asynchronously. An error means the check itself could not run, which callers
+// must not treat as a leak.
+func VerifyPrimary(pushed []string) (bool, error) {
+	var lastErr error
+	for i := 0; i < 5; i++ {
+		out, err := exec.Command(sysbin.Scutil, "--dns").Output()
+		if err != nil {
+			lastErr = err
+		} else if answersFirst(string(out), pushed) {
+			return true, nil
+		} else {
+			lastErr = nil
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	return false, lastErr
 }
