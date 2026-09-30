@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -76,5 +77,44 @@ func TestInboundAuthenticatedPacketRefreshesLiveness(t *testing.T) {
 	}
 	if live.idle() < 9*time.Minute {
 		t.Fatal("unauthenticated packets must not refresh liveness")
+	}
+}
+
+// The data plane recycles each inbound buffer (ReleaseLast) once it has written
+// the packet to the tunnel device. A recycled buffer is handed out again for
+// the very next packet, so every message must still read back exactly as sent —
+// and a message that is never released must stay intact while later ones pass.
+func TestInboundBuffersSurviveRecycling(t *testing.T) {
+	qm := testQM(0x31, 0x32, time.Hour)
+	sas, err := newSASet(qm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := &espTransport{sas: sas, live: newLiveness()}
+	peerOut, err := newESPSA(qm.Inbound)
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := func(i int) []byte {
+		body := bytes.Repeat([]byte{byte(i)}, 20+i*13%1200)
+		pkt, err := peerOut.Encrypt(append(make([]byte, 8), body...), protoUDP)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msg, ok := tr.process(pkt)
+		if !ok || !bytes.Equal(msg, body) {
+			t.Fatalf("packet %d: delivered=%v, %d bytes, want %d bytes of %#x", i, ok, len(msg), len(body), byte(i))
+		}
+		return msg
+	}
+	kept := append([]byte(nil), send(1)...)
+	held := send(1) // like an LCP frame: never released
+	for i := 2; i < 400; i++ {
+		send(i)
+		tr.ReleaseLast()
+		tr.ReleaseLast() // a second call is a no-op
+	}
+	if !bytes.Equal(held, kept) {
+		t.Fatal("a message that was never released was overwritten by later packets")
 	}
 }

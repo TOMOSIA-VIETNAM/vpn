@@ -64,8 +64,11 @@ type SA struct {
 	ivPos  int
 
 	encPlainBuf []byte
-	decPlainBuf []byte
-	ivBuf       [16]byte
+	// The CBC modes are kept and re-keyed with SetIV per packet: building a new
+	// one for every packet was the last allocation on the hot path.
+	encMode cipher.BlockMode
+	decMode cipher.BlockMode
+	ivBuf   [16]byte
 
 	// mu serializes Encrypt/Decrypt: several goroutines send on the same SA
 	// (the utun pump, PPP/L2TP control replies), and an unsynchronized
@@ -139,6 +142,18 @@ func (sa *SA) getIV(iv []byte) error {
 	return nil
 }
 
+// cbc returns the SA's CBC mode for this packet's IV, reusing *slot when the
+// implementation can be re-keyed in place (every block mode in the standard
+// library can) and building a fresh one otherwise.
+func (sa *SA) cbc(slot *cipher.BlockMode, build func(cipher.Block, []byte) cipher.BlockMode, iv []byte) cipher.BlockMode {
+	if m, ok := (*slot).(interface{ SetIV([]byte) }); ok {
+		m.SetIV(iv)
+		return *slot
+	}
+	*slot = build(sa.block, iv)
+	return *slot
+}
+
 // Encrypt wraps one IP payload (the UDP/1701 L2TP datagram, without its own
 // IP header — transport mode replaces only what ESP replaces) into an ESP
 // packet, RFC 4303 format: SPI | Seq | IV | ciphertext(payload | pad | pad-len | next-header) | ICV.
@@ -181,7 +196,7 @@ func (sa *SA) Encrypt(payload []byte, nextHeader byte) ([]byte, error) {
 	binary.BigEndian.PutUint32(out[4:8], seq)
 	copy(out[8:8+blockLen], iv)
 	body := out[8+blockLen : 8+blockLen+plainLen]
-	cipher.NewCBCEncrypter(sa.block, iv).CryptBlocks(body, plain)
+	sa.cbc(&sa.encMode, cipher.NewCBCEncrypter, iv).CryptBlocks(body, plain)
 
 	icvOffset := 8 + blockLen + plainLen
 	sa.mac.Reset()
@@ -247,7 +262,7 @@ func (sa *SA) EncryptIPPacket(srcPort, dstPort, tunnelID, sessionID uint16, ipPk
 	binary.BigEndian.PutUint32(out[4:8], seq)
 	copy(out[8:8+blockLen], iv)
 	body := out[8+blockLen : 8+blockLen+plainLen]
-	cipher.NewCBCEncrypter(sa.block, iv).CryptBlocks(body, plain)
+	sa.cbc(&sa.encMode, cipher.NewCBCEncrypter, iv).CryptBlocks(body, plain)
 
 	icvOffset := 8 + blockLen + plainLen
 	sa.mac.Reset()
@@ -289,22 +304,20 @@ func (sa *SA) Decrypt(pkt []byte) (payload []byte, nextHeader byte, err error) {
 	if len(ciphertext)%blockLen != 0 {
 		return nil, 0, fmt.Errorf("ESP ciphertext length %d not a multiple of block size %d", len(ciphertext), blockLen)
 	}
-	if cap(sa.decPlainBuf) < len(ciphertext) {
-		sa.decPlainBuf = make([]byte, len(ciphertext)+2048)
-	}
-	plain := sa.decPlainBuf[:len(ciphertext)]
-	cipher.NewCBCDecrypter(sa.block, iv).CryptBlocks(plain, ciphertext)
+	// Decrypted straight into a pooled buffer, which is what gets returned: no
+	// scratch copy, and the engine hands it back (bufpool.Put) once the packet
+	// is written to the tunnel device. Callers that keep it just let the GC have it.
+	plain := bufpool.Get(len(ciphertext))
+	sa.cbc(&sa.decMode, cipher.NewCBCDecrypter, iv).CryptBlocks(plain, ciphertext)
 
 	padLen := int(plain[len(plain)-2])
 	nextHeader = plain[len(plain)-1]
 	if padLen+2 > len(plain) {
+		bufpool.Put(plain)
 		return nil, 0, fmt.Errorf("ESP padding length %d exceeds plaintext", padLen)
 	}
-	payloadLen := len(plain) - 2 - padLen
-	payload = make([]byte, payloadLen)
-	copy(payload, plain[:payloadLen])
 	sa.replay.accept(seq)
-	return payload, nextHeader, nil
+	return plain[:len(plain)-2-padLen], nextHeader, nil
 }
 
 // Zeroize clears all cryptographic keys and temporary plaintext buffers from memory.
@@ -323,9 +336,7 @@ func (sa *SA) Zeroize() {
 	for i := range sa.encPlainBuf {
 		sa.encPlainBuf[i] = 0
 	}
-	for i := range sa.decPlainBuf {
-		sa.decPlainBuf[i] = 0
-	}
+	sa.encMode, sa.decMode = nil, nil // they hold the last IV / ciphertext block
 	for i := range sa.ivPool {
 		sa.ivPool[i] = 0
 	}

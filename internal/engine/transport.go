@@ -30,6 +30,20 @@ type espTransport struct {
 	live        *liveness // nil in tests; otherwise fed by every valid inbound packet
 	l2tpPort    uint16    // our L2TP UDP port, as negotiated in Quick Mode (ike.Session.L2TPPort); 0 = 1701
 	drops       atomic.Uint64
+	// lastPayload is the pooled buffer behind the message Recv last returned.
+	// Only the goroutine calling Recv touches it (the data plane, or the
+	// negotiation before it) — see ReleaseLast.
+	lastPayload []byte
+}
+
+// ReleaseLast returns the buffer of the message Recv last delivered to the
+// pool. The caller must be the one that received it and must be completely
+// done with it (and with every slice of it): the data plane calls this after
+// writing the packet to the tunnel device. Never calling it is safe — the
+// buffer is then simply garbage-collected.
+func (t *espTransport) ReleaseLast() {
+	bufpool.Put(t.lastPayload)
+	t.lastPayload = nil
 }
 
 // noteDrop counts a discarded inbound packet and logs the first and then every
@@ -144,6 +158,7 @@ func (t *espTransport) process(pkt []byte) (msg []byte, ok bool) {
 	if nextHeader != protoUDP || len(payload) < 8 {
 		return nil, false
 	}
+	t.lastPayload = payload
 	return payload[8:], true // strip the inner UDP header, keep the L2TP message
 }
 
@@ -161,6 +176,14 @@ func (p *pppOverL2TP) SendIP(ipPkt []byte) error {
 		return fast.SendIPFast(pt, ps, ipPkt)
 	}
 	return p.SendFrame(ppp.ProtoIP, ipPkt)
+}
+
+// releaseLast recycles the buffer of the frame RecvFrame last returned; the
+// caller must not use that frame's payload afterwards.
+func (p *pppOverL2TP) releaseLast() {
+	if r, ok := p.tun.Transport().(interface{ ReleaseLast() }); ok {
+		r.ReleaseLast()
+	}
 }
 
 func (p *pppOverL2TP) SendFrame(protocol uint16, payload []byte) error {

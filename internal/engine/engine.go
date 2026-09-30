@@ -896,7 +896,7 @@ func weakCryptoWarning(ikeT, espT ike.Transform) string {
 	if len(weak) == 0 {
 		return ""
 	}
-	return "The VPN server negotiated weak encryption (" + strings.Join(weak, ", ") + "). Ask its administrator to enable AES with SHA-256 and a 2048-bit group, or turn on Strict encryption to refuse such servers"
+	return "Weak encryption in use (" + strings.Join(weak, ", ") + "), chosen by the server. Ask its administrator to enable AES with a 2048-bit group."
 }
 
 // warnDNSNotFirst is surfaced when the pushed DNS servers were applied but macOS
@@ -1090,6 +1090,7 @@ func runDataPlane(ctx context.Context, dev *tun.Device, pppT *pppOverL2TP, lcpMa
 					continue
 				}
 				writes.ok()
+				pppT.releaseLast() // the kernel has its copy; nothing else holds payload
 			case ppp.ProtoLCP:
 				// The LNS keeps sending LCP Echo-Requests as a keepalive for the
 				// whole session and ends it once enough go unanswered (its reply
