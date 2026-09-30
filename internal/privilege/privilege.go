@@ -133,6 +133,9 @@ const safePath = "/usr/bin:/bin:/usr/sbin:/sbin"
 var keepEnv = map[string]bool{
 	"HOME": true, "USER": true, "LOGNAME": true, "TERM": true, "TMPDIR": true,
 	"LANG": true, "VPN_DAEMON_CHILD": true,
+	// Set by macOS for every GUI-launched process; the `security` tool reads the
+	// user's text encoding from it.
+	"__CF_USER_TEXT_ENCODING": true,
 	// `vpn update` and the app's downloads honour the user's proxy settings.
 	"HTTP_PROXY": true, "HTTPS_PROXY": true, "ALL_PROXY": true, "NO_PROXY": true,
 	"http_proxy": true, "https_proxy": true, "all_proxy": true, "no_proxy": true,

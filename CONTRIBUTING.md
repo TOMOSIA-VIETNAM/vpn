@@ -15,11 +15,11 @@ TOMOSIA VPN is two programs:
 The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
 files the CLI writes. Its only network request is the public IP shown while
 connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
-`app/`); Settings → "Show public IP" turns it off.
+`app/`).
 
 | File | Written by | Holds |
 |---|---|---|
-| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, strict encryption, verbose flag |
+| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, strict encryption (`vpn strict`), verbose flag |
 | `/var/run/vpn/state.json` (0600, owned by the installing user) | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
 | `/var/log/vpn.log` | CLI and daemon | Log (`vpn logs`) |
 | macOS Keychain | CLI | Passwords and pre-shared keys |
@@ -41,7 +41,6 @@ prompt (`CLIInstaller` in `app/`).
 | `internal/engine` | Connect / reconnect loop, liveness, rekeying, network events |
 | `internal/ike`, `internal/ipsec`, `internal/l2tp`, `internal/ppp` | Protocol stages |
 | `internal/routing`, `internal/dnsmgr`, `internal/tun` | Routes, DNS, utun device |
-| `internal/pffw` | Packet-filter half of the kill switch (a `pf` sub-anchor) |
 | `internal/bufpool` | Recycled packet buffers for the data plane |
 | `internal/cli` | Command-line commands |
 | `internal/config`, `internal/state`, `internal/keychain` | Files and secrets described above |

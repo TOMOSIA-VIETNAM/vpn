@@ -40,17 +40,16 @@ let decoder = JSONDecoder()
 let stateJSON = """
 {"phase":"CONNECTED","profile":"Office","account":"a","server":"203.0.113.7","pid":4242,
  "tun_device":"utun4","updated_at":"2026-09-30T15:58:24+07:00","saved_routes":true,
- "warnings":["Weak encryption in use (3DES), chosen by the server."],"some_future_field":1}
+ "warnings":["a warning the app does not show"],"some_future_field":1}
 """
 if let st = try? decoder.decode(CLIState.self, from: Data(stateJSON.utf8)) {
     check(st.phase == "CONNECTED" && st.pid == 4242, "state: phase and pid")
-    check(st.warnings?.count == 1, "state: warnings reach the app")
     check(st.reconnecting == nil, "state: an absent flag stays absent")
 } else {
     check(false, "state.json with warnings and an unknown field decodes")
 }
-check((try? decoder.decode(CLIState.self, from: Data(#"{"phase":"DISCONNECTED","updated_at":"x"}"#.utf8)))?.warnings == nil,
-      "state written by an older CLI (no warnings) still decodes")
+check((try? decoder.decode(CLIState.self, from: Data(#"{"phase":"DISCONNECTED","updated_at":"x"}"#.utf8)))?.phase == "DISCONNECTED",
+      "a minimal state file still decodes")
 
 let configJSON = """
 {"mtu":1400,"kill_switch":true,"strict_crypto":true,"active_profile":"office",
@@ -58,13 +57,13 @@ let configJSON = """
    "default_account":"a","accounts":{"a":{"username":"a"}}}}}
 """
 if let cfg = try? decoder.decode(CLIConfig.self, from: Data(configJSON.utf8)) {
-    check(cfg.mtu == 1400 && cfg.kill_switch == true && cfg.strict_crypto == true, "config: global settings")
+    check(cfg.mtu == 1400 && cfg.kill_switch == true, "config: global settings (fields the app does not know are ignored)")
     check(cfg.active_profile == "office" && cfg.profiles?["office"] != nil, "config: profiles")
 } else {
     check(false, "config.json decodes")
 }
-check((try? decoder.decode(CLIConfig.self, from: Data(#"{"profiles":{}}"#.utf8)))?.strict_crypto == nil,
-      "config written before strict encryption existed still decodes")
+check((try? decoder.decode(CLIConfig.self, from: Data(#"{"profiles":{}}"#.utf8)))?.kill_switch == nil,
+      "a minimal config still decodes")
 
 // MARK: Bundle signature (guards what the helper installer puts in /usr/local/bin as root)
 

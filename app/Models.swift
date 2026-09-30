@@ -23,7 +23,6 @@ struct CLIConfig: Codable {
     var mtu: Int?
     var verbose: Bool?
     var kill_switch: Bool?
-    var strict_crypto: Bool?
     var active_profile: String?
     var profiles: [String: CLIProfile]?
 }
@@ -39,7 +38,6 @@ struct CLIState: Codable {
     var fail_detail: String?
     var updated_at: String?
     var reconnecting: Bool?
-    var warnings: [String]?
 }
 
 struct VPNProfileItem: Identifiable, Hashable {

@@ -145,7 +145,6 @@ struct IconButton: View {
         .buttonStyle(.plain)
         .focusable(false)
         .help(help)
-        .accessibilityLabel(help)
         .onHover { hovering = $0 }
     }
 }
@@ -155,8 +154,6 @@ struct IconButton: View {
 /// it opens, or while another app has focus), so a live connection looked switched off.
 struct ConnectSwitch: View {
     var isOn: Bool
-    /// Names the connection this switch controls, for VoiceOver.
-    var label: String = "VPN connection"
     var action: () -> Void
 
     var body: some View {
@@ -177,7 +174,7 @@ struct ConnectSwitch: View {
         .buttonStyle(.plain)
         .focusable(false)
         // A plain Button has no switch semantics; restore what VoiceOver read from Toggle.
-        .accessibilityLabel(label)
+        .accessibilityLabel("VPN connection")
         .accessibilityValue(isOn ? "On" : "Off")
     }
 }

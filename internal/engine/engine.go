@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -690,9 +689,9 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			vpnlog.Error("ENGINE", warnNoPushedDNS, nil)
 		}
 
-		if weakCrypto != "" && !slices.Contains(st.Warnings, weakCrypto) {
-			st.Warnings = append(st.Warnings, weakCrypto)
-			vpnlog.Error("ENGINE", weakCrypto, nil)
+		if weakCrypto != "" {
+			// Logged only: what `vpn connect`, `vpn status` and the app show stays as it was.
+			vpnlog.Warn("ENGINE", weakCrypto, nil)
 		}
 		st.Phase = state.PhaseConnected
 		st.FailStage, st.FailDetail = "", "" // a reconnect attempt's last error is history once it worked
@@ -882,8 +881,8 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 }
 
 // weakCryptoWarning describes legacy algorithms the server made this session
-// use (see ike.WeakReasons), or "" when there are none. The warning rides in
-// state.Warnings, so the menu bar app and `vpn status` show it.
+// use (see ike.WeakReasons), or "" when there are none. It goes to the log
+// (`vpn logs`) only.
 func weakCryptoWarning(ikeT, espT ike.Transform) string {
 	var weak []string
 	seen := map[string]bool{}

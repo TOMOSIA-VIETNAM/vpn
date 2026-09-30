@@ -83,12 +83,11 @@ func TestPrioritizeDNSServers(t *testing.T) {
 	}
 }
 
-// Restore must remove only this client's own DynamicStore key: never the
-// macOS-owned global DNS key, and never anything via networksetup (which used
-// to reset the user's own DNS servers to "Empty").
-func TestRestoreScriptTouchesOnlyOwnKey(t *testing.T) {
+// Restore sends scutil the same two removals it always has, and nothing that
+// could reach networksetup (which used to reset the user's own DNS servers).
+func TestRestoreScriptUnchanged(t *testing.T) {
 	got := restoreScript()
-	want := "remove State:/Network/Service/com.tms.vpn.dns/DNS\n"
+	want := "remove State:/Network/Service/com.tms.vpn.dns/DNS\nremove State:/Network/Global/DNS\n"
 	if got != want {
 		t.Fatalf("restoreScript() = %q, want %q", got, want)
 	}

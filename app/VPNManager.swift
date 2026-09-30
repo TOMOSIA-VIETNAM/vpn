@@ -20,11 +20,6 @@ final class VPNManager: ObservableObject {
     @Published var isReconnecting: Bool = false
     /// Block traffic while a full-tunnel VPN reconnects (`vpn killswitch`); off by default.
     @Published var killSwitch: Bool = false
-    /// Refuse legacy algorithms (3DES, MD5, DH under 2048 bits) (`vpn strict`); off by default.
-    @Published var strictCrypto: Bool = false
-    /// Privacy or security caveats about the live connection, from the CLI's state file
-    /// (no DNS pushed, weak encryption negotiated).
-    @Published var warnings: [String] = []
     /// One line explaining what is happening (and to the traffic) while reconnecting.
     @Published var reconnectNote: String?
     @Published var isConnected: Bool = false
@@ -127,28 +122,11 @@ final class VPNManager: ObservableObject {
         if visible && isConnected { refreshPublicIP(maxAge: 60) }
     }
 
-    private static let showPublicIPKey = "publicIPLookup"
-
-    /// Whether to look up and show the public IP — the one request this app makes on its
-    /// own (to Cloudflare). On by default; published so the popover follows the setting.
-    @Published var showPublicIP: Bool = UserDefaults.standard.object(forKey: VPNManager.showPublicIPKey) as? Bool ?? true
-
-    func setShowPublicIP(_ on: Bool) {
-        UserDefaults.standard.set(on, forKey: Self.showPublicIPKey)
-        update(\.showPublicIP, on)
-        if on {
-            refreshPublicIP()
-        } else {
-            publicIPLookup?.cancel()
-            update(\.publicIP, "")
-        }
-    }
-
     /// Asks Cloudflare's trace endpoint which address our traffic leaves from: the VPN
     /// server's with "Send all traffic", the local network's otherwise. Skipped when the
     /// last answer is younger than `maxAge`; a failed lookup is retried once.
     func refreshPublicIP(maxAge: TimeInterval = 0, retry: Bool = true) {
-        guard isConnected, showPublicIP else { return }
+        guard isConnected else { return }
         if let at = publicIPCheckedAt, Date().timeIntervalSince(at) < maxAge, !publicIP.isEmpty { return }
         publicIPLookup?.cancel()
         var request = URLRequest(url: URL(string: "https://1.1.1.1/cdn-cgi/trace")!, timeoutInterval: 6)
@@ -256,7 +234,6 @@ final class VPNManager: ObservableObject {
         if let st = loadJSON(stateURL, cache: &stateCache) {
             phase = st.phase ?? "DISCONNECTED"
             reconnecting = st.reconnecting ?? false
-            update(\.warnings, phase == "CONNECTED" ? (st.warnings ?? []) : [])
             // CONNECTED is written once and only rewritten by the daemon itself, so
             // if that process is gone (crashed, killed) the file would otherwise stay
             // green forever. Ignored while a connect/disconnect we just asked for is
@@ -372,7 +349,6 @@ final class VPNManager: ObservableObject {
             update(\.mtu, cfg.mtu ?? 1280)
             update(\.verbose, cfg.verbose ?? false)
             update(\.killSwitch, cfg.kill_switch ?? false)
-            update(\.strictCrypto, cfg.strict_crypto ?? false)
 
             var items: [VPNProfileItem] = []
             for (pName, pVal) in cfg.profiles ?? [:] {
@@ -477,9 +453,7 @@ final class VPNManager: ObservableObject {
             alert = VPNAlertInfo(
                 kind: .ikeFailed,
                 title: "Unsupported Server Settings",
-                message: strictCrypto
-                    ? "The server offers only legacy encryption, which Strict encryption refuses. Turn Strict encryption off in Settings to connect, or ask your administrator to enable AES."
-                    : "The server accepts none of the encryption settings this client offers. Send the logs (vpn logs) to your administrator.",
+                message: "The server accepts none of the encryption settings this client offers. Send the logs (vpn logs) to your administrator.",
                 detail: detail
             )
             message = "Unsupported Server Settings: no common encryption proposal."
@@ -609,9 +583,7 @@ final class VPNManager: ObservableObject {
     /// running process is visible to every local user via `ps`, and the CLI's secret prompt
     /// reads one line from stdin when it isn't a terminal. An empty secret sends nothing, so
     /// the CLI sees EOF and refuses, exactly as it did for an empty `--psk`/`--password`.
-    /// Returns whether the command ran and exited 0.
-    @discardableResult
-    nonisolated private static func run(_ path: String, _ args: [String], secret: String? = nil) -> Bool {
+    nonisolated private static func run(_ path: String, _ args: [String], secret: String? = nil) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: path)
         p.arguments = args
@@ -622,7 +594,7 @@ final class VPNManager: ObservableObject {
         do {
             try p.run()
         } catch {
-            return false
+            return
         }
         if let secret = secret {
             if !secret.isEmpty {
@@ -631,7 +603,6 @@ final class VPNManager: ObservableObject {
             try? input.fileHandleForWriting.close()
         }
         p.waitUntilExit()
-        return p.terminationStatus == 0
     }
 
     /// Launches `vpn connect` without blocking the serial queue — the spawner only exits once
@@ -745,33 +716,6 @@ final class VPNManager: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             Self.run(cli, ["killswitch", on ? "on" : "off"])
             Task { @MainActor in self?.syncFromDisk() }
-        }
-    }
-
-    /// Applies to every profile; takes effect on the next connect.
-    func setStrictCrypto(_ on: Bool) {
-        update(\.strictCrypto, on)
-        let cli = self.cli
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            Self.run(cli, ["strict", on ? "on" : "off"])
-            Task { @MainActor in self?.syncFromDisk() }
-        }
-    }
-
-    /// Manual `vpn repair`: puts back the routes and DNS a crashed connection (or the kill
-    /// switch holding traffic) left behind. The CLI refuses while a connection is live.
-    func restoreNetwork() {
-        let cli = self.cli
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let ok = Self.run(cli, ["repair"])
-            Task { @MainActor in
-                self?.syncFromDisk()
-                if ok {
-                    self?.showNotice(.success, "Network settings restored.")
-                } else {
-                    self?.showNotice(.error, "Couldn't restore the network settings. Turn the VPN off first, or run `vpn repair` in Terminal to see why.")
-                }
-            }
         }
     }
 

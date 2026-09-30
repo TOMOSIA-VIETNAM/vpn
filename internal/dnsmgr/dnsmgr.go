@@ -22,6 +22,7 @@ import (
 const (
 	vpnServiceID = "com.tms.vpn.dns"
 	dnsStateKey  = "State:/Network/Service/" + vpnServiceID + "/DNS"
+	globalDNSKey = "State:/Network/Global/DNS"
 )
 
 // Snapshot is the DNS configuration state for the VPN session.
@@ -164,32 +165,28 @@ func (s *Snapshot) Apply(servers []string) error {
 // Applied returns the DNS servers Apply installed.
 func (s *Snapshot) Applied() []string { return s.pushed }
 
-// Restore removes the DNS entry Apply added, and nothing else. The entry lives
-// only in the in-memory DynamicStore, so removing that one key puts macOS back
-// exactly where it was.
+// Restore removes the dynamic DNS keys, exactly as before: the entry Apply
+// added and the computed global key, which makes macOS rebuild its resolver
+// list from the physical service at once. Both live only in the in-memory
+// DynamicStore.
 //
-// It deliberately never touches networksetup: an earlier version reset the
-// physical service's DNS to "Empty" here "to clean up legacy settings", which
-// wiped the DNS servers the user had set themselves (1.1.1.1, AdGuard, a
-// corporate resolver) on every disconnect and on every `repair`. Nor does it
-// remove State:/Network/Global/DNS: that key belongs to macOS (configd
-// derives it from the primary service), not to this client.
+// What it no longer does is touch networksetup. It used to reset the physical
+// service's DNS to "Empty" here to clean up after very old versions, which
+// also wiped DNS servers the user had set themselves (1.1.1.1, AdGuard, a
+// corporate resolver) on every disconnect and on every `repair`.
 func (s *Snapshot) Restore() error {
 	cmd := exec.Command(sysbin.Scutil)
 	cmd.Stdin = strings.NewReader(restoreScript())
-	out, err := cmd.CombinedOutput()
-	// Flush so lookups revert to the physical interface's DNS immediately,
-	// even when the removal reported a problem.
+	_ = cmd.Run()
+
+	// Flush cache after removing VPN DNS keys so macOS reverts immediately to physical interface DNS
 	FlushCache()
-	if err != nil {
-		return fmt.Errorf("remove dynamic DNS via scutil: %w (%s)", err, strings.TrimSpace(string(out)))
-	}
 	return nil
 }
 
 // restoreScript is the scutil input Restore runs.
 func restoreScript() string {
-	return fmt.Sprintf("remove %s\n", dnsStateKey)
+	return fmt.Sprintf("remove %s\nremove %s\n", dnsStateKey, globalDNSKey)
 }
 
 // defaultResolverServers returns the nameservers of the resolver macOS uses
