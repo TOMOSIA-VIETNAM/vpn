@@ -15,4 +15,5 @@ const (
 	Tail         = "/usr/bin/tail"
 	Dscacheutil  = "/usr/bin/dscacheutil"
 	Killall      = "/usr/bin/killall"
+	Pfctl        = "/sbin/pfctl"
 )

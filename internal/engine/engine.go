@@ -25,6 +25,7 @@ import (
 	"vpn/internal/ipsec"
 	"vpn/internal/l2tp"
 	"vpn/internal/netwatch"
+	"vpn/internal/pffw"
 	"vpn/internal/ppp"
 	"vpn/internal/privilege"
 	"vpn/internal/routing"
@@ -205,7 +206,10 @@ func Connect(cfg Config) error {
 	}
 	releaseBlock := func() {
 		if blocked {
-			_ = privilege.Elevate(func() error { return routing.RestoreByServerIP(cfg.Server) })
+			_ = privilege.Elevate(func() error {
+				killSwitchFirewall(false, "")
+				return routing.RestoreByServerIP(cfg.Server)
+			})
 			blocked = false
 		}
 	}
@@ -336,6 +340,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			if err := rtSnapshot.Blackhole(); err != nil {
 				vpnlog.Error("ENGINE", "kill switch: could not keep traffic blocked", vpnlog.Fields{"err": err})
 			}
+			killSwitchFirewall(true, rtSnapshot.VPNServerIP)
 			_ = rtSnapshot.RestoreKeepingBlackhole()
 			return
 		}
@@ -647,6 +652,11 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 				return fail("ROUTE_FAILURE", "protect VPN server after full-tunnel routes", err)
 			}
 			vpnlog.Info("ENGINE", "full-tunnel routes applied", vpnlog.Fields{"device": dev.Name})
+			if holdRoutes {
+				// Traffic flows through the tunnel again: lift the packet-filter
+				// block the kill switch held during the outage.
+				killSwitchFirewall(false, "")
+			}
 		}
 
 		dnsServers := dnsServerStrings(ipcp)
@@ -831,6 +841,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			if err := rtSnapshot.Blackhole(); err != nil {
 				vpnlog.Error("ENGINE", "kill switch: could not block traffic", vpnlog.Fields{"err": err})
 			}
+			killSwitchFirewall(true, rtSnapshot.VPNServerIP)
 		}
 		dev.Close()
 		if lost && live.idle() > 2*keepaliveEvery {
@@ -879,6 +890,23 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 		vpnlog.Info("ENGINE", "disconnected", nil)
 		return nil
 	})
+}
+
+// killSwitchFirewall turns the packet-filter half of the kill switch on or off
+// (see internal/pffw). It only ever adds to the routing half: a failure is
+// logged and the blackhole routes keep holding. Must run as root.
+func killSwitchFirewall(on bool, serverIP string) {
+	if !on {
+		if err := pffw.Disable(); err != nil {
+			vpnlog.Error("ENGINE", "kill switch: could not remove the packet-filter block — run `vpn repair` if the network stays blocked", vpnlog.Fields{"err": err})
+		}
+		return
+	}
+	if err := pffw.Enable(serverIP); err != nil {
+		vpnlog.Error("ENGINE", "kill switch: packet filter not applied — relying on routes only", vpnlog.Fields{"err": err})
+		return
+	}
+	vpnlog.Info("ENGINE", "kill switch: packet filter blocking non-local traffic", nil)
 }
 
 // weakCryptoWarning describes legacy algorithms the server made this session
@@ -1377,6 +1405,7 @@ func Repair() error {
 	}
 	return privilege.Elevate(func() error {
 		_ = (&dnsmgr.Snapshot{}).Restore() // only the DNS entry this client added
+		killSwitchFirewall(false, "")
 		if st.Server == "" {
 			fmt.Println("Cleaned any leftover DNS and routes — network is clean.")
 			return state.Clear()
@@ -1391,6 +1420,7 @@ func Repair() error {
 // was last persisted to disk — the only option once the process that held
 // the live *routing.Snapshot/*dnsmgr.Snapshot objects is no longer around.
 func restoreRecorded(st *state.State) {
+	killSwitchFirewall(false, "") // a dead daemon's kill switch must not outlive it
 	if st.Server != "" {
 		_ = routing.RestoreByServerIP(st.Server)
 	}
