@@ -2308,9 +2308,26 @@ enum AppUpdater {
     }
 
     /// Only a real, writable bundle can replace itself; a bare `swiftc` build cannot.
+    /// Where the app really lives. A quarantined app (downloaded in a browser or from a DMG) is run by
+    /// macOS from a read-only copy under .../AppTranslocation/..., so Bundle.main.bundleURL can't be
+    /// written to or replaced; ask the system for the original path.
+    private static var bundleURL: URL {
+        let url = Bundle.main.bundleURL
+        guard url.path.contains("/AppTranslocation/") else { return url }
+        typealias OriginalPath = @convention(c) (CFURL, UnsafeMutablePointer<Unmanaged<CFError>?>?) -> Unmanaged<CFURL>?
+        if let handle = dlopen("/System/Library/Frameworks/Security.framework/Security", RTLD_LAZY),
+           let symbol = dlsym(handle, "SecTranslocateCreateOriginalPathForURL") {
+            let original = unsafeBitCast(symbol, to: OriginalPath.self)
+            if let path = original(url as CFURL, nil)?.takeRetainedValue() as URL? { return path }
+        }
+        let guess = URL(fileURLWithPath: "/Applications").appendingPathComponent(url.lastPathComponent)
+        return FileManager.default.fileExists(atPath: guess.path) ? guess : url
+    }
+
     private static var canSelfUpdate: Bool {
-        AppBranding.version != nil && Bundle.main.bundleURL.pathExtension == "app"
-            && FileManager.default.isWritableFile(atPath: Bundle.main.bundleURL.deletingLastPathComponent().path)
+        AppBranding.version != nil && bundleURL.pathExtension == "app"
+            && !bundleURL.path.contains("/AppTranslocation/")
+            && FileManager.default.isWritableFile(atPath: bundleURL.deletingLastPathComponent().path)
     }
 
     /// At launch: silent unless a newer release exists and the user hasn't snoozed it.
@@ -2462,7 +2479,7 @@ enum AppUpdater {
         func fail(_ message: String) { DispatchQueue.main.async { failed("\(message.prefix(1).uppercased())\(message.dropFirst())") } }
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
-            let dest = Bundle.main.bundleURL
+            let dest = bundleURL
             // Next to the app, so the final swap is a same-volume rename.
             let stage = dest.deletingLastPathComponent().appendingPathComponent(".tmsvpn-update-\(getpid())")
             let zip = fm.temporaryDirectory.appendingPathComponent("tmsvpn-update-\(getpid()).zip").path
