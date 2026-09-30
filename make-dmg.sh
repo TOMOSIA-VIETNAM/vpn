@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Packs TOMOSIA-VPN.app into a drag-to-Applications disk image.
+# Packs "TOMOSIA VPN.app" into a drag-to-Applications disk image.
 #
 #   ./make-dmg.sh                 build the app first (build.sh), then the .dmg
 #   VERSION=1.2.3 ./make-dmg.sh
@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 BUILD_DIR="${BUILD_DIR:-./build}"
-APP_NAME="TOMOSIA-VPN.app"
+APP_NAME="TOMOSIA VPN.app"
 VOL_NAME="TOMOSIA VPN"
 OUT="${OUT:-$BUILD_DIR/TOMOSIA-VPN.dmg}"
 

@@ -89,8 +89,8 @@ func cmdUpdate(args []string) error {
 }
 
 // menuBarApps are where install.sh puts the menu bar app, current name first, then the
-// name used before the rename to TOMOSIA-VPN (still present on Macs not reinstalled since).
-var menuBarApps = []string{"/Applications/TOMOSIA-VPN.app", "/Applications/TMS VPN.app"}
+// names used by earlier releases (still present on Macs not reinstalled since).
+var menuBarApps = []string{"/Applications/TOMOSIA VPN.app", "/Applications/TOMOSIA-VPN.app", "/Applications/TMS VPN.app"}
 
 // installedApp returns the path of the installed menu bar app, if any.
 func installedApp() (string, bool) {

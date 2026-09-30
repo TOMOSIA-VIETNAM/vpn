@@ -53,14 +53,14 @@ jobs:
           go-version-file: go.mod
 
       # Also compiles the CLI that build.sh bundles into the app.
-      - name: Build TOMOSIA-VPN.app
+      - name: Build TOMOSIA VPN.app
         run: bash build.sh
 
       - name: Build TOMOSIA-VPN.dmg
         run: bash make-dmg.sh
 
       - name: Zip the app bundle
-        run: ditto -c -k --sequesterRsrc --keepParent build/TOMOSIA-VPN.app TOMOSIA-VPN.app.zip
+        run: ditto -c -k --sequesterRsrc --keepParent "build/TOMOSIA VPN.app" TOMOSIA-VPN.app.zip
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
