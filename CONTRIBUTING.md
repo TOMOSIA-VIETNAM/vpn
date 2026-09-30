@@ -37,7 +37,7 @@ prompt (`CLIInstaller` in `main.swift`).
 | Path | What |
 |---|---|
 | `cmd/vpn` | CLI entry point |
-| `cmd/releasesign` | Release signing tool (`keygen`, `sign`) |
+| `cmd/releasesign` | Release signing tool (`keygen`, `keygen-p256`, `sign`) |
 | `internal/engine` | Connect / reconnect loop, liveness, rekeying, network events |
 | `internal/ike`, `internal/ipsec`, `internal/l2tp`, `internal/ppp` | Protocol stages |
 | `internal/routing`, `internal/dnsmgr`, `internal/tun` | Routes, DNS, utun device |
@@ -167,6 +167,16 @@ the release. The tag becomes both `vpn version` and the version in the app foote
   `go run ./cmd/releasesign keygen`, matching `release.PublicKey`. `vpn update` refuses
   a release whose signature does not verify against the key compiled into the
   installed binary.
+- `install.sh` can additionally require a release signature that macOS's own `openssl`
+  can check (a fresh Mac has no `vpn` yet to verify ed25519 with). One-time setup:
+  1. `go run ./cmd/releasesign keygen-p256` prints the private key on stdout and the PEM
+     public key on stderr.
+  2. Store the private key as the `INSTALL_SIGNING_KEY` Actions secret.
+  3. Paste the public key into `INSTALL_PUBKEY` in `install.sh` and release. From then on
+     `install.sh` refuses any release without a valid `SHA256SUMS.p256.sig`.
+- The release job runs in the `release` environment. In the repository settings give it
+  required reviewers and restrict its deployment tags to `v*.*.*`, and protect the
+  `v*` tags, so that pushing a tag alone cannot sign and publish a release.
 - `install.sh`, the README and the landing page download from
   `releases/latest/download/<asset>`. Renaming an asset breaks those links until a
   release that carries the new name is published.

@@ -113,7 +113,13 @@ EOF
 
 # Ad-hoc signature over the finished bundle (keeps Apple Silicon happy about the added
 # resources). Not a Developer ID signature: first launch still needs right-click → Open.
-codesign --force --deep --sign - "$BUILD_DIR/$APP_NAME" >/dev/null 2>&1 || true
+# A failure here used to be swallowed (`|| true`), shipping an app whose seal
+# is broken; it is now fatal, and the result is verified.
+if ! codesign --force --deep --sign - "$BUILD_DIR/$APP_NAME"; then
+    echo "error: ad-hoc code signing of $APP_NAME failed" >&2
+    exit 1
+fi
+codesign --verify --deep --strict "$BUILD_DIR/$APP_NAME" || { echo "error: $APP_NAME does not verify after signing" >&2; exit 1; }
 
 echo "Built binary: $BUILD_DIR/$OUTPUT_NAME"
 echo "Built app:    $BUILD_DIR/$APP_NAME (v$VERSION)"

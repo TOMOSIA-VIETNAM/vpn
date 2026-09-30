@@ -6,6 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -101,5 +105,39 @@ func TestSemver(t *testing.T) {
 		if _, ok := ParseSemver(bad); ok {
 			t.Errorf("ParseSemver(%q) accepted", bad)
 		}
+	}
+}
+
+func TestP256SignatureVerifiesWithOpenSSL(t *testing.T) {
+	openssl, err := exec.LookPath("openssl")
+	if err != nil {
+		t.Skip("no openssl on PATH")
+	}
+	priv, pub, err := GenerateP256()
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := Format("v1.2.3", []string{"vpn-darwin-arm64"}, map[string]string{"vpn-darwin-arm64": strings.Repeat("ab", 32)})
+	sig, err := SignP256(priv, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	for name, data := range map[string][]byte{"pub.pem": []byte(pub), "sums": manifest, "sig": sig} {
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	verify := func() error {
+		return exec.Command(openssl, "dgst", "-sha256", "-verify", filepath.Join(dir, "pub.pem"), "-signature", filepath.Join(dir, "sig"), filepath.Join(dir, "sums")).Run()
+	}
+	if err := verify(); err != nil {
+		t.Fatalf("openssl rejects a valid signature: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sums"), append(manifest, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := verify(); err == nil {
+		t.Fatal("openssl accepted a signature over a modified manifest")
 	}
 }

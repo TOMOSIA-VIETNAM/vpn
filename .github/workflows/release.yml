@@ -31,6 +31,10 @@ jobs:
   release:
     needs: test
     runs-on: macos-latest
+    # Holds the signing secrets: give the "release" environment required
+    # reviewers and a tag rule in the repository settings so a pushed tag alone
+    # cannot sign and publish (see CONTRIBUTING.md, "Release signing").
+    environment: release
     permissions:
       contents: write
     steps:
@@ -74,6 +78,9 @@ jobs:
       - name: Sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          # Optional until install.sh's INSTALL_PUBKEY is set: signs SHA256SUMS
+          # a second time, with a key openssl can verify (see CONTRIBUTING.md).
+          INSTALL_SIGNING_KEY: ${{ secrets.INSTALL_SIGNING_KEY }}
         run: |
           go run ./cmd/releasesign sign -version "$GITHUB_REF_NAME" -out . \
             vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg
@@ -85,8 +92,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig \
+          assets=(vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig)
+          if [ -f SHA256SUMS.p256.sig ]; then assets+=(SHA256SUMS.p256.sig); fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" "${assets[@]}" \
             --draft --verify-tag --title "$GITHUB_REF_NAME" \
             --notes "Built from ${GITHUB_SHA}. SHA256SUMS is signed with ed25519 (SHA256SUMS.sig)."
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
