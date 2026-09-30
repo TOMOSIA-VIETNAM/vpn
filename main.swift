@@ -1033,6 +1033,14 @@ enum ConnectionNotifier {
         }
     }
 
+    private static let enabledKey = "notificationsEnabled"
+
+    /// The user's own switch, on top of the system permission; on by default.
+    static var enabled: Bool {
+        get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+    }
+
     enum Permission { case allowed, notAsked, denied }
 
     static func permission(_ done: @escaping @MainActor (Permission) -> Void) {
@@ -1059,13 +1067,74 @@ enum ConnectionNotifier {
 
     /// Reuses one identifier, so a newer status replaces the previous banner instead of stacking.
     static func post(title: String, body: String) {
-        guard available else { return }
+        guard available, enabled else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
         let request = UNNotificationRequest(identifier: "connection-status", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
+    }
+}
+
+struct UpdateDialog: View {
+    let title: String
+    let text: String
+    var note: String? = nil
+    var link: (label: String, url: URL)? = nil
+    let buttons: [String]
+    let choose: (Int) -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 64, height: 64)
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .multilineTextAlignment(.center)
+            Text(text)
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if let note {
+                Text(note)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let link {
+                Button(link.label) { NSWorkspace.shared.open(link.url) }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+            }
+            VStack(spacing: 8) {
+                ForEach(Array(buttons.enumerated()), id: \.offset) { index, label in
+                    Button(action: { choose(index) }) {
+                        Text(label).frame(maxWidth: .infinity)
+                    }
+                    .controlSize(.large)
+                    .modifier(DialogButtonStyle(primary: index == 0))
+                }
+            }
+            .padding(.top, 6)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+        .padding(.top, 8)
+        .frame(width: 300)
+    }
+}
+
+private struct DialogButtonStyle: ViewModifier {
+    let primary: Bool
+    func body(content: Content) -> some View {
+        if primary {
+            content.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+        } else {
+            content.buttonStyle(.bordered).keyboardShortcut(.cancelAction)
+        }
     }
 }
 
@@ -1538,6 +1607,7 @@ struct MenuBarPopupView: View {
     @State private var showingSettings = false
     @State private var editingProfile: VPNProfileItem?
     var listHeight: CGFloat? = nil
+    var width: CGFloat = 340
 
     @ViewBuilder private var profileList: some View {
         if vpn.profiles.isEmpty {
@@ -1739,7 +1809,7 @@ struct MenuBarPopupView: View {
             .padding(.trailing, Theme.inset - 4)
             .padding(.vertical, 8)
         }
-        .frame(width: 340)
+        .frame(width: width)
         .animation(.easeInOut(duration: 0.25), value: state)
         .animation(.easeInOut(duration: 0.25), value: vpn.activeAlert)
         .animation(.easeInOut(duration: 0.25), value: vpn.notice)
@@ -1822,6 +1892,7 @@ struct SettingsSheet: View {
     @ObservedObject var vpn = VPNManager.shared
     @State private var notifications: ConnectionNotifier.Permission?
     @State private var autoUpdate = AppUpdater.autoCheck
+    @State private var notificationsOn = ConnectionNotifier.enabled
 
     private func refreshNotifications() {
         ConnectionNotifier.permission { notifications = $0 }
@@ -1871,7 +1942,10 @@ struct SettingsSheet: View {
             ) {
                 switch notifications {
                 case .allowed:
-                    Text("On").font(.system(size: 12)).foregroundColor(Theme.secondaryText)
+                    Toggle("", isOn: Binding(get: { notificationsOn }, set: { notificationsOn = $0; ConnectionNotifier.enabled = $0 }))
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
                 case .notAsked:
                     Button("Turn On") { ConnectionNotifier.requestAuthorization(refreshNotifications) }
                         .controlSize(.small)
@@ -2247,35 +2321,64 @@ enum AppUpdater {
         }
     }
 
-    private static func inform(_ title: String, _ text: String) {
+    /// The menu bar popover (and a Settings sheet in it) would otherwise cover the alert.
+    private static func bringAlertToFront() {
+        AppDelegate.shared?.closePopoverNow()
         NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = text
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+    }
+
+    /// A floating window instead of NSAlert.runModal: it is not app-modal, so the menu bar item and
+    /// the rest of the app stay usable while it is open. (NSAlert's own buttons ignore real clicks
+    /// when it is shown without runModal.) Button 0 is the default, the last one answers Escape.
+    private static var dialog: NSPanel?
+
+    private static func present(title: String, text: String, note: String? = nil, link: (label: String, url: URL)? = nil,
+                                 buttons: [String], done: @escaping (Int) -> Void) {
+        dialog?.orderOut(nil)
+        let panel = NSPanel(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
+        panel.isReleasedWhenClosed = false
+        panel.level = .floating
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.contentView = NSHostingView(rootView: UpdateDialog(title: title, text: text, note: note, link: link, buttons: buttons) { index in
+            panel.orderOut(nil)
+            if dialog === panel { dialog = nil }
+            done(index)
+        })
+        panel.setContentSize(panel.contentView?.fittingSize ?? NSSize(width: 300, height: 260))
+        panel.center()
+        dialog = panel
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    private static func inform(_ title: String, _ text: String) {
+        bringAlertToFront()
+        present(title: title, text: text, buttons: ["OK"]) { _ in }
     }
 
     private static func prompt(latest: String, current: String) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "A new version of \(AppBranding.name) is available"
-        let restart = canSelfUpdate
-            ? "Updating disconnects the VPN, then \(AppBranding.name) restarts by itself."
-            : "Download it from the release page."
-        alert.informativeText = "\(AppBranding.name) \(latest.trimmingCharacters(in: CharacterSet(charactersIn: "v"))) is ready — you have \(current). \(restart)"
-        alert.addButton(withTitle: canSelfUpdate ? "Update" : "Open Release Page")
-        alert.addButton(withTitle: "Remind Me Later")
-        guard alert.runModal() == .alertFirstButtonReturn else {
-            UserDefaults.standard.set(Date().addingTimeInterval(remindDelay), forKey: remindAfterKey)
-            return
+        bringAlertToFront()
+        let version = latest.trimmingCharacters(in: CharacterSet(charactersIn: "v"))
+        let note = canSelfUpdate
+            ? "Updating disconnects the VPN, then the app restarts by itself."
+            : "Download the new version from the release page."
+        present(title: "\(AppBranding.name) \(version) is available",
+                text: "You're on \(current).",
+                note: note,
+                link: ("What's new", URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/tag/v\(version)")!),
+                buttons: [canSelfUpdate ? "Update" : "Open Release Page", "Remind Me Later"]) { index in
+            guard index == 0 else {
+                UserDefaults.standard.set(Date().addingTimeInterval(remindDelay), forKey: remindAfterKey)
+                return
+            }
+            UserDefaults.standard.removeObject(forKey: remindAfterKey)
+            guard canSelfUpdate else {
+                NSWorkspace.shared.open(URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest")!)
+                return
+            }
+            install(current: AppBranding.version ?? "0.0.0")
         }
-        UserDefaults.standard.removeObject(forKey: remindAfterKey)
-        guard canSelfUpdate else {
-            NSWorkspace.shared.open(URL(string: "https://github.com/TOMOSIA-VIETNAM/vpn/releases/latest")!)
-            return
-        }
-        install(current: AppBranding.version ?? "0.0.0")
     }
 
     private static func fail(_ message: String) {
@@ -2371,6 +2474,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     var popover = NSPopover()
     var mainWindow: NSWindow?
     private var linkStateObserver: AnyCancellable?
+    private var outsideClickMonitor: Any?
+    private var localClickMonitor: Any?
+
+    /// The popover's window, or a sheet (Settings, Add profile) attached to it.
+    private func isPopoverOrItsSheet(_ window: NSWindow?) -> Bool {
+        guard let window, let host = popover.contentViewController?.view.window else { return false }
+        var current: NSWindow? = window
+        while let w = current {
+            if w === host { return true }
+            current = w.sheetParent
+        }
+        return false
+    }
+
+    /// close() rather than performClose(): the latter is refused while a Settings sheet is attached.
+    /// No fade, so it doesn't lag behind the click.
+    func closePopoverNow() {
+        guard popover.isShown else { return }
+        popover.animates = false
+        popover.close()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
@@ -2400,6 +2524,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
         popover.behavior = .transient
         popover.delegate = self
+        // .transient misses clicks while a sheet is up or the app is inactive; close on any outside click.
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            MainActor.assumeIsolated { self?.closePopoverNow() }
+        }
+        // Clicks inside this app but outside the popover (an alert, the main window) don't reach the global monitor.
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            if let self, self.popover.isShown, !self.isPopoverOrItsSheet(event.window),
+               event.window !== self.statusItem?.button?.window {
+                self.closePopoverNow()
+            }
+            return event
+        }
         let popupController = NSHostingController(rootView: MenuBarPopupView())
         popover.contentViewController = popupController
         // Size to the view's actual content first, same reasoning as showMainWindow()
@@ -2442,7 +2578,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     func showMainWindow() {
         if popover.isShown { popover.performClose(nil) }
         if mainWindow == nil {
-            let controller = NSHostingController(rootView: MenuBarPopupView(listHeight: 380))
+            let controller = NSHostingController(rootView: MenuBarPopupView(listHeight: 380, width: 380))
             let window = NSWindow(contentViewController: controller)
             window.title = AppBranding.name
             window.styleMask = [.titled, .closable, .miniaturizable]
@@ -2513,6 +2649,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     func popoverDidClose(_ notification: Notification) {
+        popover.animates = true
         MainActor.assumeIsolated { VPNManager.shared.setPopoverVisible(false) }
     }
 
