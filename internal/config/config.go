@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Account is one login identity that can be used against a Profile's server.
@@ -47,7 +48,11 @@ type Config struct {
 	Verbose *bool `json:"verbose,omitempty"`
 	// KillSwitch, when on, blocks all non-local traffic while a full-tunnel
 	// VPN reconnects instead of letting it flow around the tunnel unprotected.
-	KillSwitch    bool                `json:"kill_switch,omitempty"`
+	KillSwitch bool `json:"kill_switch,omitempty"`
+	// StrictCrypto, when on, stops the client from offering legacy algorithms
+	// (DES/3DES, MD5, Diffie-Hellman groups under 2048 bits). A server that
+	// only speaks those is then refused instead of silently downgraded to.
+	StrictCrypto  bool                `json:"strict_crypto,omitempty"`
 	ActiveProfile string              `json:"active_profile,omitempty"`
 	Profiles      map[string]*Profile `json:"profiles"`
 
@@ -158,6 +163,11 @@ func Dir() (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("create config directory: %w", err)
 	}
+	// MkdirAll leaves an existing directory as it is; tighten one that an
+	// earlier version or a manual mkdir left group/world-accessible.
+	if fi, err := os.Stat(dir); err == nil && fi.Mode().Perm()&0o077 != 0 {
+		_ = os.Chmod(dir, 0o700)
+	}
 	return dir, nil
 }
 
@@ -209,11 +219,24 @@ func (c *Config) Save() error {
 	if err != nil {
 		return fmt.Errorf("encode config: %w", err)
 	}
-	tmp := c.path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	// A fresh, exclusively created 0600 temp file (never a fixed name another
+	// process could pre-create or symlink), then an atomic rename over the config.
+	f, err := os.CreateTemp(filepath.Dir(c.path), ".config-*.tmp")
+	if err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	tmp := f.Name()
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return fmt.Errorf("write config: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
 		return fmt.Errorf("write config: %w", err)
 	}
 	if err := os.Rename(tmp, c.path); err != nil {
+		os.Remove(tmp)
 		return fmt.Errorf("commit config: %w", err)
 	}
 	return nil
@@ -319,4 +342,27 @@ func (c *Config) ProfileNames() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// isWeakProposal reports whether a proposal string ("aes256-sha1-modp1024",
+// "3des-md5") names an algorithm StrictCrypto refuses.
+func isWeakProposal(p string) bool {
+	for _, part := range strings.Split(strings.ToLower(p), "-") {
+		switch part {
+		case "des", "3des", "md5", "modp768", "modp1024", "modp1536":
+			return true
+		}
+	}
+	return false
+}
+
+// StrongProposals returns the proposals StrictCrypto allows, in their original order.
+func StrongProposals(proposals []string) []string {
+	var out []string
+	for _, p := range proposals {
+		if !isWeakProposal(p) {
+			out = append(out, p)
+		}
+	}
+	return out
 }

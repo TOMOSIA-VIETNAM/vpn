@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"vpn/internal/bufpool"
 	"vpn/internal/ike"
 	"vpn/internal/l2tp"
 	"vpn/internal/ppp"
@@ -62,7 +63,9 @@ func (t *espTransport) Send(l2tpMsg []byte) error {
 	if t.live != nil {
 		t.live.tx.Add(1)
 	}
-	return sendWithRouteRetry(func() error { return t.mux.sendESP(pkt) }, t.repairRoute)
+	err = sendWithRouteRetry(func() error { return t.mux.sendESP(pkt) }, t.repairRoute)
+	bufpool.Put(pkt) // WriteToUDP has copied it into the kernel
+	return err
 }
 
 func (t *espTransport) SendIPFast(tunnelID, sessionID uint16, ipPkt []byte) error {
@@ -73,7 +76,9 @@ func (t *espTransport) SendIPFast(tunnelID, sessionID uint16, ipPkt []byte) erro
 	if t.live != nil {
 		t.live.tx.Add(1)
 	}
-	return sendWithRouteRetry(func() error { return t.mux.sendESP(pkt) }, t.repairRoute)
+	err = sendWithRouteRetry(func() error { return t.mux.sendESP(pkt) }, t.repairRoute)
+	bufpool.Put(pkt)
+	return err
 }
 
 // sendWithRouteRetry repairs a route lost by macOS's route reconciler and
@@ -108,8 +113,12 @@ func (t *espTransport) Recv(ctx context.Context) ([]byte, error) {
 // proof the server is alive — the watchdog relies on exactly this.
 func (t *espTransport) process(pkt []byte) (msg []byte, ok bool) {
 	if len(pkt) < 4 {
+		bufpool.Put(pkt)
 		return nil, false // e.g. the server's 1-byte NAT keepalive
 	}
+	// pkt came from the reader's pool and Decrypt copies what it returns, so the
+	// datagram is dead once this function is done with it.
+	defer bufpool.Put(pkt)
 	in := t.sas.inbound(binary.BigEndian.Uint32(pkt[0:4]))
 	if in == nil {
 		t.noteDrop("ESP packet for an unknown SPI dropped (an SA already deleted/expired, or not ours)", nil)

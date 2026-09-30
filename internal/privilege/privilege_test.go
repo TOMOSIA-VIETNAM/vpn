@@ -27,3 +27,30 @@ func TestElevateWithoutRootReportsErrNotPrivileged(t *testing.T) {
 		t.Fatalf("Elevate() = %v, want an error wrapping ErrNotPrivileged", err)
 	}
 }
+
+func TestSanitizeEnvKeepsOnlyAllowlist(t *testing.T) {
+	got := sanitizeEnv([]string{
+		"HOME=/Users/a", "PATH=/tmp/evil", "DYLD_INSERT_LIBRARIES=/tmp/x.dylib",
+		"LC_ALL=en_US.UTF-8", "HTTPS_PROXY=http://proxy:3128", "VPN_DAEMON_CHILD=1", "MallocStackLogging=1",
+	})
+	want := map[string]bool{
+		"HOME=/Users/a": true, "LC_ALL=en_US.UTF-8": true, "VPN_DAEMON_CHILD=1": true,
+		"HTTPS_PROXY=http://proxy:3128": true, "PATH=" + safePath: true,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("sanitizeEnv() = %v, want exactly %d entries", got, len(want))
+	}
+	for _, kv := range got {
+		if !want[kv] {
+			t.Errorf("unexpected variable kept: %q", kv)
+		}
+	}
+}
+
+func TestSanitizeEnvNoopWithoutSetuid(t *testing.T) {
+	t.Setenv("VPN_TEST_SENTINEL", "1")
+	SanitizeEnv()
+	if os.Getenv("VPN_TEST_SENTINEL") != "1" {
+		t.Fatal("SanitizeEnv cleared the environment of a process that is not setuid-root")
+	}
+}

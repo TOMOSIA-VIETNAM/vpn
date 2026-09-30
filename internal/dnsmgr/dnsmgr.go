@@ -21,7 +21,6 @@ import (
 const (
 	vpnServiceID = "com.tms.vpn.dns"
 	dnsStateKey  = "State:/Network/Service/" + vpnServiceID + "/DNS"
-	globalDNSKey = "State:/Network/Global/DNS"
 )
 
 // Snapshot is the DNS configuration state for the VPN session.
@@ -159,50 +158,30 @@ func (s *Snapshot) Apply(servers []string) error {
 	return nil
 }
 
-// Restore removes the dynamic scutil DNS keys and cleans any legacy networksetup DNS.
+// Restore removes the DNS entry Apply added, and nothing else. The entry lives
+// only in the in-memory DynamicStore, so removing that one key puts macOS back
+// exactly where it was.
+//
+// It deliberately never touches networksetup: an earlier version reset the
+// physical service's DNS to "Empty" here "to clean up legacy settings", which
+// wiped the DNS servers the user had set themselves (1.1.1.1, AdGuard, a
+// corporate resolver) on every disconnect and on every `repair`. Nor does it
+// remove State:/Network/Global/DNS: that key belongs to macOS (configd
+// derives it from the primary service), not to this client.
 func (s *Snapshot) Restore() error {
-	var script strings.Builder
-	script.WriteString(fmt.Sprintf("remove %s\n", dnsStateKey))
-	script.WriteString(fmt.Sprintf("remove %s\n", globalDNSKey))
-
 	cmd := exec.Command(sysbin.Scutil)
-	cmd.Stdin = strings.NewReader(script.String())
-	_ = cmd.Run()
-
-	// Flush cache after removing VPN DNS keys so macOS reverts immediately to physical interface DNS
+	cmd.Stdin = strings.NewReader(restoreScript())
+	out, err := cmd.CombinedOutput()
+	// Flush so lookups revert to the physical interface's DNS immediately,
+	// even when the removal reported a problem.
 	FlushCache()
-
-	// Clean up any legacy persistent DNS left on the Wi-Fi/Ethernet service by previous versions
-	if s.Service != "" {
-		out, err := exec.Command(sysbin.Networksetup, "-getdnsservers", s.Service).Output()
-		if err == nil {
-			text := strings.TrimSpace(string(out))
-			if text != "" && !strings.Contains(text, "aren't any DNS Servers") {
-				_ = exec.Command(sysbin.Networksetup, "-setdnsservers", s.Service, "Empty").Run()
-			}
-		}
+	if err != nil {
+		return fmt.Errorf("remove dynamic DNS via scutil: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-// CleanPersistentSettings removes any leftover persistent DNS settings from all network services.
-func CleanPersistentSettings() {
-	out, err := exec.Command(sysbin.Networksetup, "-listallnetworkservices").Output()
-	if err != nil {
-		return
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		svc := strings.TrimSpace(line)
-		if svc == "" || strings.Contains(svc, "*") {
-			continue
-		}
-		cur, err := exec.Command(sysbin.Networksetup, "-getdnsservers", svc).Output()
-		if err == nil {
-			text := strings.TrimSpace(string(cur))
-			if text != "" && !strings.Contains(text, "aren't any DNS Servers") {
-				_ = exec.Command(sysbin.Networksetup, "-setdnsservers", svc, "Empty").Run()
-			}
-		}
-	}
-	FlushCache()
+// restoreScript is the scutil input Restore runs.
+func restoreScript() string {
+	return fmt.Sprintf("remove %s\n", dnsStateKey)
 }

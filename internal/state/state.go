@@ -8,7 +8,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
+
+	"vpn/internal/privilege"
 )
 
 // Phase mirrors the engine's coarse connection lifecycle, independent of the
@@ -105,14 +109,40 @@ func (s *State) Save() error {
 		return err
 	}
 	tmp := p + ".tmp"
-	// World-readable on purpose: the menu bar app polls this file directly
-	// as the unprivileged user. It holds no secrets — profile/account
-	// names, server host, tunnel address and DNS snapshot only.
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	// Readable by the menu bar app, which polls this file as the unprivileged
+	// installing user, and by nobody else: the profile, account and server
+	// names are nobody else's business on a shared Mac. Without an owner file
+	// (a plain `sudo vpn` run) fall back to world-readable so the app still works.
+	mode, owner := os.FileMode(0o644), -1
+	if uid, ok := ownerUID(); ok {
+		mode, owner = 0o600, uid
+	}
+	if err := os.WriteFile(tmp, data, mode); err != nil {
 		return err
 	}
-	_ = os.Chmod(tmp, 0o644)
+	if err := os.Chmod(tmp, mode); err != nil { // WriteFile's mode is masked by umask and ignored for an existing file
+		return err
+	}
+	if owner >= 0 {
+		if err := os.Chown(tmp, owner, -1); err != nil {
+			_ = os.Remove(tmp)
+			return err
+		}
+	}
 	return os.Rename(tmp, p)
+}
+
+// ownerUID is the uid of whoever installed vpn (see privilege.OwnerFile).
+func ownerUID() (int, bool) {
+	data, err := os.ReadFile(privilege.OwnerFile)
+	if err != nil {
+		return 0, false
+	}
+	uid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || uid < 0 {
+		return 0, false
+	}
+	return uid, true
 }
 
 // Clear resets to DISCONNECTED, used once disconnect/repair has actually

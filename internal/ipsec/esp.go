@@ -20,6 +20,8 @@ import (
 	"hash"
 	"math"
 	"sync"
+
+	"vpn/internal/bufpool"
 )
 
 // Cipher is the ESP encryption transform of an SA.
@@ -174,7 +176,7 @@ func (sa *SA) Encrypt(payload []byte, nextHeader byte) ([]byte, error) {
 	plain[len(payload)+padNeeded] = byte(padNeeded)
 	plain[len(payload)+padNeeded+1] = nextHeader
 
-	out := make([]byte, 8+blockLen+plainLen+sa.icvLen)
+	out := bufpool.Get(8 + blockLen + plainLen + sa.icvLen)
 	binary.BigEndian.PutUint32(out[0:4], sa.SPI)
 	binary.BigEndian.PutUint32(out[4:8], seq)
 	copy(out[8:8+blockLen], iv)
@@ -240,7 +242,7 @@ func (sa *SA) EncryptIPPacket(srcPort, dstPort, tunnelID, sessionID uint16, ipPk
 	plain[payloadLen+padNeeded+1] = 17 // protoUDP
 
 	outLen := 8 + blockLen + plainLen + sa.icvLen
-	out := make([]byte, outLen)
+	out := bufpool.Get(outLen)
 	binary.BigEndian.PutUint32(out[0:4], sa.SPI)
 	binary.BigEndian.PutUint32(out[4:8], seq)
 	copy(out[8:8+blockLen], iv)

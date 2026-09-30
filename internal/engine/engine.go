@@ -13,11 +13,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"vpn/internal/bufpool"
 	"vpn/internal/dnsmgr"
 	"vpn/internal/ike"
 	"vpn/internal/ipsec"
@@ -320,6 +322,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 	var startReauth func(ctx context.Context, giveUp func(error))
 	var sas *saSet              // set once Quick Mode succeeds
 	var localIPOfSession net.IP // our outbound address for this attempt
+	var weakCrypto string       // warning about legacy algorithms this attempt negotiated, "" if none
 	live := newLiveness()
 
 	// Kill switch: while reconnecting a full tunnel, routes are not restored
@@ -477,6 +480,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			restoreRoutes()
 			return fail("IPSEC_FAILURE", "Quick Mode (ESP SA) negotiation", err)
 		}
+		weakCrypto = weakCryptoWarning(sess.Transform, qm.Outbound.Transform)
 		vpnlog.Info("ENGINE", "Quick Mode established", vpnlog.Fields{"in_spi": fmt.Sprintf("%08x", qm.Inbound.SPI), "out_spi": fmt.Sprintf("%08x", qm.Outbound.SPI), "l2tp_port": sess.L2TPPort})
 
 		sas, err = newSASet(qm)
@@ -678,6 +682,10 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 			vpnlog.Error("ENGINE", warnNoPushedDNS, nil)
 		}
 
+		if weakCrypto != "" && !slices.Contains(st.Warnings, weakCrypto) {
+			st.Warnings = append(st.Warnings, weakCrypto)
+			vpnlog.Error("ENGINE", weakCrypto, nil)
+		}
 		st.Phase = state.PhaseConnected
 		st.FailStage, st.FailDetail = "", "" // a reconnect attempt's last error is history once it worked
 		st.Reconnecting = false              // up again; st.Reconnects keeps the count
@@ -865,6 +873,24 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 	})
 }
 
+// weakCryptoWarning describes legacy algorithms the server made this session
+// use (see ike.WeakReasons), or "" when there are none. The warning rides in
+// state.Warnings, so the menu bar app and `vpn status` show it.
+func weakCryptoWarning(ikeT, espT ike.Transform) string {
+	var weak []string
+	seen := map[string]bool{}
+	for _, r := range append(ike.WeakReasons(ikeT, true), ike.WeakReasons(espT, false)...) {
+		if !seen[r] {
+			seen[r] = true
+			weak = append(weak, r)
+		}
+	}
+	if len(weak) == 0 {
+		return ""
+	}
+	return "The VPN server negotiated weak encryption (" + strings.Join(weak, ", ") + "). Ask its administrator to enable AES with SHA-256 and a 2048-bit group, or turn on Strict encryption to refuse such servers"
+}
+
 // warnNoPushedDNS is surfaced by connect/status when the LNS assigned no DNS
 // servers under full tunnel (see Connect).
 const warnNoPushedDNS = "VPN server pushed no DNS servers: DNS lookups keep using this network's resolvers, and any on the local network bypass the VPN"
@@ -913,6 +939,11 @@ func dnsServerStrings(ipcp ppp.NegotiatedIPCP) []string {
 	return out
 }
 
+// sendQueueLen bounds the utun -> ESP hand-off. A deeper queue only adds
+// latency (bufferbloat) and pinned memory: when it is full the reader blocks
+// and the kernel's own utun buffer applies the back-pressure TCP reacts to.
+const sendQueueLen = 512
+
 // utunReadBuf is the largest packet read from utun in one call. The tunnel MTU
 // is 1280–1400, so 16 KiB is generous; 64 KiB just held memory for nothing.
 const utunReadBuf = 16 << 10
@@ -947,7 +978,7 @@ func runDataPlane(ctx context.Context, dev *tun.Device, pppT *pppOverL2TP, lcpMa
 	}()
 
 	// utun -> Send Queue (buffered) -> ESP send worker
-	sendCh := make(chan []byte, 4096)
+	sendCh := make(chan []byte, sendQueueLen)
 
 	// Worker: Encrypts and writes UDP packets as fast as CPU/socket allows
 	go func() {
@@ -960,7 +991,9 @@ func runDataPlane(ctx context.Context, dev *tun.Device, pppT *pppOverL2TP, lcpMa
 				if !ok {
 					return
 				}
-				if err := pppT.SendIP(pkt); err != nil {
+				err := pppT.SendIP(pkt)
+				bufpool.Put(pkt) // SendIP encrypts into its own buffer; nothing keeps pkt
+				if err != nil {
 					isFatal, logIt := sends.fail(time.Now())
 					if logIt {
 						vpnlog.Error("ENGINE", "send failed — dropping packets until it recovers", vpnlog.Fields{"err": err})
@@ -1008,7 +1041,7 @@ func runDataPlane(ctx context.Context, dev *tun.Device, pppT *pppOverL2TP, lcpMa
 			if n == 0 || buf[0]>>4 != 4 {
 				continue
 			}
-			pkt := make([]byte, n)
+			pkt := bufpool.Get(n)
 			copy(pkt, buf[:n])
 			select {
 			case sendCh <- pkt:
@@ -1322,8 +1355,7 @@ func Repair() error {
 		return fmt.Errorf("connect (pid %d) is still running — use `vpn disconnect` instead", st.PID)
 	}
 	return privilege.Elevate(func() error {
-		dnsmgr.CleanPersistentSettings()
-		_ = (&dnsmgr.Snapshot{}).Restore()
+		_ = (&dnsmgr.Snapshot{}).Restore() // only the DNS entry this client added
 		if st.Server == "" {
 			fmt.Println("Cleaned any leftover DNS and routes — network is clean.")
 			return state.Clear()

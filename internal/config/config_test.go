@@ -129,3 +129,20 @@ func TestDisplayNameLabelAndSurvivesReAdd(t *testing.T) {
 		t.Fatalf("re-adding the profile lost the display name (%q)", got)
 	}
 }
+
+func TestStrongProposalsDropsLegacyAlgorithms(t *testing.T) {
+	in := []string{"aes256-sha256-modp2048", "3des-sha1-modp2048", "aes256-md5-modp1024", "aes128-sha1-modp1024", "aes256-sha1-modp1536", "aes256-sha256", "3des-md5", "aes128-sha256-modp3072"}
+	got := StrongProposals(in)
+	want := []string{"aes256-sha256-modp2048", "aes256-sha256", "aes128-sha256-modp3072"}
+	if len(got) != len(want) {
+		t.Fatalf("StrongProposals = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("StrongProposals = %v, want %v", got, want)
+		}
+	}
+	if len(StrongProposals(DefaultIKEProposals)) == 0 || len(StrongProposals(DefaultESPProposals)) == 0 {
+		t.Fatal("the default proposals must leave something once legacy algorithms are removed")
+	}
+}

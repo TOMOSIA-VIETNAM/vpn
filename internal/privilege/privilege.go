@@ -119,3 +119,55 @@ func Elevate(fn func() error) error {
 	defer func() { _ = syscall.Seteuid(realUID) }()
 	return fn()
 }
+
+// safePath is the only PATH a setuid-root run keeps. Every tool this client
+// runs is invoked by absolute path (see internal/sysbin), so nothing should
+// consult it; it is set anyway so a tool that spawns another does not search
+// directories the invoking user controls.
+const safePath = "/usr/bin:/bin:/usr/sbin:/sbin"
+
+// keepEnv are the only variables a setuid-root run passes on. HOME locates the
+// invoking user's config, the rest only affect message language and terminal
+// output, the proxy variables keep `vpn update` working behind a proxy, and VPN_DAEMON_CHILD marks the re-exec'd background connect (see
+// cli.startDaemon).
+var keepEnv = map[string]bool{
+	"HOME": true, "USER": true, "LOGNAME": true, "TERM": true, "TMPDIR": true,
+	"LANG": true, "VPN_DAEMON_CHILD": true,
+	// `vpn update` and the app's downloads honour the user's proxy settings.
+	"HTTP_PROXY": true, "HTTPS_PROXY": true, "ALL_PROXY": true, "NO_PROXY": true,
+	"http_proxy": true, "https_proxy": true, "all_proxy": true, "no_proxy": true,
+}
+
+// sanitizeEnv returns env reduced to keepEnv (plus every LC_* locale
+// variable) and a fixed PATH.
+func sanitizeEnv(env []string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		if keepEnv[name] || strings.HasPrefix(name, "LC_") {
+			out = append(out, kv)
+		}
+	}
+	return append(out, "PATH="+safePath)
+}
+
+// SanitizeEnv strips the environment of a setuid-root process to the small
+// allowlist above. The invoking user controls the whole environment, and this
+// process runs `route`, `scutil`, `networksetup` and friends with effective
+// root: without this, whatever the user exported (DYLD_*, malloc and locale
+// debugging switches, a hostile PATH) reaches
+// them. It is a no-op unless this executable really is setuid-root, so
+// `sudo vpn`, plain user runs and tests keep their environment. Call it right
+// after CheckOwner, before anything spawns a child.
+func SanitizeEnv() {
+	if os.Geteuid() != 0 || realUID == 0 {
+		return
+	}
+	env := sanitizeEnv(os.Environ())
+	os.Clearenv()
+	for _, kv := range env {
+		if name, val, ok := strings.Cut(kv, "="); ok {
+			_ = os.Setenv(name, val)
+		}
+	}
+}

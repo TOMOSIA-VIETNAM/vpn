@@ -163,6 +163,7 @@ type connectTarget struct {
 	mtu         int  // config.EffectiveMTU: the global setting, else the profile's
 	verbose     bool // config.EffectiveVerbose: the global logging setting
 	killSwitch  bool // config.KillSwitch: block traffic while reconnecting
+	strict      bool // config.StrictCrypto: offer no legacy algorithms
 }
 
 // resolveTarget resolves the profile and account a connect would use —
@@ -180,7 +181,7 @@ func resolveTarget(profileName, accountName string) (*connectTarget, error) {
 	if err != nil {
 		return nil, fmt.Errorf("profile %q: %w — run `vpn account add %s <username> --default`", pName, err, pName)
 	}
-	return &connectTarget{profileName: pName, profile: p, accountName: aName, mtu: cfg.EffectiveMTU(p), verbose: cfg.EffectiveVerbose(), killSwitch: cfg.KillSwitch}, nil
+	return &connectTarget{profileName: pName, profile: p, accountName: aName, mtu: cfg.EffectiveMTU(p), verbose: cfg.EffectiveVerbose(), killSwitch: cfg.KillSwitch, strict: cfg.StrictCrypto}, nil
 }
 
 // checkSecretsStored confirms the PSK and password exist in Keychain
@@ -228,6 +229,14 @@ func doConnect(profileName, accountName string, timeout time.Duration, verbose b
 		return t.errNoPassword(err)
 	}
 
+	ike, esp := p.IKEProposals, p.ESPProposals
+	if t.strict {
+		ike, esp = config.StrongProposals(ike), config.StrongProposals(esp)
+		if len(ike) == 0 || len(esp) == 0 {
+			return fmt.Errorf("strict encryption is on, but profile %q offers only legacy algorithms (3DES, MD5, DH under 2048 bits) — edit its proposals or run `vpn strict off`", pName)
+		}
+	}
+
 	return engine.Connect(engine.Config{
 		ProfileName:  pName,
 		Server:       p.Server,
@@ -235,8 +244,8 @@ func doConnect(profileName, accountName string, timeout time.Duration, verbose b
 		AccountName:  aName,
 		Password:     password,
 		PSK:          psk,
-		IKEProposals: p.IKEProposals,
-		ESPProposals: p.ESPProposals,
+		IKEProposals: ike,
+		ESPProposals: esp,
 		MTU:          t.mtu,
 		FullTunnel:   p.FullTunnel,
 		Timeout:      timeout,

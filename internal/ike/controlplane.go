@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"vpn/internal/bufpool"
 	"vpn/internal/vpnlog"
 )
 
@@ -90,7 +91,7 @@ func (s *Session) SendNATKeepalive() error {
 // handleInformational. Call once, right after the first Quick Mode.
 func (s *Session) StartDataPhase(ctx context.Context, events Events) {
 	dp := &dataPlane{
-		espIn:   make(chan []byte, 32768),
+		espIn:   make(chan []byte, espQueueLen),
 		done:    make(chan struct{}),
 		events:  events,
 		pending: map[uint32]chan []byte{},
@@ -99,6 +100,12 @@ func (s *Session) StartDataPhase(ctx context.Context, events Events) {
 	s.dp = dp
 	go s.readLoop(ctx, dp)
 }
+
+// espQueueLen bounds ESP packets buffered between the socket reader and the
+// decrypt loop. It used to be 32768 (~50 MB of pinned packets in a burst, and
+// seconds of queueing delay); the kernel's 8 MB socket buffer already absorbs
+// bursts, and a full queue just makes the reader wait.
+const espQueueLen = 1024
 
 func (s *Session) readLoop(ctx context.Context, dp *dataPlane) {
 	defer close(dp.done)
@@ -139,7 +146,10 @@ func (s *Session) readLoop(ctx context.Context, dp *dataPlane) {
 		if !from.IP.Equal(s.serverIP) {
 			continue
 		}
-		pkt := append([]byte(nil), buf[:n]...)
+		// Pooled: the consumer (engine espTransport.process) returns ESP packets
+		// once decrypted. IKE messages and dropped packets are simply left to the GC.
+		pkt := bufpool.Get(n)
+		copy(pkt, buf[:n])
 		if ike, ok := s.ikeMessage(pkt); ok {
 			s.dispatchIKE(ike)
 			continue

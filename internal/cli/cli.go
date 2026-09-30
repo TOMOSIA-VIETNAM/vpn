@@ -46,6 +46,8 @@ func Run(args []string) int {
 		err = cmdVerbose(rest)
 	case "killswitch":
 		err = cmdKillSwitch(rest)
+	case "strict":
+		err = cmdStrict(rest)
 	case "diagnose":
 		err = cmdDiagnose(rest)
 	case "connect":
@@ -92,6 +94,7 @@ Usage:
   vpn verbose [on|off]              show / set detailed per-packet logging for every connection (default off; applies on the next connect)
   vpn killswitch [on|off]           block all non-local traffic while a full-tunnel VPN reconnects (default off; applies on the next connect)
   vpn diagnose [--profile name] [--server host] [--json]
+  vpn strict [on|off]               refuse legacy algorithms (3DES, MD5, DH under 2048 bits) instead of offering them (default off; applies on the next connect)
   vpn connect [--profile name] [--account name] [--timeout 30s] [--verbose] [--force] [--rekey-after 2m]  (always runs in the background)
   vpn disconnect
   vpn status [--json]
@@ -468,6 +471,42 @@ func cmdKillSwitch(args []string) error {
 		fmt.Printf("Kill switch %s (applies on the next connect; only for full-tunnel profiles).\n", args[0])
 		if cfg.KillSwitch {
 			fmt.Println("While the VPN reconnects, internet traffic is blocked. If it ever gets stuck: `vpn disconnect` or `vpn repair`.")
+		}
+		return nil
+	}
+	return usage
+}
+
+// cmdStrict shows or sets whether legacy algorithms are withheld from the proposals.
+func cmdStrict(args []string) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	usage := fmt.Errorf("usage: vpn strict [on|off]")
+	switch len(args) {
+	case 0:
+		if cfg.StrictCrypto {
+			fmt.Println("on")
+		} else {
+			fmt.Println("off")
+		}
+		return nil
+	case 1:
+		switch args[0] {
+		case "on", "true", "1":
+			cfg.StrictCrypto = true
+		case "off", "false", "0":
+			cfg.StrictCrypto = false
+		default:
+			return usage
+		}
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		fmt.Printf("Strict encryption %s (applies on the next connect).\n", args[0])
+		if cfg.StrictCrypto {
+			fmt.Println("Servers that only support 3DES, MD5 or DH groups under 2048 bits will be refused.")
 		}
 		return nil
 	}
