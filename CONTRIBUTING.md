@@ -50,6 +50,18 @@ prompt (`CLIInstaller` in `main.swift`).
 | `install.sh`, `install-arm64.sh`, `install-intel.sh`, `install-local.sh`, `uninstall.sh` | Install / uninstall |
 | `webapp/` | Landing page (Next.js static export, deployed on Vercel) |
 
+### In-app updates
+
+On launch (after a 3 s delay) the app runs `vpn update --check`. If the signed release is
+newer than the app's version it offers **Update** or **Remind Me Later** (quiet for 24 h).
+Settings → Software update turns the check off (on by default) or runs it now.
+
+**Update** runs `vpn update --download-app`, which verifies the signed manifest and the zip's
+SHA-256, unpacks next to the app, quits the app (which disconnects an active VPN) and lets a
+detached script swap the bundle once the old PID has exited and start the new app as a fresh
+process. On that launch `CLIInstaller` upgrades the bundled `vpn` (one admin prompt). Signature
+checks stay in Go; `AppUpdater` in `main.swift` never installs unverified files.
+
 ## Requirements
 
 - macOS on Apple Silicon or Intel.

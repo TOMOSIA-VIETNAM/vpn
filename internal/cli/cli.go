@@ -98,6 +98,8 @@ Usage:
   vpn repair
   vpn logs [-f]
   vpn update [--force]              install the latest signed release if newer (--force: reinstall/downgrade)
+  vpn update --check                print the latest signed release version as JSON (used by the app)
+  vpn update --download-app <path>  save the verified app zip of the latest release (used by the app)
   vpn uninstall [-y]                remove the CLI, log, state, all profiles/accounts (Keychain included); not the menu bar app
   vpn version
 
