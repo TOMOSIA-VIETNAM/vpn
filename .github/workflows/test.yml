@@ -31,11 +31,17 @@ jobs:
           unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then echo "Not gofmt'ed:"; echo "$unformatted"; exit 1; fi
 
+      # Scoped to our own packages: webapp/node_modules ships a stray Go package.
       - name: go vet
-        run: go vet ./...
+        run: go vet ./cmd/... ./internal/...
 
-      - name: go test
-        run: go test ./...
+      - name: go test (race detector)
+        run: go test -race ./cmd/... ./internal/...
+
+      # Known-vulnerability scan of the Go dependencies and the standard library
+      # actually reachable from this code.
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./cmd/... ./internal/...
 
   # The menu bar app only compiles with Xcode 26 / Swift 6, which developer
   # machines may not have — so build it here on every change, catching
@@ -55,6 +61,11 @@ jobs:
       # Also compiles the CLI that build.sh bundles into the app.
       - name: Build TOMOSIA VPN.app
         run: bash build.sh
+
+      # Version ordering, the files the CLI writes, and the bundle signature check
+      # that guards the helper install.
+      - name: Test the app logic
+        run: bash test-app.sh
 
       - name: Build TOMOSIA-VPN.dmg
         run: bash make-dmg.sh

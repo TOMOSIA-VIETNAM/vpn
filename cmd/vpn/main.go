@@ -25,6 +25,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// The invoking user controls the whole environment; a setuid-root
+	// process must not pass it on to the tools it runs as root.
+	privilege.SanitizeEnv()
+
 	// Must run before any subcommand dispatch: if this binary is installed
 	// setuid-root, every subcommand should start unprivileged by default
 	// and only the specific operations that need root (see

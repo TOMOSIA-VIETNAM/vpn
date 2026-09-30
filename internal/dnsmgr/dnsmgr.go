@@ -14,6 +14,7 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"time"
 
 	"vpn/internal/sysbin"
 )
@@ -29,6 +30,7 @@ type Snapshot struct {
 	Service  string
 	Servers  []string
 	applied  bool
+	pushed   []string // the servers Apply installed, for VerifyPrimary
 	TunIface string
 }
 
@@ -135,6 +137,7 @@ func (s *Snapshot) Apply(servers []string) error {
 		return nil
 	}
 	serverList := strings.Join(ordered, " ")
+	s.pushed = ordered
 
 	var script strings.Builder
 	// Service-level DNS entry (bound to the utun interface with priority order)
@@ -159,50 +162,97 @@ func (s *Snapshot) Apply(servers []string) error {
 	return nil
 }
 
-// Restore removes the dynamic scutil DNS keys and cleans any legacy networksetup DNS.
-func (s *Snapshot) Restore() error {
-	var script strings.Builder
-	script.WriteString(fmt.Sprintf("remove %s\n", dnsStateKey))
-	script.WriteString(fmt.Sprintf("remove %s\n", globalDNSKey))
+// Applied returns the DNS servers Apply installed.
+func (s *Snapshot) Applied() []string { return s.pushed }
 
+// Restore removes the dynamic DNS keys: the entry Apply added and the computed
+// global key, which makes macOS rebuild its resolver list from the physical
+// service at once. Both live only in the in-memory DynamicStore. It never
+// touches networksetup, so DNS servers the user set on the physical service
+// (1.1.1.1, AdGuard, a corporate resolver) survive a disconnect and a `repair`.
+func (s *Snapshot) Restore() error {
 	cmd := exec.Command(sysbin.Scutil)
-	cmd.Stdin = strings.NewReader(script.String())
+	cmd.Stdin = strings.NewReader(restoreScript())
 	_ = cmd.Run()
 
 	// Flush cache after removing VPN DNS keys so macOS reverts immediately to physical interface DNS
 	FlushCache()
+	return nil
+}
 
-	// Clean up any legacy persistent DNS left on the Wi-Fi/Ethernet service by previous versions
-	if s.Service != "" {
-		out, err := exec.Command(sysbin.Networksetup, "-getdnsservers", s.Service).Output()
-		if err == nil {
-			text := strings.TrimSpace(string(out))
-			if text != "" && !strings.Contains(text, "aren't any DNS Servers") {
-				_ = exec.Command(sysbin.Networksetup, "-setdnsservers", s.Service, "Empty").Run()
+// restoreScript is the scutil input Restore runs.
+func restoreScript() string {
+	return fmt.Sprintf("remove %s\nremove %s\n", dnsStateKey, globalDNSKey)
+}
+
+// defaultResolverServers returns the nameservers of the resolver macOS uses
+// for an ordinary name: the first "resolver #N" block of `scutil --dns` that
+// has nameservers and is not tied to one domain (the mDNS and reverse-lookup
+// entries are). scutil lists resolvers in the order they are consulted, so
+// this does not depend on which optional fields (order, if_index) a given
+// macOS version prints. Only the main section is read, not the per-interface
+// "for scoped queries" one.
+func defaultResolverServers(out string) []string {
+	var servers []string
+	domain, inBlock := false, false
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "DNS configuration (for scoped queries)"):
+			if !domain {
+				return servers
+			}
+			return nil
+		case strings.HasPrefix(line, "resolver #"):
+			if inBlock && !domain && len(servers) > 0 {
+				return servers
+			}
+			servers, domain, inBlock = nil, false, true
+		case !inBlock:
+		case strings.HasPrefix(line, "domain"):
+			domain = true
+		case strings.HasPrefix(line, "nameserver["):
+			if _, v, ok := strings.Cut(line, ":"); ok {
+				servers = append(servers, strings.TrimSpace(v))
 			}
 		}
+	}
+	if inBlock && !domain {
+		return servers
 	}
 	return nil
 }
 
-// CleanPersistentSettings removes any leftover persistent DNS settings from all network services.
-func CleanPersistentSettings() {
-	out, err := exec.Command(sysbin.Networksetup, "-listallnetworkservices").Output()
-	if err != nil {
-		return
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		svc := strings.TrimSpace(line)
-		if svc == "" || strings.Contains(svc, "*") {
-			continue
-		}
-		cur, err := exec.Command(sysbin.Networksetup, "-getdnsservers", svc).Output()
-		if err == nil {
-			text := strings.TrimSpace(string(cur))
-			if text != "" && !strings.Contains(text, "aren't any DNS Servers") {
-				_ = exec.Command(sysbin.Networksetup, "-setdnsservers", svc, "Empty").Run()
+// answersFirst reports whether the resolver macOS asks first for an ordinary
+// name is one of pushed. If it is not, lookups go to the physical network's
+// DNS and are visible to it — a DNS leak.
+func answersFirst(out string, pushed []string) bool {
+	for _, s := range defaultResolverServers(out) {
+		for _, p := range pushed {
+			if s == p {
+				return true
 			}
 		}
 	}
-	FlushCache()
+	return false
+}
+
+// VerifyPrimary reports whether the pushed DNS servers are the ones macOS asks
+// first, retrying briefly because configd publishes the new entry
+// asynchronously. An error means the check itself could not run, which callers
+// must not treat as a leak.
+func VerifyPrimary(pushed []string) (bool, error) {
+	var lastErr error
+	for i := 0; i < 5; i++ {
+		out, err := exec.Command(sysbin.Scutil, "--dns").Output()
+		if err != nil {
+			lastErr = err
+		} else if answersFirst(string(out), pushed) {
+			return true, nil
+		} else {
+			lastErr = nil
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	return false, lastErr
 }

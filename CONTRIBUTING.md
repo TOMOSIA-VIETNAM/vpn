@@ -10,17 +10,18 @@ TOMOSIA VPN is two programs:
 | Part | Source | Installed at |
 |---|---|---|
 | `vpn` CLI and connection engine (IKEv1, ESP, L2TP, PPP), in Go | `cmd/vpn`, `internal/` | `/usr/local/bin/vpn`, setuid root |
-| Menu bar app, in SwiftUI (one file) | `main.swift` | `/Applications/TOMOSIA VPN.app` |
+| Menu bar app, in SwiftUI | `app/` | `/Applications/TOMOSIA VPN.app` |
 
 The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
 files the CLI writes. Its only network request is the public IP shown while
 connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
-`main.swift`).
+`app/`).
 
 | File | Written by | Holds |
 |---|---|---|
-| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, verbose flag |
-| `/var/run/vpn/state.json` | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
+| `~/.config/vpn/config.json` | CLI | Profiles, accounts, MTU, kill switch, strict encryption (`vpn strict`), verbose flag |
+| `/var/run/vpn/state.json` (0600, owned by the installing user) | Connection daemon | Phase (`CONNECTING` / `CONNECTED` / `FAILED` / `DISCONNECTED`), tunnel IP, failure stage and detail |
+| `/var/run/vpn/state.root.json` (0600, owned by root) | Connection daemon | The same state, for the CLI's privileged steps: `disconnect` and `repair` act on the process ID, server and DNS service recorded here, never on the user-writable `state.json` |
 | `/var/log/vpn.log` | CLI and daemon | Log (`vpn logs`) |
 | macOS Keychain | CLI | Passwords and pre-shared keys |
 
@@ -30,21 +31,23 @@ it acts for.
 
 A `.dmg` install has no installer step, so the app carries a copy of `vpn` in
 `Contents/Resources` and installs it on first launch after an administrator
-prompt (`CLIInstaller` in `main.swift`).
+prompt (`CLIInstaller` in `app/`).
 
 ### Repository layout
 
 | Path | What |
 |---|---|
 | `cmd/vpn` | CLI entry point |
-| `cmd/releasesign` | Release signing tool (`keygen`, `sign`) |
+| `cmd/releasesign` | Release signing tool (`keygen`, `keygen-p256`, `sign`) |
 | `internal/engine` | Connect / reconnect loop, liveness, rekeying, network events |
 | `internal/ike`, `internal/ipsec`, `internal/l2tp`, `internal/ppp` | Protocol stages |
 | `internal/routing`, `internal/dnsmgr`, `internal/tun` | Routes, DNS, utun device |
+| `internal/bufpool` | Recycled packet buffers for the data plane |
 | `internal/cli` | Command-line commands |
 | `internal/config`, `internal/state`, `internal/keychain` | Files and secrets described above |
 | `internal/release` | Signed release manifest used by `vpn update` |
-| `main.swift` | Menu bar app |
+| `app/` | Menu bar app |
+| `app-tests/`, `test-app.sh` | Tests for the app's logic (no window needed) |
 | `assets/` | App icon, logo, status item images, and the script that renders them |
 | `build.sh`, `make-dmg.sh` | Build the app and the disk image |
 | `install.sh`, `install-arm64.sh`, `install-intel.sh`, `install-local.sh`, `uninstall.sh` | Install / uninstall |
@@ -60,14 +63,14 @@ Settings → Software update turns the check off (on by default) or runs it now.
 SHA-256, unpacks next to the app, quits the app (which disconnects an active VPN) and lets a
 detached script swap the bundle once the old PID has exited and start the new app as a fresh
 process. On that launch `CLIInstaller` upgrades the bundled `vpn` (one admin prompt). Signature
-checks stay in Go; `AppUpdater` in `main.swift` never installs unverified files.
+checks stay in Go; `AppUpdater` in `app/` never installs unverified files.
 
 ## Requirements
 
 - macOS on Apple Silicon or Intel.
 - Go, at the version in `go.mod` (`brew install go`).
 - Xcode 26 (Swift 6). `build.sh` warns on older toolchains; Swift 5.9 is known not to
-  compile `main.swift`.
+  compile `app/`.
 
 ## Build and run
 
@@ -92,9 +95,10 @@ CI (`.github/workflows/test.yml`) runs these on every pull request and on pushes
 
 ```bash
 gofmt -l .        # must print nothing
-go vet ./...
-go test ./...
+go vet ./cmd/... ./internal/...
+go test -race ./cmd/... ./internal/...
 bash build.sh     # the app must compile
+bash test-app.sh  # app logic and the bundle signature check
 ```
 
 The same workflow builds and lints the landing page:
@@ -111,7 +115,7 @@ Dark appearance.
 
 ### Menu bar app
 
-- Colors and metrics come from `Theme` in `main.swift`, which maps to system colors so
+- Colors and metrics come from `Theme` in `app/`, which maps to system colors so
   the app follows Light/Dark mode and the user's accent color. Do not add literal
   colors in views.
 - Use native controls (switches, text fields, bordered buttons) unless a stock control
@@ -167,6 +171,28 @@ the release. The tag becomes both `vpn version` and the version in the app foote
   `go run ./cmd/releasesign keygen`, matching `release.PublicKey`. `vpn update` refuses
   a release whose signature does not verify against the key compiled into the
   installed binary.
+- `install.sh` can additionally require a release signature that macOS's own `openssl`
+  can check (a fresh Mac has no `vpn` yet to verify ed25519 with). One-time setup:
+  1. `go run ./cmd/releasesign keygen-p256` prints the private key on stdout and the PEM
+     public key on stderr.
+  2. Store the private key as the `INSTALL_SIGNING_KEY` Actions secret.
+  3. Paste the public key into `INSTALL_PUBKEY` in `install.sh` and release. From then on
+     `install.sh` refuses any release without a valid `SHA256SUMS.p256.sig`, and the
+     release job stops before publishing when it could not produce one.
+- The release job runs in the `release` environment. In the repository settings give it
+  required reviewers and restrict its deployment tags to `v*.*.*`, and protect the
+  `v*` tags, so that pushing a tag alone cannot sign and publish a release.
+- **Developer ID and notarization (optional).** Until it is set up the app is ad-hoc signed
+  and macOS blocks its first launch (the "If macOS blocks the app" steps in the README).
+  With an Apple Developer ID the release job signs the app and the bundled `vpn` tool with
+  the hardened runtime, notarizes and staples the app and the disk image, and macOS both
+  opens them without that detour and stops other processes from modifying the installed
+  app. Add these Actions secrets to switch it on; nothing else changes:
+  `MACOS_CERT_P12` (base64 of the exported "Developer ID Application" certificate and key),
+  `MACOS_CERT_PASSWORD`, `MACOS_CERT_IDENTITY` (for example
+  `Developer ID Application: Example Inc (TEAMID1234)`), `APPLE_ID`, `APPLE_TEAM_ID` and
+  `APPLE_APP_PASSWORD` (an app-specific password). Locally:
+  `CODESIGN_IDENTITY="Developer ID Application: …" ./build.sh`.
 - `install.sh`, the README and the landing page download from
   `releases/latest/download/<asset>`. Renaming an asset breaks those links until a
   release that carries the new name is published.

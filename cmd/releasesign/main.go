@@ -4,9 +4,13 @@
 //	releasesign keygen
 //	    prints a fresh base64 seed (the RELEASE_SIGNING_KEY secret) on stdout
 //	    and its public key (for release.PublicKey) on stderr.
+//	releasesign keygen-p256
+//	    prints a fresh install signing key (the INSTALL_SIGNING_KEY secret) on
+//	    stdout and its PEM public key (for install.sh) on stderr.
 //	releasesign sign -version vX.Y.Z -out DIR ASSET...
 //	    reads the base64 seed from $RELEASE_SIGNING_KEY and writes
-//	    DIR/SHA256SUMS and DIR/SHA256SUMS.sig covering every ASSET.
+//	    DIR/SHA256SUMS and DIR/SHA256SUMS.sig covering every ASSET; when
+//	    $INSTALL_SIGNING_KEY is set, also DIR/SHA256SUMS.p256.sig for install.sh.
 package main
 
 import (
@@ -37,6 +41,14 @@ func run(args []string) error {
 	switch args[0] {
 	case "keygen":
 		return keygen()
+	case "keygen-p256":
+		priv, pub, err := release.GenerateP256()
+		if err != nil {
+			return err
+		}
+		fmt.Println(priv)
+		fmt.Fprint(os.Stderr, "public key (paste into install.sh INSTALL_PUBKEY):\n"+pub)
+		return nil
 	case "sign":
 		return sign(args[1:])
 	default:
@@ -100,7 +112,17 @@ func sign(args []string) error {
 	if err := os.WriteFile(filepath.Join(*outDir, release.ManifestName), manifest, 0o644); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(*outDir, release.SignatureName), sig, 0o644)
+	if err := os.WriteFile(filepath.Join(*outDir, release.SignatureName), sig, 0o644); err != nil {
+		return err
+	}
+	if key := os.Getenv("INSTALL_SIGNING_KEY"); key != "" {
+		p256, err := release.SignP256(key, manifest)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(*outDir, release.InstallSignatureName), p256, 0o644)
+	}
+	return nil
 }
 
 // checkSigningKey accepts a signature that verifies with release.PublicKey or,

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"vpn/internal/bufpool"
 )
 
 type suite struct {
@@ -220,9 +222,10 @@ func BenchmarkESPEncryptIPPacket(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_, err := out.EncryptIPPacket(1701, 1701, 1, 1, payload)
+		pkt, err := out.EncryptIPPacket(1701, 1701, 1, 1, payload)
 		if err != nil {
 			b.Fatal(err)
 		}
+		bufpool.Put(pkt) // as the engine does once the datagram is sent
 	}
 }

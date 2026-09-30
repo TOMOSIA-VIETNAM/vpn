@@ -3,7 +3,7 @@ import { popoverLabels } from "@/config/app-ui";
 import { Icon } from "./Icon";
 
 /**
- * The card the popover shows for a failure (AlertCard in main.swift): tinted by
+ * The card the popover shows for a failure (AlertCard in app/): tinted by
  * tone, the app's glyph and title, the message, then the fix and Dismiss. A
  * state without a fix (waiting for the network) has no buttons.
  * English, as the app shows it.

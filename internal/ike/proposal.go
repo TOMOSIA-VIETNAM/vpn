@@ -365,3 +365,27 @@ func chosenTransform(txData []byte) ([]byte, error) {
 	}
 	return txData[4:n], nil
 }
+
+// WeakReasons lists what is cryptographically weak about a negotiated
+// transform, for the warning shown to the user. dh is true for a Phase 1
+// (IKE SA) transform, whose Diffie-Hellman group counts; an ESP transform has
+// none. Legacy servers force some of these choices, which is why they are
+// accepted at all — but the user should know when it happened.
+func WeakReasons(t Transform, dh bool) []string {
+	var out []string
+	switch t.Encryption {
+	case EncDES:
+		out = append(out, "DES")
+	case Enc3DES:
+		out = append(out, "3DES")
+	}
+	if t.Hash == HashMD5 {
+		out = append(out, "MD5")
+	}
+	if dh {
+		if g, ok := Groups[t.Group]; ok && g.BitLen < 2048 {
+			out = append(out, fmt.Sprintf("%d-bit Diffie-Hellman group", g.BitLen))
+		}
+	}
+	return out
+}

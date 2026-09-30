@@ -9,10 +9,13 @@ name: release
 # Each release carries vpn-darwin-arm64, vpn-darwin-amd64, TOMOSIA-VPN.app.zip,
 # TOMOSIA-VPN.dmg, plus SHA256SUMS and its ed25519 signature SHA256SUMS.sig (see
 # internal/release). `vpn update` refuses a release whose signature does not
-# verify against the key compiled into the installed binary.
+# verify against the key compiled into the installed binary. install.sh checks
+# a second signature of SHA256SUMS, SHA256SUMS.p256.sig, with the system openssl.
 #
 # Requires the RELEASE_SIGNING_KEY secret: base64 ed25519 seed from
-# `go run ./cmd/releasesign keygen`, matching release.PublicKey.
+# `go run ./cmd/releasesign keygen`, matching release.PublicKey; and the
+# INSTALL_SIGNING_KEY secret from `go run ./cmd/releasesign keygen-p256`,
+# matching INSTALL_PUBKEY in install.sh.
 on:
   push:
     tags: ["v*.*.*"]
@@ -31,6 +34,10 @@ jobs:
   release:
     needs: test
     runs-on: macos-latest
+    # Holds the signing secrets: give the "release" environment required
+    # reviewers and a tag rule in the repository settings so a pushed tag alone
+    # cannot sign and publish (see CONTRIBUTING.md, "Releasing").
+    environment: release
     permissions:
       contents: write
     steps:
@@ -58,8 +65,53 @@ jobs:
               -o "vpn-darwin-$arch" ./cmd/vpn
           done
 
+      # Optional Developer ID signing and notarization (see CONTRIBUTING.md,
+      # "Developer ID and notarization"). Every step below that mentions it is
+      # skipped until the MACOS_CERT_P12 secret exists; the app is then ad-hoc
+      # signed exactly as before.
+      - name: Detect Developer ID credentials
+        id: devid
+        env:
+          CERT: ${{ secrets.MACOS_CERT_P12 }}
+        run: if [ -n "$CERT" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Import the Developer ID certificate
+        if: steps.devid.outputs.present == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_CERT_IDENTITY: ${{ secrets.MACOS_CERT_IDENTITY }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN"
+          echo "CODESIGN_IDENTITY=$MACOS_CERT_IDENTITY" >> "$GITHUB_ENV"
+
+      # build.sh signs with $CODESIGN_IDENTITY when the step above set it.
       - name: Build TOMOSIA VPN.app (universal — arm64 + Intel)
         run: VERSION="${GITHUB_REF_NAME#v}" bash build.sh
+
+      - name: Test the app logic
+        run: bash test-app.sh
+
+      - name: Notarize the app
+        if: steps.devid.outputs.present == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent "build/TOMOSIA VPN.app" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --wait \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          xcrun stapler staple "build/TOMOSIA VPN.app"
 
       # ditto (not plain zip) preserves the bundle's resource forks/extended
       # attributes correctly — Apple's own documented way to zip an .app.
@@ -71,9 +123,24 @@ jobs:
       - name: Build TOMOSIA-VPN.dmg
         run: bash make-dmg.sh && cp build/TOMOSIA-VPN.dmg TOMOSIA-VPN.dmg
 
+      - name: Sign and notarize the disk image
+        if: steps.devid.outputs.present == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          codesign --force --timestamp --sign "$CODESIGN_IDENTITY" TOMOSIA-VPN.dmg
+          xcrun notarytool submit TOMOSIA-VPN.dmg --wait \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          xcrun stapler staple TOMOSIA-VPN.dmg
+
       - name: Sign
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          # Signs SHA256SUMS a second time, with a key openssl can verify:
+          # install.sh refuses a release without it (see CONTRIBUTING.md).
+          INSTALL_SIGNING_KEY: ${{ secrets.INSTALL_SIGNING_KEY }}
         run: |
           go run ./cmd/releasesign sign -version "$GITHUB_REF_NAME" -out . \
             vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg
@@ -85,8 +152,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-            vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig \
+          [ -s SHA256SUMS.p256.sig ] || { echo "error: SHA256SUMS.p256.sig is missing (is INSTALL_SIGNING_KEY set?): install.sh would refuse this release" >&2; exit 1; }
+          assets=(vpn-darwin-arm64 vpn-darwin-amd64 TOMOSIA-VPN.app.zip TOMOSIA-VPN.dmg SHA256SUMS SHA256SUMS.sig SHA256SUMS.p256.sig)
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" "${assets[@]}" \
             --draft --verify-tag --title "$GITHUB_REF_NAME" \
             --notes "Built from ${GITHUB_SHA}. SHA256SUMS is signed with ed25519 (SHA256SUMS.sig)."
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

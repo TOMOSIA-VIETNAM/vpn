@@ -6,9 +6,15 @@ package state
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
+
+	"vpn/internal/privilege"
 )
 
 // Phase mirrors the engine's coarse connection lifecycle, independent of the
@@ -60,12 +66,18 @@ type State struct {
 
 // Dir is where the state file lives — exported so `uninstall` can remove it
 // without needing its own copy of the path.
-const Dir = "/var/run/vpn"
+//
+// A variable only so tests can point it at a temporary directory.
+var Dir = "/var/run/vpn"
+
+// ownerFile is where ownerUID reads the installing user's uid; a variable for the same reason.
+var ownerFile = privilege.OwnerFile
 
 // path is where the state file lives, without creating anything — used by
 // Load, which must work read-only and unprivileged (e.g. plain `vpn
 // status`, before this user has ever connected and root has never had a
-// reason to create Dir yet).
+// reason to create Dir yet). The installing user owns this file, so what it
+// says is for display and for that user's own commands only: see LoadTrusted.
 func path() string {
 	return filepath.Join(Dir, "state.json")
 }
@@ -90,6 +102,71 @@ func Load() (*State, error) {
 	return &s, nil
 }
 
+// trustedPath is the root-only copy of the state file: the one LoadTrusted
+// reads, and the only one privileged code may act on.
+func trustedPath() string {
+	return filepath.Join(Dir, "state.root.json")
+}
+
+// trustedOwner is the uid a file must belong to for LoadTrusted to believe
+// it: root. A variable only so tests, which do not run as root, can write one.
+var trustedOwner uint32
+
+// LoadTrusted reads the state that privileged code acts on: the PID that
+// disconnect signals as root, and the server and DNS service whose routes and
+// resolvers disconnect and repair restore. state.json belongs to the
+// installing user, so any process of theirs can rewrite it; this reads the
+// root-only copy instead. Call it as root (inside privilege.Elevate).
+//
+// A daemon from a release that writes no root-only copy keeps running across
+// `vpn update`, and its state.json is root-owned: that file is accepted too,
+// but only while root owns it and nobody else can write it. With neither file
+// trustworthy the state is DISCONNECTED.
+func LoadTrusted() (*State, error) {
+	for _, p := range []string{trustedPath(), path()} {
+		data, ok, err := readRootOwned(p)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		var s State
+		if err := json.Unmarshal(data, &s); err != nil {
+			return nil, err
+		}
+		return &s, nil
+	}
+	return &State{Phase: PhaseDisconnected}, nil
+}
+
+// readRootOwned returns p's contents, or ok=false when p does not exist or is
+// not a regular file owned by trustedOwner that only its owner can write. The
+// check is on the open descriptor, so the file read is the file checked.
+func readRootOwned(p string) (data []byte, ok bool, err error) {
+	f, err := os.Open(p)
+	if os.IsNotExist(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, false, err
+	}
+	st, isStat := fi.Sys().(*syscall.Stat_t)
+	if !isStat || !fi.Mode().IsRegular() || st.Uid != trustedOwner || fi.Mode().Perm()&0o022 != 0 {
+		return nil, false, nil
+	}
+	data, err = io.ReadAll(f)
+	if err != nil {
+		return nil, false, err
+	}
+	return data, true, nil
+}
+
 // Save persists s atomically. Callers must already be root (see
 // privilege.Elevate) — /var/run/vpn is root-owned, and this is what
 // creates it on first use.
@@ -98,21 +175,57 @@ func (s *State) Save() error {
 		return err
 	}
 	_ = os.Chmod(Dir, 0o755)
-	p := path()
 	s.UpdatedAt = time.Now()
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := p + ".tmp"
-	// World-readable on purpose: the menu bar app polls this file directly
-	// as the unprivileged user. It holds no secrets — profile/account
-	// names, server host, tunnel address and DNS snapshot only.
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	// The root-only copy goes first, so a PID visible in state.json (see
+	// engine.ClaimNewConnect) is always one a disconnect can already find.
+	if err := writeAtomic(trustedPath(), data, 0o600, -1); err != nil {
 		return err
 	}
-	_ = os.Chmod(tmp, 0o644)
+	// Readable by the menu bar app, which polls this file as the unprivileged
+	// installing user, and by nobody else: the profile, account and server
+	// names are nobody else's business on a shared Mac. Without an owner file
+	// (a plain `sudo vpn` run) fall back to world-readable so the app still works.
+	mode, owner := os.FileMode(0o644), -1
+	if uid, ok := ownerUID(); ok {
+		mode, owner = 0o600, uid
+	}
+	return writeAtomic(path(), data, mode, owner)
+}
+
+// writeAtomic replaces p with data through a temporary file, with exactly
+// mode and, when owner >= 0, that owner.
+func writeAtomic(p string, data []byte, mode os.FileMode, owner int) error {
+	tmp := p + ".tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp, mode); err != nil { // WriteFile's mode is masked by umask and ignored for an existing file
+		return err
+	}
+	if owner >= 0 {
+		if err := os.Chown(tmp, owner, -1); err != nil {
+			_ = os.Remove(tmp)
+			return err
+		}
+	}
 	return os.Rename(tmp, p)
+}
+
+// ownerUID is the uid of whoever installed vpn (see privilege.OwnerFile).
+func ownerUID() (int, bool) {
+	data, err := os.ReadFile(ownerFile)
+	if err != nil {
+		return 0, false
+	}
+	uid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || uid < 0 {
+		return 0, false
+	}
+	return uid, true
 }
 
 // Clear resets to DISCONNECTED, used once disconnect/repair has actually

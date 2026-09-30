@@ -17,10 +17,15 @@ package release
 import (
 	"bufio"
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 	"strconv"
 	"strings"
@@ -164,4 +169,56 @@ func (a Semver) Compare(b Semver) int {
 		}
 	}
 	return 0
+}
+
+// InstallSignatureName is a second, ECDSA P-256 signature over SHA256SUMS,
+// made with a key that only install.sh trusts. It exists because a fresh Mac
+// has no vpn binary yet to check the ed25519 signature with, and macOS ships
+// no tool that verifies ed25519 — but /usr/bin/openssl verifies ECDSA, so
+// install.sh can refuse a tampered release before anything runs as root.
+const InstallSignatureName = "SHA256SUMS.p256.sig"
+
+// SignP256 signs manifest with a base64-encoded PEM PKCS#8 EC private key and
+// returns the ASN.1 DER signature over its SHA-256 — the exact form
+// `openssl dgst -sha256 -verify pub.pem -signature sig manifest` checks.
+func SignP256(keyB64 string, manifest []byte) ([]byte, error) {
+	pemBytes, err := base64.StdEncoding.DecodeString(keyB64)
+	if err != nil {
+		return nil, fmt.Errorf("decode install signing key: %w", err)
+	}
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, fmt.Errorf("install signing key is not PEM")
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse install signing key: %w", err)
+	}
+	key, ok := parsed.(*ecdsa.PrivateKey)
+	if !ok || key.Curve != elliptic.P256() {
+		return nil, fmt.Errorf("install signing key must be an ECDSA P-256 key")
+	}
+	digest := sha256.Sum256(manifest)
+	return ecdsa.SignASN1(rand.Reader, key, digest[:])
+}
+
+// GenerateP256 returns a new install signing key: the private half as the
+// base64 PEM SignP256 reads (the INSTALL_SIGNING_KEY secret) and the public
+// half as PEM (pasted into install.sh).
+func GenerateP256() (privateB64, publicPEM string, err error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return "", "", err
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return "", "", err
+	}
+	pubDER, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", "", err
+	}
+	priv := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	pub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
+	return base64.StdEncoding.EncodeToString(priv), string(pub), nil
 }
