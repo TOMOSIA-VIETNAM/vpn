@@ -1,9 +1,9 @@
-// Text quoted verbatim from the app (main.swift) and from macOS. The app's UI is
+// Text quoted verbatim from the app (app/) and from macOS. The app's UI is
 // English, so these strings stay English on every locale of the site.
 
 export type StatusTone = "ok" | "warning" | "error";
 
-/** Glyph beside an alert's title, after the SF Symbol the app uses (AlertStyle in main.swift). */
+/** Glyph beside an alert's title, after the SF Symbol the app uses (AlertStyle in app/). */
 export type AlertIcon = "lock" | "networkSlash" | "wifiExclamation";
 
 export type AlertId = "authFailed" | "ikeFailed" | "noResponse" | "offline";

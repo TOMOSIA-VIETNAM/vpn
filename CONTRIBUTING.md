@@ -10,12 +10,12 @@ TOMOSIA VPN is two programs:
 | Part | Source | Installed at |
 |---|---|---|
 | `vpn` CLI and connection engine (IKEv1, ESP, L2TP, PPP), in Go | `cmd/vpn`, `internal/` | `/usr/local/bin/vpn`, setuid root |
-| Menu bar app, in SwiftUI (one file) | `main.swift` | `/Applications/TOMOSIA VPN.app` |
+| Menu bar app, in SwiftUI | `app/` | `/Applications/TOMOSIA VPN.app` |
 
 The app does not handle VPN traffic itself. It runs `vpn` commands and reads the
 files the CLI writes. Its only network request is the public IP shown while
 connected, looked up at `https://1.1.1.1/cdn-cgi/trace` (`refreshPublicIP` in
-`main.swift`).
+`app/`).
 
 | File | Written by | Holds |
 |---|---|---|
@@ -30,7 +30,7 @@ it acts for.
 
 A `.dmg` install has no installer step, so the app carries a copy of `vpn` in
 `Contents/Resources` and installs it on first launch after an administrator
-prompt (`CLIInstaller` in `main.swift`).
+prompt (`CLIInstaller` in `app/`).
 
 ### Repository layout
 
@@ -44,7 +44,7 @@ prompt (`CLIInstaller` in `main.swift`).
 | `internal/cli` | Command-line commands |
 | `internal/config`, `internal/state`, `internal/keychain` | Files and secrets described above |
 | `internal/release` | Signed release manifest used by `vpn update` |
-| `main.swift` | Menu bar app |
+| `app/` | Menu bar app |
 | `assets/` | App icon, logo, status item images, and the script that renders them |
 | `build.sh`, `make-dmg.sh` | Build the app and the disk image |
 | `install.sh`, `install-arm64.sh`, `install-intel.sh`, `install-local.sh`, `uninstall.sh` | Install / uninstall |
@@ -60,14 +60,14 @@ Settings → Software update turns the check off (on by default) or runs it now.
 SHA-256, unpacks next to the app, quits the app (which disconnects an active VPN) and lets a
 detached script swap the bundle once the old PID has exited and start the new app as a fresh
 process. On that launch `CLIInstaller` upgrades the bundled `vpn` (one admin prompt). Signature
-checks stay in Go; `AppUpdater` in `main.swift` never installs unverified files.
+checks stay in Go; `AppUpdater` in `app/` never installs unverified files.
 
 ## Requirements
 
 - macOS on Apple Silicon or Intel.
 - Go, at the version in `go.mod` (`brew install go`).
 - Xcode 26 (Swift 6). `build.sh` warns on older toolchains; Swift 5.9 is known not to
-  compile `main.swift`.
+  compile `app/`.
 
 ## Build and run
 
@@ -111,7 +111,7 @@ Dark appearance.
 
 ### Menu bar app
 
-- Colors and metrics come from `Theme` in `main.swift`, which maps to system colors so
+- Colors and metrics come from `Theme` in `app/`, which maps to system colors so
   the app follows Light/Dark mode and the user's accent color. Do not add literal
   colors in views.
 - Use native controls (switches, text fields, bordered buttons) unless a stock control

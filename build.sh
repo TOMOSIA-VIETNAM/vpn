@@ -32,7 +32,7 @@ if [[ "$(uname)" != "Darwin" ]]; then
     exit 1
 fi
 
-# CI builds main.swift on the macos-26 runner image (Xcode 26, Swift 6).
+# CI builds app/*.swift on the macos-26 runner image (Xcode 26, Swift 6).
 # Swift 5.9 is known to reject it (strict-concurrency errors); versions in
 # between are untested, so warn rather than refuse.
 SWIFT_MAJOR="$(swiftc --version 2>/dev/null | sed -nE 's/.*Swift version ([0-9]+)\..*/\1/p' | head -1)"
@@ -42,14 +42,14 @@ fi
 
 echo "==> [2/3] Compiling universal binary (arm64 + x86_64)"
 
-swiftc -O -target arm64-apple-macos12.0 -framework Cocoa -framework SwiftUI main.swift -o "$BUILD_DIR/${OUTPUT_NAME}-arm64"
-swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI main.swift -o "$BUILD_DIR/${OUTPUT_NAME}-x86_64"
+swiftc -O -target arm64-apple-macos12.0 -framework Cocoa -framework SwiftUI app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-arm64"
+swiftc -O -target x86_64-apple-macos12.0 -framework Cocoa -framework SwiftUI app/*.swift -o "$BUILD_DIR/${OUTPUT_NAME}-x86_64"
 
 lipo -create "$BUILD_DIR/${OUTPUT_NAME}-arm64" "$BUILD_DIR/${OUTPUT_NAME}-x86_64" -output "$BUILD_DIR/$OUTPUT_NAME"
 
 # The app drives the `vpn` CLI, which must sit setuid-root in /usr/local/bin. A drag-to-
 # Applications install has no installer step, so the CLI travels inside the app and the
-# app installs it (with an admin prompt) on first launch — see CLIInstaller in main.swift.
+# app installs it (with an admin prompt) on first launch — see CLIInstaller in app/CLIInstaller.swift.
 # Skipped when Go is missing, so a Swift-only build still works.
 if command -v go >/dev/null 2>&1; then
     CLI_VERSION="v${VERSION}"
