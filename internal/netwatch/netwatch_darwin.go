@@ -23,6 +23,9 @@ const (
 	// LinkChanged: an interface came up/down or an address was added/removed
 	// — Wi-Fi roam, cable unplugged, wake from sleep, VPN client elsewhere.
 	LinkChanged
+	// RouteAdded: a route was added or changed — reported only by
+	// SubscribeWithAdds, for waiting on a default route to come back.
+	RouteAdded
 )
 
 func (k Kind) String() string {
@@ -31,6 +34,8 @@ func (k Kind) String() string {
 		return "route deleted"
 	case LinkChanged:
 		return "link/address changed"
+	case RouteAdded:
+		return "route added"
 	}
 	return "unknown"
 }
@@ -43,6 +48,25 @@ const (
 	minMsgLen  = 12
 )
 
+// classifyWithAdds is classify plus RouteAdded for added or changed routes
+// (the same neighbour-cache / cloned-host churn filtered out).
+func classifyWithAdds(msg []byte) Kind {
+	if len(msg) >= minMsgLen && (msg[offType] == unix.RTM_ADD || msg[offType] == unix.RTM_CHANGE) {
+		if noise(msg) {
+			return 0
+		}
+		return RouteAdded
+	}
+	return classify(msg)
+}
+
+// noise reports a route message about the neighbour cache or a cloned host
+// entry: constant churn, never a route the engine cares about.
+func noise(msg []byte) bool {
+	flags := binary.LittleEndian.Uint32(msg[offRtFlags:]) // macOS runs little-endian on both arm64 and amd64
+	return flags&(unix.RTF_LLINFO|unix.RTF_WASCLONED) != 0
+}
+
 // classify maps one routing message to an event, or 0 when it is noise.
 func classify(msg []byte) Kind {
 	if len(msg) < minMsgLen {
@@ -50,9 +74,8 @@ func classify(msg []byte) Kind {
 	}
 	switch msg[offType] {
 	case unix.RTM_DELETE:
-		flags := binary.LittleEndian.Uint32(msg[offRtFlags:]) // macOS runs little-endian on both arm64 and amd64
-		if flags&(unix.RTF_LLINFO|unix.RTF_WASCLONED) != 0 {
-			return 0 // neighbour-cache / cloned-host entries: constant churn, never ours
+		if noise(msg) {
+			return 0
 		}
 		return RouteDeleted
 	case unix.RTM_NEWADDR, unix.RTM_DELADDR, unix.RTM_IFINFO:
@@ -66,6 +89,16 @@ func classify(msg []byte) Kind {
 // a burst of the same kind collapses into one pending event, so a flapping
 // interface can neither block the reader nor grow memory.
 func Subscribe(ctx context.Context) (<-chan Kind, error) {
+	return subscribe(ctx, classify)
+}
+
+// SubscribeWithAdds is Subscribe that also reports RouteAdded. Not for the
+// data plane: the engine adds routes itself, and would see its own changes.
+func SubscribeWithAdds(ctx context.Context) (<-chan Kind, error) {
+	return subscribe(ctx, classifyWithAdds)
+}
+
+func subscribe(ctx context.Context, classify func([]byte) Kind) (<-chan Kind, error) {
 	fd, err := unix.Socket(unix.AF_ROUTE, unix.SOCK_RAW, 0)
 	if err != nil {
 		return nil, fmt.Errorf("open routing socket: %w", err)

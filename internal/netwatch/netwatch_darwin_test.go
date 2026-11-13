@@ -39,6 +39,32 @@ func TestClassify(t *testing.T) {
 	}
 }
 
+// Route additions are only reported to SubscribeWithAdds; the data plane's
+// feed (classify) keeps ignoring them, as before.
+func TestClassifyWithAdds(t *testing.T) {
+	cases := []struct {
+		name string
+		msg  []byte
+		want Kind
+	}{
+		{"route added", msg(unix.RTM_ADD, unix.RTF_UP|unix.RTF_GATEWAY), RouteAdded},
+		{"route changed", msg(unix.RTM_CHANGE, unix.RTF_UP|unix.RTF_GATEWAY), RouteAdded},
+		{"neighbour cache entry added is noise", msg(unix.RTM_ADD, unix.RTF_LLINFO), 0},
+		{"cloned host route added is noise", msg(unix.RTM_ADD, unix.RTF_WASCLONED), 0},
+		{"route deleted", msg(unix.RTM_DELETE, unix.RTF_UP), RouteDeleted},
+		{"address added", msg(unix.RTM_NEWADDR, 0), LinkChanged},
+		{"truncated", []byte{1, 2}, 0},
+	}
+	for _, c := range cases {
+		if got := classifyWithAdds(c.msg); got != c.want {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
+		}
+	}
+	if got := classify(msg(unix.RTM_CHANGE, unix.RTF_UP)); got != 0 {
+		t.Errorf("classify reported a route change as %v, want it ignored", got)
+	}
+}
+
 func TestSubscribeClosesOnCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch, err := Subscribe(ctx)
