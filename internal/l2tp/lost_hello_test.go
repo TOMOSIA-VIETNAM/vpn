@@ -111,7 +111,7 @@ func TestServerHelloDuringGapIsAckedByResendingPending(t *testing.T) {
 	if _, err := tun.RecvData(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if tun.Unacked() {
+	if tun.unacked() {
 		t.Fatal("Hello still pending after the server acknowledged it")
 	}
 }
@@ -140,7 +140,7 @@ func TestHelloSendFailureStaysPending(t *testing.T) {
 	if err := tun.SendHello(); err == nil {
 		t.Fatal("first send should report its error to the caller (the engine logs it)")
 	}
-	if !tun.Unacked() {
+	if !tun.unacked() {
 		t.Fatal("failed Hello was dropped instead of kept pending")
 	}
 	if err := tun.SendHello(); err != nil {

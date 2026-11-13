@@ -232,9 +232,9 @@ func (tun *Tunnel) SendHello() error {
 	return tun.queueLocked(concatAVPs(MessageTypeAVP(MsgHello)))
 }
 
-// Unacked reports whether a control message of ours is still waiting for
-// the peer's acknowledgment (for tests and diagnostics).
-func (tun *Tunnel) Unacked() bool {
+// unacked reports whether a control message of ours is still waiting for
+// the peer's acknowledgment (for tests).
+func (tun *Tunnel) unacked() bool {
 	tun.ctrlMu.Lock()
 	defer tun.ctrlMu.Unlock()
 	return tun.hasPending
