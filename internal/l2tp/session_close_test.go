@@ -25,6 +25,7 @@ func TestIncomingCallSendsRFCMandatoryAVPs(t *testing.T) {
 	tr := &scriptedTransport{in: make(chan []byte, 4)}
 	tun := &Tunnel{t: tr, localTunnelID: 0x1234, peerTunnelID: 0x4321}
 	tr.in <- controlTo(0x1234, 0, 0, 1, MessageTypeAVP(MsgICRP), AssignedSessionIDAVP(77))
+	tr.in <- controlTo(0x1234, 0, 1, 2) // ZLB acking ICCN
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
