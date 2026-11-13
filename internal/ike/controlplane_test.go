@@ -238,6 +238,13 @@ func TestRekeyQuickModeThroughControlPlane(t *testing.T) {
 	if r.qm.Lifetime != 1200*time.Second {
 		t.Fatalf("lifetime %s, want the responder's shorter 20m", r.qm.Lifetime)
 	}
+
+	// QM3 lost: the responder retransmits the same QM2. The client must answer
+	// with its QM3 again, or the server never installs the SA.
+	peer.sendIKE(append(h2.Marshal(), ct2...))
+	if again := peer.recvIKE(); !bytes.Equal(again, qm3) {
+		t.Fatal("retransmitted QM2 was not answered with the same QM3")
+	}
 }
 
 func TestResponderLifetimeNotify(t *testing.T) {

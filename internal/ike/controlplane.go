@@ -204,6 +204,16 @@ func (s *Session) dispatchIKE(msg []byte) {
 		ch := s.dp.pending[h.MessageID]
 		s.dp.pendingMu.Unlock()
 		if ch == nil {
+			if qm3 := s.qm3For(h.MessageID, msg); qm3 != nil {
+				// The server resent QM2 of an exchange we finished: our QM3
+				// was lost, and until it arrives the server never installs
+				// the new SA (seen live: every L2TP message on it timed out).
+				vpnlog.Info(stage, "server retransmitted Quick Mode QM2 — resending QM3", vpnlog.Fields{"msg_id": h.MessageID})
+				if err := s.sendRaw(qm3); err != nil {
+					vpnlog.Error(stage, "resend QM3 failed", vpnlog.Fields{"err": err})
+				}
+				return
+			}
 			s.handleQuickMode(h, msg[headerLen:])
 			return
 		}
@@ -216,6 +226,41 @@ func (s *Session) dispatchIKE(msg []byte) {
 	default:
 		vpnlog.Info(stage, "ignored IKE exchange during data phase", vpnlog.Fields{"exchange": h.ExchangeType})
 	}
+}
+
+// doneQM is a Quick Mode this side initiated and completed: the QM2 it
+// received and the QM3 it answered with.
+type doneQM struct {
+	msgID    uint32
+	qm2, qm3 []byte
+}
+
+// maxDoneQM bounds how many finished exchanges are remembered: a responder
+// retransmits QM2 only for a few seconds, and only the latest exchanges can
+// still be in flight.
+const maxDoneQM = 4
+
+func (s *Session) rememberQM(msgID uint32, qm2, qm3 []byte) {
+	s.doneMu.Lock()
+	defer s.doneMu.Unlock()
+	d := doneQM{msgID: msgID, qm2: append([]byte(nil), qm2...), qm3: append([]byte(nil), qm3...)}
+	s.doneQM = append(s.doneQM, d)
+	if len(s.doneQM) > maxDoneQM {
+		s.doneQM = s.doneQM[len(s.doneQM)-maxDoneQM:]
+	}
+}
+
+// qm3For returns the QM3 to resend when msg is a byte-identical copy of the
+// QM2 of an exchange we completed, or nil.
+func (s *Session) qm3For(msgID uint32, msg []byte) []byte {
+	s.doneMu.Lock()
+	defer s.doneMu.Unlock()
+	for _, d := range s.doneQM {
+		if d.msgID == msgID && bytes.Equal(d.qm2, msg) {
+			return d.qm3
+		}
+	}
+	return nil
 }
 
 // handleInformational authenticates and acts on an Informational exchange
