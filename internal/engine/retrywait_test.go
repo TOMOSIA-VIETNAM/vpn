@@ -47,6 +47,23 @@ func TestWaitToRetryKeepsBackoffWhileOnline(t *testing.T) {
 	}
 }
 
+// Wi-Fi drops partway through the wait and comes back: same shortcut.
+func TestWaitToRetryEndsWhenNetworkDropsAndReturns(t *testing.T) {
+	var online atomic.Bool
+	online.Store(true)
+	stubDefaultRoute(t, &online)
+	time.AfterFunc(40*time.Millisecond, func() { online.Store(false) })
+	time.AfterFunc(120*time.Millisecond, func() { online.Store(true) })
+	start := time.Now()
+	retry, back := waitToRetry(context.Background(), 20*time.Second)
+	if !retry || !back {
+		t.Fatalf("retry=%v cameOnline=%v, want both true", retry, back)
+	}
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("waited %s after the network came back", d)
+	}
+}
+
 func TestWaitToRetryStopsOnDisconnect(t *testing.T) {
 	var online atomic.Bool
 	stubDefaultRoute(t, &online)
