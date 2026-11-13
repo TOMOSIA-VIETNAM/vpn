@@ -1,8 +1,11 @@
 package l2tp
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 // xl2tpdReceiver models how xl2tpd's check_control() (control.c) accepts
@@ -146,5 +149,117 @@ func TestHelloSendFailureStaysPending(t *testing.T) {
 	srv := &xl2tpdReceiver{}
 	if len(tr.sent) != 1 || !srv.receive(t, tr.sent[0]) {
 		t.Fatal("the resent Hello was not accepted in order by the server")
+	}
+}
+
+// A message still pending is never silently replaced by a newer one.
+func TestQueueNeverReplacesPending(t *testing.T) {
+	tr := &scriptedTransport{in: make(chan []byte, 1)}
+	tun := &Tunnel{t: tr, localTunnelID: 0x1111, peerTunnelID: 0x2222}
+	tun.ctrlMu.Lock()
+	defer tun.ctrlMu.Unlock()
+	if err := tun.queueLocked(concatAVPs(MessageTypeAVP(MsgHello))); err != nil {
+		t.Fatal(err)
+	}
+	if err := tun.queueLocked(concatAVPs(MessageTypeAVP(MsgCDN))); !errors.Is(err, errUnacked) {
+		t.Fatalf("second queue: err %v, want errUnacked", err)
+	}
+	if tun.pendingNs != 0 || tun.ns != 1 || len(tr.sent) != 1 {
+		t.Fatalf("pending Ns %d, next Ns %d, sent %d: the first message was disturbed", tun.pendingNs, tun.ns, len(tr.sent))
+	}
+}
+
+// Close with a Hello still pending: that Hello goes out first, then CDN and
+// StopCCN numbered right after it — an LNS that gets all three accepts them
+// in order.
+func TestCloseSendsPendingThenCDNThenStopCCN(t *testing.T) {
+	tr := &scriptedTransport{in: make(chan []byte, 1)}
+	tun := &Tunnel{t: tr, localTunnelID: 0x1111, peerTunnelID: 0x2222, peerSessionID: 9}
+	_ = tun.SendHello() // lost
+	lost := len(tr.sent)
+	tun.Close()
+	srv := &xl2tpdReceiver{}
+	want := []uint16{MsgHello, MsgCDN, MsgStopCCN}
+	got := tr.sent[lost:]
+	if len(got) != len(want) {
+		t.Fatalf("Close sent %d messages, want %d", len(got), len(want))
+	}
+	for i, raw := range got {
+		if !srv.receive(t, raw) {
+			t.Fatalf("message %d dropped as out of order", i)
+		}
+		m, _ := Parse(raw)
+		if typ, _ := MessageType(m.AVPs); typ != want[i] {
+			t.Fatalf("message %d is type %d, want %d", i, typ, want[i])
+		}
+	}
+}
+
+// brokenTransport fails every Recv at once, as a closed socket would.
+type brokenTransport struct {
+	scriptedTransport
+	recvs int
+}
+
+func (b *brokenTransport) Recv(context.Context) ([]byte, error) {
+	b.recvs++
+	return nil, errors.New("use of closed network connection")
+}
+
+// A transport that fails outright ends the wait instead of spinning through
+// resends for the whole of ackWait.
+func TestAwaitAckStopsOnTransportError(t *testing.T) {
+	tr := &brokenTransport{}
+	tun := &Tunnel{t: tr, localTunnelID: 0x1111, peerTunnelID: 0x2222}
+	tun.ctrlMu.Lock()
+	defer tun.ctrlMu.Unlock()
+	_ = tun.queueLocked(concatAVPs(MessageTypeAVP(MsgICCN)))
+	tun.awaitAckLocked(t.Context())
+	if tr.recvs != 1 || len(tr.sent) != 1 {
+		t.Fatalf("%d receives and %d sends after a transport error, want 1 and 1 (no resend loop)", tr.recvs, len(tr.sent))
+	}
+}
+
+// The LNS's first LCP frame arrives before any ack of our ICCN: the wait ends
+// at once and RecvData delivers that frame instead of it being dropped.
+func TestAwaitAckKeepsEarlyDataForRecvData(t *testing.T) {
+	tr := &scriptedTransport{in: make(chan []byte, 2)}
+	tun := &Tunnel{t: tr, localTunnelID: 0x1111, peerTunnelID: 0x2222, localSessionID: 1, peerSessionID: 9}
+	lcp := []byte{0xff, 0x03, 0xc0, 0x21, 0x01}
+	frame := MarshalData(0x1111, 1, lcp)
+	tr.in <- frame
+	tun.ctrlMu.Lock()
+	_ = tun.queueLocked(concatAVPs(MessageTypeAVP(MsgICCN)))
+	start := time.Now()
+	tun.awaitAckLocked(t.Context())
+	tun.ctrlMu.Unlock()
+	if d := time.Since(start); d > retransmitInterval {
+		t.Fatalf("kept waiting %s after the session's first data frame", d)
+	}
+	for i := range frame {
+		frame[i] = 0 // the transport reuses its buffer
+	}
+	got, err := tun.RecvData(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, lcp) {
+		t.Fatalf("RecvData returned %x, want the early LCP frame %x", got, lcp)
+	}
+}
+
+// Every lost message gets its first resend logged, not only the first one of
+// the session: the counter starts over once a message is acknowledged.
+func TestResendCounterIsPerMessage(t *testing.T) {
+	tr := &scriptedTransport{in: make(chan []byte, 1)}
+	tun := &Tunnel{t: tr, localTunnelID: 0x1111, peerTunnelID: 0x2222}
+	_ = tun.SendHello()
+	_ = tun.SendHello() // resend
+	tun.ctrlMu.Lock()
+	tun.ackedLocked(1)
+	resends := tun.resends
+	tun.ctrlMu.Unlock()
+	if resends != 0 {
+		t.Fatalf("resends = %d after the ack, want 0", resends)
 	}
 }

@@ -59,8 +59,13 @@ type Tunnel struct {
 	pendingNs  uint16
 	hasPending bool
 
+	// Data messages of our session that arrived while Establish was waiting
+	// for an ack (awaitAckLocked) — typically the LNS's first LCP
+	// Configure-Request right after ICCN. RecvData returns them first.
+	early [][]byte
+
 	strayData uint64 // data messages dropped for carrying another tunnel/session ID
-	resends   uint64 // times the pending control message was sent again (logged, see resendPendingLocked)
+	resends   uint64 // times the current pending message was sent again (logged, see resendPendingLocked)
 
 	closed error // set once the LNS ends our session or tunnel (CDN/StopCCN); RecvData returns it
 }
@@ -239,17 +244,25 @@ func (tun *Tunnel) Unacked() bool {
 // 2661 §5.11/5.6), best-effort — a failure here just means the LNS's own
 // idle timeout will clean up the stale session/tunnel instead.
 func (tun *Tunnel) Close() {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
 	tun.ctrlMu.Lock()
+	defer tun.ctrlMu.Unlock()
 	if tun.hasPending {
-		_ = tun.resendPendingLocked() // CDN is numbered after it: give the peer a last chance to fill the gap
+		// CDN is numbered after it: send it first so that, if this copy
+		// arrives, the CDN right behind it is in order and accepted.
+		_ = tun.resendPendingLocked()
 	}
-	tun.ctrlMu.Unlock()
-	cdn := concatAVPs(MessageTypeAVP(MsgCDN))
-	_ = tun.sendReliableNoReply(ctx, cdn)
-	stop := concatAVPs(MessageTypeAVP(MsgStopCCN))
-	_ = tun.sendReliableNoReply(ctx, stop)
+	// Nothing resends after Close, so CDN and StopCCN are sent once, back to
+	// back, and not tracked as pending.
+	_ = tun.sendOnceLocked(concatAVPs(MessageTypeAVP(MsgCDN)))
+	_ = tun.sendOnceLocked(concatAVPs(MessageTypeAVP(MsgStopCCN)))
+}
+
+// sendOnceLocked sends a numbered control message without keeping it for
+// retransmission (teardown only).
+func (tun *Tunnel) sendOnceLocked(avps []byte) error {
+	msg := MarshalControl(tun.peerTunnelID, tun.peerSessionID, tun.ns, tun.nr, avps)
+	tun.ns++
+	return tun.t.Send(msg)
 }
 
 // PeerIDs are the tunnel and session IDs the LNS assigned to this connection —
@@ -287,6 +300,11 @@ func (tun *Tunnel) RecvData(ctx context.Context) ([]byte, error) {
 	for {
 		if tun.closed != nil {
 			return nil, tun.closed
+		}
+		if len(tun.early) > 0 {
+			frame := tun.early[0]
+			tun.early = tun.early[1:]
+			return frame, nil
 		}
 		raw, err := tun.t.Recv(ctx)
 		if err != nil {
@@ -387,12 +405,21 @@ func (tun *Tunnel) ackedLocked(nr uint16) {
 	if tun.hasPending && seqBefore(tun.pendingNs, nr) {
 		tun.hasPending = false
 		tun.pending = nil
+		tun.resends = 0
 	}
 }
 
+// errUnacked is returned by queueLocked while an earlier message is still
+// pending: with window 1 the new one cannot be sent yet.
+var errUnacked = errors.New("an earlier control message is not acknowledged yet")
+
 // queueLocked sends a message that gets no reply of its own and keeps it
-// pending until the peer acknowledges it.
+// pending until the peer acknowledges it. It never replaces a message still
+// pending (that one would be lost for good); callers check hasPending first.
 func (tun *Tunnel) queueLocked(avps []byte) error {
+	if tun.hasPending {
+		return errUnacked
+	}
 	tun.pending, tun.pendingNs, tun.hasPending = avps, tun.ns, true
 	tun.ns++
 	return tun.sendPendingLocked()
@@ -414,30 +441,51 @@ func (tun *Tunnel) resendPendingLocked() error {
 		if avps, err := ParseAVPs(tun.pending); err == nil {
 			msgType, _ = MessageType(avps)
 		}
-		vpnlog.Info(stage, "control message not acknowledged yet — resending it", vpnlog.Fields{"type": msgType, "ns": tun.pendingNs, "resends_total": tun.resends})
+		vpnlog.Info(stage, "control message not acknowledged yet — resending it", vpnlog.Fields{"type": msgType, "ns": tun.pendingNs, "resends": tun.resends})
 	}
 	return tun.sendPendingLocked()
 }
 
+// maxEarly bounds the data frames kept while waiting for an ack: PPP
+// retransmits anything beyond them.
+const maxEarly = 8
+
 // awaitAckLocked waits up to ackWait for the pending message to be
 // acknowledged, resending it every retransmitInterval. Only used while the
 // tunnel is being set up, when nothing else reads the transport.
+//
+// A data message of our session ends the wait: the LNS only starts PPP once
+// it has our ICCN, and the frame is kept for RecvData instead of dropped. A
+// new control message of the peer (Ns == nr) is left unacknowledged here; the
+// peer retransmits it and RecvData then handles it.
 func (tun *Tunnel) awaitAckLocked(ctx context.Context) {
 	deadline := time.Now().Add(ackWait)
 	for tun.hasPending && time.Now().Before(deadline) {
 		wait := min(retransmitInterval, time.Until(deadline))
 		recvCtx, cancel := context.WithTimeout(ctx, wait)
 		raw, err := tun.t.Recv(recvCtx)
+		timedOut := errors.Is(recvCtx.Err(), context.DeadlineExceeded)
 		cancel()
 		if err != nil {
-			if ctx.Err() != nil {
-				return
+			if ctx.Err() != nil || !timedOut {
+				return // cancelled, or the transport failed: resending cannot help
 			}
 			_ = tun.resendPendingLocked()
 			continue
 		}
 		m, err := Parse(raw)
-		if err != nil || !m.Header.IsControl || m.Header.TunnelID != tun.localTunnelID || !m.Header.HasSeq {
+		if err != nil || m.Header.TunnelID != tun.localTunnelID {
+			continue
+		}
+		if !m.Header.IsControl {
+			if m.Header.SessionID == tun.localSessionID && len(tun.early) < maxEarly {
+				// Copied: the transport may reuse the buffer (ReleaseLast).
+				tun.early = append(tun.early, append([]byte(nil), m.Payload...))
+				return
+			}
+			continue
+		}
+		if !m.Header.HasSeq {
 			continue
 		}
 		tun.ackedLocked(m.Header.Nr)
@@ -553,14 +601,18 @@ func (tun *Tunnel) sendReliable(ctx context.Context, avps []byte) (*ParsedMessag
 	return nil, fmt.Errorf("no reply after %d attempts: %v", maxRetransmits+1, lastErr)
 }
 
-// sendReliableNoReply is for messages the peer doesn't answer with its own
-// control message (SCCCN, ICCN, CDN, StopCCN, Hello). The message stays
-// pending until the peer's Nr acknowledges it and is resent meanwhile (see
-// Tunnel.pending), so a single lost datagram no longer desynchronizes the
-// control channel.
-func (tun *Tunnel) sendReliableNoReply(_ context.Context, avps []byte) error {
+// sendReliableNoReply is for the setup messages the peer doesn't answer with
+// its own control message (SCCCN, ICCN). The message stays pending until the
+// peer's Nr acknowledges it and is resent meanwhile (see Tunnel.pending), so
+// a single lost datagram no longer desynchronizes the control channel. Setup
+// only: with an earlier message still pending it reads the transport itself
+// (awaitAckLocked).
+func (tun *Tunnel) sendReliableNoReply(ctx context.Context, avps []byte) error {
 	tun.ctrlMu.Lock()
 	defer tun.ctrlMu.Unlock()
+	if tun.hasPending {
+		tun.awaitAckLocked(ctx)
+	}
 	return tun.queueLocked(avps)
 }
 
