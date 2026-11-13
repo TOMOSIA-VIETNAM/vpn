@@ -36,11 +36,9 @@ var hasDefaultRoute = func() bool {
 // again (false: ctx ended) and whether the network came back meanwhile.
 //
 // Once it has seen no default route (Wi-Fi dropped, sleep — at the start or
-// partway through) the backoff is cut short the moment one reappears.
-// Before, every attempt failed at once with ROUTE_FAILURE and doubled the
-// wait, so the VPN came back up to 20 s after the network did. With a
-// network that stays up the full backoff applies, so an unreachable server
-// is not hammered.
+// partway through) the backoff is cut short the moment one reappears, so the
+// VPN reconnects as soon as the network is back. With a network that stays
+// up the full backoff applies, so an unreachable server is not hammered.
 //
 // The default route is checked only when the kernel reports a network change
 // (routing socket, see netwatch): a quiet wait runs no command at all. If the

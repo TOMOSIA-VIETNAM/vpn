@@ -35,12 +35,12 @@ func (x *xl2tpdReceiver) receive(t *testing.T, raw []byte) (accepted bool) {
 	return true
 }
 
-// Reproduces the "StopCCN result 1 Timeout" disconnects seen under heavy
-// traffic: one of our 10-second Hellos is lost on the way to the server.
-// SendHello never retransmits it, so from then on every control message we
-// send — later Hellos AND the ZLB that acknowledges the server's own Hello —
-// carries an Ns the server considers "ahead" and is dropped. The server's
-// Hello is never acknowledged, and it tears the tunnel down 31 s later.
+// One of our 10-second Hellos is lost on the way to the server. Every later
+// control message we send — Hellos AND the ZLB that acknowledges the server's
+// own Hello — would carry an Ns the server considers "ahead" and drops, unless
+// the lost Hello is resent first. If the server's Hello is never
+// acknowledged, it tears the tunnel down 31 s later (StopCCN result 1
+// "Timeout").
 //
 // What must hold: after the server's Hello reaches us, the server must
 // eventually accept an acknowledgment of it.

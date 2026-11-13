@@ -21,6 +21,3 @@ webapp/*.tsbuildinfo
 # The landing page's build scripts are source, unlike the local scripts/ ignored above.
 !webapp/scripts/
 .vercel
-
-# Local investigation notes, not part of the repo
-docs/

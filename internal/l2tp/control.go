@@ -51,10 +51,10 @@ type Tunnel struct {
 	// (window size 1, RFC 2661 §5.8). It must reach the peer before anything
 	// numbered after it: an LNS such as xl2tpd drops every control message
 	// whose Ns is ahead of the one it expects — ZLB acks included — without
-	// reading its Nr. One lost Hello therefore used to make the server drop
-	// all our acks until its own Hello timed out (StopCCN "Timeout", 31 s
-	// later). Until Nr from the peer passes pendingNs, this message is resent
-	// in place of every ack and every new Hello.
+	// reading its Nr. If this message were lost and never resent, the server
+	// would drop all our acks until its own Hello timed out (StopCCN
+	// "Timeout", 31 s later). So until Nr from the peer passes pendingNs,
+	// this message is resent in place of every ack and every new Hello.
 	pending    []byte // AVPs
 	pendingNs  uint16
 	hasPending bool
@@ -432,7 +432,7 @@ func (tun *Tunnel) sendPendingLocked() error {
 }
 
 // resendPendingLocked sends the pending message again because the peer has
-// not acknowledged it — the recovery that used to be missing — and logs it,
+// not acknowledged it, and logs it,
 // so a lost control message shows up in the log instead of a StopCCN.
 func (tun *Tunnel) resendPendingLocked() error {
 	tun.resends++
@@ -531,6 +531,9 @@ func (tun *Tunnel) sendReliable(ctx context.Context, avps []byte) (*ParsedMessag
 	for attempt := 0; attempt <= maxRetransmits; attempt++ {
 		if attempt > 0 {
 			vpnlog.Debug(stage, "retransmitting", vpnlog.Fields{"attempt": attempt})
+			if tun.hasPending {
+				_ = tun.resendPendingLocked() // still unacknowledged: it must precede this message or the peer drops it again
+			}
 		}
 		if err := tun.t.Send(msg); err != nil {
 			return nil, err
@@ -604,7 +607,7 @@ func (tun *Tunnel) sendReliable(ctx context.Context, avps []byte) (*ParsedMessag
 // sendReliableNoReply is for the setup messages the peer doesn't answer with
 // its own control message (SCCCN, ICCN). The message stays pending until the
 // peer's Nr acknowledges it and is resent meanwhile (see Tunnel.pending), so
-// a single lost datagram no longer desynchronizes the control channel. Setup
+// a single lost datagram does not desynchronize the control channel. Setup
 // only: with an earlier message still pending it reads the transport itself
 // (awaitAckLocked).
 func (tun *Tunnel) sendReliableNoReply(ctx context.Context, avps []byte) error {
