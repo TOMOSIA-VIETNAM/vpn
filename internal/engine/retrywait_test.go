@@ -57,7 +57,7 @@ func wantBackSoon(t *testing.T, start time.Time, retry, back bool) {
 func TestWaitToRetryEndsWhenNetworkReturns(t *testing.T) {
 	n := stubNet(t, false, nil)
 	n.after(30*time.Millisecond, true, netwatch.LinkChanged)
-	n.after(40*time.Millisecond, true, netwatch.RouteAdded) // same burst
+	n.after(40*time.Millisecond, true, netwatch.RouteAdded)
 	start := time.Now()
 	retry, back := waitToRetry(context.Background(), 20*time.Second)
 	wantBackSoon(t, start, retry, back)
@@ -93,6 +93,20 @@ func TestWaitToRetryKeepsBackoffWhileOnline(t *testing.T) {
 	}
 	if c := n.checks.Load(); c != 2 {
 		t.Fatalf("checked the default route %d times, want 2 (start + the one event)", c)
+	}
+}
+
+// A burst of events (DHCP: address, then default route) costs one check.
+func TestWaitToRetryCoalescesBurst(t *testing.T) {
+	n := stubNet(t, true, nil)
+	netSettle = 50 * time.Millisecond // restored by stubNet's cleanup
+	n.after(20*time.Millisecond, true, netwatch.LinkChanged)
+	n.after(25*time.Millisecond, true, netwatch.RouteAdded)
+	if retry, back := waitToRetry(context.Background(), 150*time.Millisecond); !retry || back {
+		t.Fatalf("retry=%v cameOnline=%v, want true/false", retry, back)
+	}
+	if c := n.checks.Load(); c != 2 {
+		t.Fatalf("checked the default route %d times, want 2 (start + one for the burst)", c)
 	}
 }
 
