@@ -68,6 +68,9 @@ type Session struct {
 	closeOnce      sync.Once
 	floated        bool // once true, every send/receive is framed with RFC 3947/3948's 4-byte non-ESP marker
 	floatAnyPort   bool // may float to an ephemeral local port when 4500 is taken (a second IKE SA alongside a live one)
+
+	doneMu sync.Mutex
+	doneQM []doneQM // the last Quick Modes we initiated and completed, for resending QM3
 }
 
 // NAT-T ports (RFC 3947): the server's is fixed at 4500 and ours is 4500 too

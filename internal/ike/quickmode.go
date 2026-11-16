@@ -671,6 +671,7 @@ func (s *Session) quickMode(espProposals []string, localIP, remoteIP net.IP, rou
 		return nil, fmt.Errorf("send QM3: %w", err)
 	}
 	vpnlog.Info(stage, "QM3 sent (exchange complete)", nil)
+	s.rememberQM(msgID, resp, qm3)
 
 	encLen, authLen := espKeyLens(chosen.Transform)
 	outKeymat, err := quickModeKeymat(s.Transform.Hash, s.Keys.SKEYIDd, protoIPsecESP, chosen.SPI, ni, peerNonce, encLen+authLen)

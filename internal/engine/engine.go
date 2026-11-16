@@ -259,13 +259,17 @@ func Connect(cfg Config) error {
 			return err
 		}
 
-		select {
-		case <-sigCtx.Done():
+		retry, cameOnline := waitToRetry(sigCtx, wait)
+		if !retry {
 			releaseBlock() // before the state flips to DISCONNECTED: the user sees "off" only once traffic flows again
 			_ = privilege.Elevate(state.Clear)
 			vpnlog.Info("ENGINE", "disconnected while waiting to reconnect", nil)
 			return nil
-		case <-time.After(wait):
+		}
+		if cameOnline {
+			vpnlog.Info("ENGINE", "network is back — reconnecting now", nil)
+			wait = reconnectMin
+			continue
 		}
 		if wait *= 2; wait > reconnectMax {
 			wait = reconnectMax
@@ -767,7 +771,7 @@ func connectOnce(sigCtx context.Context, cfg Config, reconnecting bool, reconnec
 		// with a ZLB or Hello, keeping the ESP transport active and proving responsiveness.
 		if l2tpTun != nil {
 			if err := l2tpTun.SendHello(); err != nil {
-				vpnlog.Debug("ENGINE", "L2TP hello send failed", vpnlog.Fields{"err": err})
+				vpnlog.Warn("ENGINE", "L2TP hello send failed — it stays pending and is resent", vpnlog.Fields{"err": err})
 			}
 		}
 	}
